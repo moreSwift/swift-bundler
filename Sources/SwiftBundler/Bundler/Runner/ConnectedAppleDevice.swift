@@ -1,5 +1,5 @@
-/// A connected device or simulator.
-struct ConnectedDevice: Sendable, Equatable {
+/// A connected apple device or simulator.
+struct ConnectedAppleDevice: Sendable, Equatable {
   let platform: NonMacApplePlatform
   let name: String
   let id: String

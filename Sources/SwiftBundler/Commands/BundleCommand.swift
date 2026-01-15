@@ -125,31 +125,33 @@ struct BundleCommand: ErrorHandledCommand {
       return false
     }
 
-    guard arguments.bundler.isSupportedOnHostPlatform else {
-      log.error(
-        """
-        The '\(arguments.bundler.rawValue)' bundler is not supported on the \
-        current host platform. Supported bundlers: \
-        \(BundlerChoice.supportedHostValuesDescription)
-        """
-      )
-      return false
-    }
-
-    guard arguments.bundler.supportedTargetPlatforms.contains(platform) else {
-      let alternatives = BundlerChoice.allCases.filter { choice in
-        choice.supportedTargetPlatforms.contains(platform)
+    if let bundler = arguments.bundler {
+      if !bundler.isSupportedOnHostPlatform {
+        log.error(
+          """
+          The '\(arguments.bundler?.rawValue ?? "<unknown>")' bundler is not supported on the \
+          current host platform. Supported bundlers: \
+          \(BundlerChoice.supportedHostValuesDescription)
+          """
+        )
+        return false
       }
-      let alternativesDescription = "(\(alternatives.map(\.rawValue).joined(separator: "|")))"
-      log.error(
-        """
-        The '\(arguments.bundler.rawValue)' bundler doesn't support bundling \
-        for '\(platform)'. Supported target platforms: \
-        \(BundlerChoice.supportedHostValuesDescription). Valid alternative \
-        bundlers: \(alternativesDescription)
-        """
-      )
-      return false
+
+      if !bundler.supportedTargetPlatforms.contains(platform) {
+        let alternatives = BundlerChoice.allCases.filter { choice in
+          choice.supportedTargetPlatforms.contains(platform)
+        }
+        let alternativesDescription = "(\(alternatives.map(\.rawValue).joined(separator: "|")))"
+        log.error(
+          """
+          The '\(bundler.rawValue)' bundler doesn't support bundling \
+          for '\(platform)'. Supported target platforms: \
+          \(BundlerChoice.supportedHostValuesDescription). Valid alternative \
+          bundlers: \(alternativesDescription)
+          """
+        )
+        return false
+      }
     }
 
     if [.macOS, .macCatalyst].contains(platform)
@@ -264,8 +266,8 @@ struct BundleCommand: ErrorHandledCommand {
           azureArtifactSigningMetadata: azureArtifactSigningMetadata
         )
         return (nil, context)
-      case .linux:
-        // Handle unsupported platforms (just Linux now)
+      case .linux, .android:
+        // Handle unsupported platforms
         let invalidArguments = [
           ("--codesign", codesignArgument == true),
           ("--identity", identityArgument != nil),
@@ -604,7 +606,15 @@ struct BundleCommand: ErrorHandledCommand {
       deviceSpecifier: arguments.deviceSpecifier,
       simulatorSpecifier: arguments.simulatorSpecifier
     )
-    _ = try await doBundling(resolvedPlatform: platform, resolvedDevice: device)
+
+    let bundler = arguments.bundler
+      ?? BundlerChoice.defaultForTargetPlatform(platform)
+
+    _ = try await doBundling(
+      resolvedPlatform: platform,
+      resolvedBundler: bundler,
+      resolvedDevice: device
+    )
   }
 
   // swiftlint:disable cyclomatic_complexity
@@ -617,12 +627,14 @@ struct BundleCommand: ErrorHandledCommand {
   ///     arguments users can use to specify it. This parameter purely exists
   ///     to allow ``RunCommand`` to avoid resolving the target platform twice
   ///     (once for its own use and once when this method gets called).
+  ///   - resolvedBundler: The bundler to use.
   ///   - resolvedDevice: Must be provided when provisioning profiles are
   ///     expected to be generated.
   /// - Returns: A description of the structure of the bundler's output.
   func doBundling(
     dryRun: Bool = false,
     resolvedPlatform: Platform,
+    resolvedBundler: BundlerChoice,
     resolvedDevice: Device? = nil
   ) async throws(RichError<SwiftBundlerError>) -> BundlerOutputStructure {
     let (resolvedDarwinCodeSigningContext, resolveWindowsCodeSigningContext) =
@@ -647,7 +659,7 @@ struct BundleCommand: ErrorHandledCommand {
 
       let configurationFlattenerContext = ConfigurationFlattener.Context(
         platform: resolvedPlatform,
-        bundler: arguments.bundler,
+        bundler: resolvedBundler,
         architectures: architectures
       )
 
@@ -701,7 +713,7 @@ struct BundleCommand: ErrorHandledCommand {
       let outputDirectory = Self.outputDirectory(for: scratchDirectory)
       let appOutputDirectory = outputDirectory / "apps" / appName
 
-      let metadataDirectory = appOutputDirectory / "metadata"
+      let metadataDirectory = outputDirectory / "metadata"
       if !metadataDirectory.exists() {
         try RichError<SwiftBundlerError>.catch {
           try FileManager.default.createDirectory(
@@ -710,14 +722,21 @@ struct BundleCommand: ErrorHandledCommand {
           )
         }
       }
-      let compiledMetadata = try await RichError<SwiftBundlerError>.catch {
-        return try await MetadataInserter.compileMetadata(
-          in: metadataDirectory,
-          for: MetadataInserter.metadata(for: appConfiguration),
-          architectures: architectures,
-          platform: resolvedPlatform,
-          dryRun: dryRun || showBundlePath
-        )
+
+      // TODO: Support metadata compilation on Android. Requires us to be able to locate Swift SDKs ourselves.
+      let compiledMetadata: MetadataInserter.CompiledMetadata?
+      if resolvedPlatform != .android {
+        compiledMetadata = try await RichError<SwiftBundlerError>.catch {
+          return try await MetadataInserter.compileMetadata(
+            in: metadataDirectory,
+            for: MetadataInserter.metadata(for: appConfiguration),
+            architectures: architectures,
+            platform: resolvedPlatform,
+            dryRun: dryRun || showBundlePath
+          )
+        }
+      } else {
+        compiledMetadata = nil
       }
 
       // Load package manifest
@@ -731,10 +750,7 @@ struct BundleCommand: ErrorHandledCommand {
         )
       }
 
-      let platformVersion =
-        resolvedPlatform.asApplePlatform.map { platform in
-          manifest.platformVersion(for: platform)
-        } ?? nil
+      let platformVersion = resolvedPlatform.platformVersion(from: manifest)
  
       let buildContext = SwiftPackageManager.BuildContext(
         genericContext: GenericBuildContext(
@@ -816,7 +832,7 @@ struct BundleCommand: ErrorHandledCommand {
       // If the user has requested the bundle path, print it and exit.
       if showBundlePath {
         let output = try Self.intendedOutput(
-          of: arguments.bundler.bundler,
+          of: resolvedBundler.bundler,
           context: bundlerContext,
           command: self,
           manifest: manifest
@@ -828,7 +844,7 @@ struct BundleCommand: ErrorHandledCommand {
       // If this is a dry run, drop out just before we start actually do stuff.
       guard !dryRun else {
         return try Self.intendedOutput(
-          of: arguments.bundler.bundler,
+          of: resolvedBundler.bundler,
           context: bundlerContext,
           command: self,
           manifest: manifest
@@ -901,6 +917,9 @@ struct BundleCommand: ErrorHandledCommand {
         log.info("Starting \(buildContext.genericContext.configuration.rawValue) build")
         try await RichError<SwiftBundlerError>.catch {
           if isUsingXcodebuild {
+            guard !resolvedBundler.bundler.requiresBuildAsDylib else {
+              throw SwiftBundlerError.xcodeCannotBuildAsDylib
+            }
             try await Xcodebuild.build(
               product: appConfiguration.product,
               buildContext: buildContext,
@@ -924,7 +943,7 @@ struct BundleCommand: ErrorHandledCommand {
               }
             }
 
-            let bundler = arguments.bundler.bundler
+            let bundler = resolvedBundler.bundler
             let additionalArgumentsFromBundler = try await prepareArgumentsFromBundler(bundler)
 
             // These arguments only apply to the main executable, so we're safe to
@@ -933,10 +952,17 @@ struct BundleCommand: ErrorHandledCommand {
             var buildContext = buildContext
             buildContext.genericContext.additionalArguments += additionalArgumentsFromBundler
 
-            try await SwiftPackageManager.build(
-              product: appConfiguration.product,
-              buildContext: buildContext
-            )
+            if resolvedBundler.bundler.requiresBuildAsDylib {
+              _ = try await SwiftPackageManager.buildExecutableAsDylib(
+                product: appConfiguration.product,
+                buildContext: buildContext
+              )
+            } else {
+              try await SwiftPackageManager.build(
+                product: appConfiguration.product,
+                buildContext: buildContext
+              )
+            }
           }
         }
 
@@ -975,7 +1001,7 @@ struct BundleCommand: ErrorHandledCommand {
       )
 
       return try await Self.bundle(
-        with: arguments.bundler.bundler,
+        with: resolvedBundler.bundler,
         context: bundlerContext,
         command: self,
         manifest: manifest

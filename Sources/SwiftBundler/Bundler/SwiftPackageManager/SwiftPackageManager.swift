@@ -128,7 +128,16 @@ enum SwiftPackageManager {
   ) async throws(Error) -> URL {
     #if os(macOS)
       let productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext)
-      let dylibFile = productsDirectory / "lib\(product).dylib"
+      let dylibExtension: String
+      switch buildContext.genericContext.platform {
+        case .macOS:
+          dylibExtension = "dylib"
+        case .android:
+          dylibExtension = "so"
+        case let platform:
+          throw Error(.cannotCompileExecutableAsDylibForPlatform(platform))
+      }
+      let dylibFile = productsDirectory / "lib\(product).\(dylibExtension)"
 
       try await build(
         product: product,
@@ -139,11 +148,26 @@ enum SwiftPackageManager {
         / "\(buildContext.genericContext.configuration).yaml"
       let buildPlan = try readBuildPlan(buildPlanFile)
 
-      let targetInfo = try await getHostTargetInfo(toolchain: buildContext.toolchain)
+      let triple: String
+      switch buildContext.genericContext.platform {
+        case .macOS:
+          let targetInfo = try await getHostTargetInfo(toolchain: buildContext.toolchain)
+          triple = targetInfo.target.triple
+        case .android:
+          triple = try Error.catch {
+            try buildContext.genericContext.platform.targetTriple(
+              // TODO: Clean this up so that we don't have to assume that there's exactly 1
+              //   architecture specified for Android builds (make it more verifiable).
+              withArchitecture: buildContext.genericContext.architectures[0],
+              andPlatformVersion: buildContext.genericContext.platformVersion
+            ).description
+          }
+        case let platform:
+          throw Error(.cannotCompileExecutableAsDylibForPlatform(platform))
+      }
 
       // Swift versions before 6.0 or so named commands differently in the build plan.
       // We check for the newer format (with triple) then the older format (no triple).
-      let triple = targetInfo.target.triple
       let configuration = buildContext.genericContext.configuration
       let commandName = "C.\(product)-\(triple)-\(configuration).exe"
       let oldCommandName = "C.\(product)-\(configuration).exe"
@@ -170,12 +194,20 @@ enum SwiftPackageManager {
 
       modifiedArguments.remove(at: index)
       modifiedArguments.remove(at: index)
-      modifiedArguments.append(contentsOf: [
-        "-o",
-        dylibFile.path,
-        "-Xcc",
-        "-dynamiclib",
-      ])
+      modifiedArguments.append(contentsOf: ["-o", dylibFile.path])
+
+      switch buildContext.genericContext.platform {
+        case .macOS:
+          modifiedArguments.append(contentsOf: [
+            "-Xcc",
+            "-dynamiclib",
+          ])
+        case .android:
+          modifiedArguments.removeAll { $0 == "-emit-executable" }
+          modifiedArguments.append("-emit-library")
+        case let platform:
+          throw Error(.cannotCompileExecutableAsDylibForPlatform(platform))
+      }
 
       do {
         let process = Process.create(
@@ -247,10 +279,12 @@ enum SwiftPackageManager {
         }
 
         let architecture = architectures[0]
-        let targetTriple = platform.targetTriple(
-          withArchitecture: architecture,
-          andPlatformVersion: platformVersion
-        )
+        let targetTriple = try Error.catch {
+          try platform.targetTriple(
+            withArchitecture: architecture,
+            andPlatformVersion: platformVersion
+          )
+        }
 
         platformArguments =
           [
@@ -272,6 +306,19 @@ enum SwiftPackageManager {
             "-isystem", "\(sdkPath)/System/iOSSupport/usr/include"
           ].flatMap { ["-Xcc", $0] }
         }
+      case .android:
+        let targetTriple = try Error.catch {
+          try platform.targetTriple(
+            withArchitecture: .arm64,
+            andPlatformVersion: "28"
+          )
+        }
+        
+        let debugArguments = buildContext.genericContext.configuration == .debug
+          ? ["-Xswiftc", "-g"]
+          : []
+
+        platformArguments = ["--swift-sdk", targetTriple.description] + debugArguments
       case .macOS, .linux:
         platformArguments = buildContext.genericContext.configuration == .debug
           ? ["-Xswiftc", "-g"]

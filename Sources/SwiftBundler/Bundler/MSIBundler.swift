@@ -9,6 +9,7 @@ enum MSIBundler: Bundler {
   typealias Context = Void
 
   static let outputIsRunnable = false
+  static let requiresBuildAsDylib = false
 
   static func intendedOutput(
     in context: BundlerContext,

@@ -205,7 +205,7 @@ enum DeviceManager {
       applePlatform: parsedPlatform,
       name: name,
       id: id,
-      status: dictionary["error"].map(ConnectedDevice.Status.unavailable)
+      status: dictionary["error"].map(ConnectedAppleDevice.Status.unavailable)
         ?? .available,
       architecture: architecture
     )
@@ -235,9 +235,9 @@ enum DeviceManager {
       // no way to disambiguate). Also put available devices above
       // unavailable ones.
       switch (first, second) {
-        case (.host, .connected):
+        case (.host, .connectedAppleDevice):
           return false
-        case (.connected(let first), .connected(let second)):
+        case (.connectedAppleDevice(let first), .connectedAppleDevice(let second)):
           if first.platform.isSimulator && !second.platform.isSimulator {
             return false
           } else if first.name.count > second.name.count {

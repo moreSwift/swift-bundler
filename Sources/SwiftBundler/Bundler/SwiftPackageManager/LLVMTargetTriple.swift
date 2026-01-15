@@ -11,9 +11,23 @@ struct LLVMTargetTriple: CustomStringConvertible {
   var abi: ABI?
 
   var description: String {
-    var triple = "\(architecture.rawValue)-\(vendor.rawValue)-\(system.description)"
+    // TODO: Ideally we'd be able to reuse BuildArchitecture.argument(for:) here
+    var triple = ""
+    switch architecture {
+      case .x86_64:
+        triple = architecture.rawValue
+      case .arm64:
+        switch vendor {
+          case .apple:
+            triple = architecture.rawValue
+          case .unknown:
+            triple = "aarch64"
+        }
+    }
+      
+    triple += "-\(vendor.rawValue)-\(system.description)"
     if let abi {
-      triple += "-\(abi.rawValue)"
+      triple += "-\(abi.description)"
     }
     return triple
   }
@@ -52,7 +66,7 @@ struct LLVMTargetTriple: CustomStringConvertible {
     static let windows = Self(name: "windows")
   }
 
-  enum ABI: String {
+  enum ABI: CustomStringConvertible {
     /// The ABI used to target Apple platform simulators.
     case simulator
     /// The ABI usually used by Swift on Linux.
@@ -61,6 +75,18 @@ struct LLVMTargetTriple: CustomStringConvertible {
     case msvc
     /// The ABI used by Mac Catalyst.
     case macabi
+    /// The ABI used by Android.
+    case android(api: Int)
+
+    var description: String {
+      switch self {
+        case .simulator: "simulator"
+        case .gnu: "gnu"
+        case .msvc: "msvc"
+        case .macabi: "macabi"
+        case .android(let api): "android\(api)"
+      }
+    }
   }
 
   /// Creates the target triple for the specified Apple platform.
@@ -92,6 +118,15 @@ struct LLVMTargetTriple: CustomStringConvertible {
       vendor: .unknown,
       system: .windows,
       abi: .msvc
+    )
+  }
+
+  static func android(_ architecture: BuildArchitecture, api: Int) -> Self {
+    Self(
+      architecture: architecture,
+      vendor: .unknown,
+      system: .linux,
+      abi: .android(api: api)
     )
   }
 }

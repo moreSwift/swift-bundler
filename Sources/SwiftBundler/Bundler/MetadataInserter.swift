@@ -157,10 +157,12 @@ enum MetadataInserter {
     var platformArguments: [String] = []
 
     if let platform = platform.asApplePlatform {
-      let target = platform.platform.targetTriple(
-        withArchitecture: architecture,
-        andPlatformVersion: platform.minimumSwiftSupportedVersion
-      )
+      let target = try Error.catch {
+        try platform.platform.targetTriple(
+          withArchitecture: architecture,
+          andPlatformVersion: platform.minimumSwiftSupportedVersion
+        )
+      }
       platformArguments += ["-target", target.description]
 
       let sdkPath = try await Error.catch(withMessage: .failedToGetSDKPath) {

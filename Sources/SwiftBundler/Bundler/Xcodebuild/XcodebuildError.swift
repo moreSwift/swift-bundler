@@ -16,6 +16,7 @@ extension Xcodebuild {
       AppleOS,
       BuildArchitecture
     )
+    case xcodebuildCannotTargetAndroid
 
     var userFriendlyMessage: String {
       switch self {
@@ -56,6 +57,8 @@ extension Xcodebuild {
             for single-architecture simulator builds. Run 'swift bundler simulators \
             list' to see available devices.
             """
+        case .xcodebuildCannotTargetAndroid:
+          return "xcodebuild cannot be used to target Android"
       }
     }
   }
