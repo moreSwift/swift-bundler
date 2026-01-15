@@ -8,7 +8,8 @@ enum Device: Sendable, Equatable, CustomStringConvertible {
   /// Mac Catalyst, so it can't live under the `.host` case. But for all intents
   /// and purposes, this `.macCatalyst` case functions very similarly to `.host`.
   case macCatalyst(BuildArchitecture)
-  case connected(ConnectedDevice)
+  case connectedAppleDevice(ConnectedAppleDevice)
+  case connectedAndroidDevice(ConnectedAndroidDevice)
 
   var description: String {
     switch self {
@@ -16,8 +17,10 @@ enum Device: Sendable, Equatable, CustomStringConvertible {
         return "\(platform.platform.name) host machine (arch: \(architecture.rawValue))"
       case .macCatalyst(let architecture):
         return "Mac Catalyst host machine (arch: \(architecture.rawValue))"
-      case .connected(let device):
+      case .connectedAppleDevice(let device):
         return "\(device.name) (\(device.platform.platform), id: \(device.id))"
+      case .connectedAndroidDevice(let device):
+        return "\(device.name)"
     }
   }
 
@@ -27,7 +30,9 @@ enum Device: Sendable, Equatable, CustomStringConvertible {
     switch self {
       case .host, .macCatalyst:
         return nil
-      case .connected(let device):
+      case .connectedAppleDevice(let device):
+        return device.id
+      case .connectedAndroidDevice(let device):
         return device.id
     }
   }
@@ -39,8 +44,10 @@ enum Device: Sendable, Equatable, CustomStringConvertible {
         return platform.platform
       case .macCatalyst:
         return .macCatalyst
-      case .connected(let device):
+      case .connectedAppleDevice(let device):
         return device.platform.platform
+      case .connectedAndroidDevice:
+        return .android
     }
   }
 
@@ -49,7 +56,9 @@ enum Device: Sendable, Equatable, CustomStringConvertible {
     switch self {
       case .host(_, let architecture), .macCatalyst(let architecture):
         return architecture
-      case .connected(let device):
+      case .connectedAppleDevice(let device):
+        return device.architecture
+      case .connectedAndroidDevice(let device):
         return device.architecture
     }
   }
@@ -58,7 +67,7 @@ enum Device: Sendable, Equatable, CustomStringConvertible {
     applePlatform platform: ApplePlatform,
     name: String,
     id: String,
-    status: ConnectedDevice.Status,
+    status: ConnectedAppleDevice.Status,
     architecture: BuildArchitecture
   ) {
     switch platform.partitioned {
@@ -83,16 +92,16 @@ enum Device: Sendable, Equatable, CustomStringConvertible {
     nonMacApplePlatform platform: NonMacApplePlatform,
     name: String,
     id: String,
-    status: ConnectedDevice.Status,
+    status: ConnectedAppleDevice.Status,
     architecture: BuildArchitecture
   ) {
-    let device = ConnectedDevice(
+    let device = ConnectedAppleDevice(
       platform: platform,
       name: name,
       id: id,
       status: status,
       architecture: architecture
     )
-    self = .connected(device)
+    self = .connectedAppleDevice(device)
   }
 }

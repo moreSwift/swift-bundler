@@ -3,6 +3,7 @@ import Foundation
 /// The bundler for creating macOS apps.
 enum DarwinBundler: Bundler {
   static let outputIsRunnable = true
+  static let requiresBuildAsDylib = false
 
   struct Context {
     /// Whether the build products were created by Xcode or not.
@@ -273,7 +274,7 @@ enum DarwinBundler: Bundler {
 
     // Simulators and hosts don't require provisioning profiles
     guard
-      case .connected(let device) = context.device,
+      case .connectedAppleDevice(let device) = context.device,
       !device.platform.isSimulator
     else {
       return nil

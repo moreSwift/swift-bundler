@@ -1,7 +1,25 @@
 import Foundation
+import ErrorKit
 
 /// A platform to build for.
 enum Platform: String, CaseIterable {
+  typealias Error = RichError<ErrorMessage>
+
+  /// An error message related to ``Platform``.
+  enum ErrorMessage: Throwable {
+    case invalidAndroidAPIVersion(String)
+    case platformVersionRequiredForPlatform(Platform)
+
+    var userFriendlyMessage: String {
+      switch self {
+        case .invalidAndroidAPIVersion(let version):
+          "Invalid Android API version '\(version)'; expected integer"
+        case .platformVersionRequiredForPlatform(let platform):
+          "Platform '\(platform)' requires a platform version to create a target triple"
+      }
+    }
+  }
+
   case macOS
   case macCatalyst
   case iOS
@@ -12,10 +30,12 @@ enum Platform: String, CaseIterable {
   case tvOSSimulator
   case linux
   case windows
+  case android
 
   enum Partitioned {
     case linux
     case windows
+    case android
     case apple(ApplePlatform)
   }
 
@@ -27,6 +47,8 @@ enum Platform: String, CaseIterable {
         return .linux
       case .windows:
         return .windows
+      case .android:
+        return .android
       case .macOS:
         return .apple(.macOS)
       case .macCatalyst:
@@ -69,6 +91,8 @@ enum Platform: String, CaseIterable {
         return "Linux"
       case .windows:
         return "Windows"
+      case .android:
+        return "Android"
     }
   }
 
@@ -78,6 +102,8 @@ enum Platform: String, CaseIterable {
       case .apple(let applePlatform):
         applePlatform.supportedArchitectures
       case .linux, .windows:
+        [.x86_64, .arm64]
+      case .android:
         [.x86_64, .arm64]
     }
   }
@@ -89,6 +115,8 @@ enum Platform: String, CaseIterable {
         applePlatform.defaultTargetArchitecture(hostArchitecture: hostArchitecture)
       case .linux, .windows:
         hostArchitecture
+      case .android:
+        .arm64
     }
   }
 
@@ -106,7 +134,7 @@ enum Platform: String, CaseIterable {
         "maccatalyst"
       case .iOS, .iOSSimulator, .visionOS, .visionOSSimulator, .tvOS, .tvOSSimulator:
         sdkName
-      case .macOS, .linux, .windows:
+      case .macOS, .linux, .windows, .android:
         nil
     }
   }
@@ -133,6 +161,8 @@ enum Platform: String, CaseIterable {
         return "linux"
       case .windows:
         return "windows"
+      case .android:
+        return "android"
     }
   }
 
@@ -153,7 +183,7 @@ enum Platform: String, CaseIterable {
       case .visionOSSimulator: return .visionOSSimulator
       case .tvOS: return .tvOS
       case .tvOSSimulator: return .tvOSSimulator
-      case .linux, .windows: return nil
+      case .linux, .windows, .android: return nil
     }
   }
 
@@ -172,6 +202,7 @@ enum Platform: String, CaseIterable {
       case .tvOS, .tvOSSimulator: return .tvOS
       case .linux: return .linux
       case .windows: return .windows
+      case .android: return .android
     }
   }
 
@@ -180,7 +211,7 @@ enum Platform: String, CaseIterable {
     switch self {
       case .windows:
         return "exe"
-      case .macOS, .macCatalyst, .linux, .iOS, .iOSSimulator,
+      case .macOS, .macCatalyst, .linux, .android, .iOS, .iOSSimulator,
         .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
         return nil
     }
@@ -200,31 +231,59 @@ enum Platform: String, CaseIterable {
     }
   }
 
+  /// Gets the target triple corresponding to this platform, the given architecture,
+  /// and the given platform version.
   func targetTriple(
     withArchitecture architecture: BuildArchitecture,
-    andPlatformVersion platformVersion: String
-  ) -> LLVMTargetTriple {
-    switch self {
-      case .iOS:
-        return .apple(architecture, .iOS(platformVersion))
-      case .visionOS:
-        return .apple(architecture, .visionOS(platformVersion))
-      case .tvOS:
-        return .apple(architecture, .tvOS(platformVersion))
-      case .iOSSimulator:
-        return .apple(architecture, .iOS(platformVersion), .simulator)
-      case .visionOSSimulator:
-        return .apple(architecture, .visionOS(platformVersion), .simulator)
-      case .tvOSSimulator:
-        return .apple(architecture, .tvOS(platformVersion), .simulator)
-      case .macOS:
-        return .apple(architecture, .macOS(platformVersion))
-      case .macCatalyst:
-        return .apple(architecture, .iOS(platformVersion), .macabi)
+    andPlatformVersion platformVersion: String?
+  ) throws(Error) -> LLVMTargetTriple {
+    switch self.partitioned {
+      case .apple(let applePlatform):
+        guard let platformVersion else {
+          throw Error(.platformVersionRequiredForPlatform(self))
+        }
+        switch applePlatform {
+          case .iOS:
+            return .apple(architecture, .iOS(platformVersion))
+          case .visionOS:
+            return .apple(architecture, .visionOS(platformVersion))
+          case .tvOS:
+            return .apple(architecture, .tvOS(platformVersion))
+          case .iOSSimulator:
+            return .apple(architecture, .iOS(platformVersion), .simulator)
+          case .visionOSSimulator:
+            return .apple(architecture, .visionOS(platformVersion), .simulator)
+          case .tvOSSimulator:
+            return .apple(architecture, .tvOS(platformVersion), .simulator)
+          case .macOS:
+            return .apple(architecture, .macOS(platformVersion))
+          case .macCatalyst:
+            return .apple(architecture, .iOS(platformVersion), .macabi)
+        }
       case .linux:
         return .linux(architecture)
       case .windows:
         return .windows(architecture)
+      case .android:
+        guard let platformVersion else {
+          throw Error(.platformVersionRequiredForPlatform(self))
+        }
+        guard let api = Int(platformVersion) else {
+          throw Error(.invalidAndroidAPIVersion(platformVersion))
+        }
+        return .android(architecture, api: api)
+    }
+  }
+
+  /// Gets the platform version corresponding to this platform.
+  func platformVersion(from manifest: PackageManifest) -> String? {
+    if let platform = self.asApplePlatform {
+      manifest.platformVersion(for: platform)
+    } else if self == .android {
+      // TODO: Make this configurable
+      "28"
+    } else {
+      nil
     }
   }
 }

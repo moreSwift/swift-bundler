@@ -10,6 +10,11 @@ protocol Bundler {
   /// ``AppImageBundler`` is.
   static var outputIsRunnable: Bool { get }
 
+  /// Indicates whether the bundler requires the app to be built as a dylib.
+  /// If true, Swift Bundler will build the app as a dylib instead of an
+  /// executable before passing it to the bundler.
+  static var requiresBuildAsDylib: Bool { get }
+
   /// Computes the bundler's own context given the generic bundler context
   /// and Swift bundler's parsed command-line arguments, options, and flags.
   ///

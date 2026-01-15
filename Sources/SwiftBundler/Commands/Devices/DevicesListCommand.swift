@@ -19,11 +19,11 @@ struct DevicesListCommand: ErrorHandledCommand {
         .filter { device in
           !device.platform.isSimulator
         }
-        .compactMap { device -> ConnectedDevice? in
+        .compactMap { device -> ConnectedAppleDevice? in
           switch device {
-            case .host, .macCatalyst:
+            case .host, .macCatalyst, .connectedAndroidDevice:
               return nil
-            case .connected(let device):
+            case .connectedAppleDevice(let device):
               return device
           }
         }

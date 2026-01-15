@@ -346,7 +346,7 @@ extension ProjectConfiguration.Product.Flat {
       switch type {
         case .dynamicLibrary, .staticLibrary:
           switch platform.partitioned {
-            case .linux, .apple:
+            case .linux, .apple, .android:
               baseName = "lib\(name)"
             case .windows:
               baseName = name
@@ -378,7 +378,7 @@ extension ProjectConfiguration.Product.Flat {
     switch type {
       case .dynamicLibrary:
         switch platform.partitioned {
-          case .linux:
+          case .linux, .android:
             fileExtension = ".so"
           case .windows:
             fileExtension = ".dll"
@@ -392,7 +392,7 @@ extension ProjectConfiguration.Product.Flat {
         switch platform.partitioned {
           case .windows:
             fileExtension = ".exe"
-          case .linux, .apple:
+          case .linux, .android, .apple:
             fileExtension = ""
         }
     }
@@ -410,7 +410,7 @@ extension ProjectConfiguration.Product.Flat {
         } else {
           return []
         }
-      case .linux, .apple:
+      case .linux, .android, .apple:
         return []
     }
 

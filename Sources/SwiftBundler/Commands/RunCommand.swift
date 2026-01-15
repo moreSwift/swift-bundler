@@ -56,18 +56,6 @@ struct RunCommand: ErrorHandledCommand {
       Foundation.exit(1)
     }
 
-    guard arguments.bundler.bundler.outputIsRunnable else {
-      log.error(
-        """
-        The chosen bundler (\(arguments.bundler.rawValue)) is bundling-only \
-        (i.e. it doesn't output a runnable bundle). Choose a different bundler \
-        or stick to bundling and manually install the bundle on your system to \
-        run your app.
-        """
-      )
-      Foundation.exit(1)
-    }
-
     #if !SUPPORT_HOT_RELOADING
       if hot {
         log.error(
@@ -98,12 +86,27 @@ struct RunCommand: ErrorHandledCommand {
       hotReloadingEnabled: hot
     )
 
+    let resolvedBundler = arguments.bundler
+      ?? BundlerChoice.defaultForTargetPlatform(device.platform)
+
+    guard resolvedBundler.bundler.outputIsRunnable else {
+      log.error(
+        """
+        The chosen bundler (\(resolvedBundler.rawValue)) is bundling-only \
+        (i.e. it doesn't output a runnable bundle). Choose a different bundler \
+        or stick to bundling and manually install the bundle on your system to \
+        run your app.
+        """
+      )
+      Foundation.exit(1)
+    }
+
     let (_, appConfiguration, _) = try await BundleCommand.getConfiguration(
       arguments.appName,
       packageDirectory: packageDirectory,
       context: ConfigurationFlattener.Context(
         platform: device.platform,
-        bundler: arguments.bundler,
+        bundler: resolvedBundler,
         architectures: bundleCommand.getArchitectures(platform: device.platform)
       ),
       customFile: arguments.configurationFileOverride
@@ -114,6 +117,7 @@ struct RunCommand: ErrorHandledCommand {
     let bundlerOutput = try await bundleCommand.doBundling(
       dryRun: skipBuild,
       resolvedPlatform: device.platform,
+      resolvedBundler: resolvedBundler,
       resolvedDevice: device
     )
 
@@ -131,10 +135,7 @@ struct RunCommand: ErrorHandledCommand {
       )
     }
 
-    let platformVersion =
-      device.platform.asApplePlatform.map { platform in
-        manifest.platformVersion(for: platform)
-      } ?? nil
+    let platformVersion = device.platform.platformVersion(from: manifest)
     let architectures = bundleCommand.getArchitectures(
       platform: device.platform
     )

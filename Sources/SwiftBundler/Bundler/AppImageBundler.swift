@@ -6,6 +6,7 @@ enum AppImageBundler: Bundler {
   typealias Context = Void
 
   static let outputIsRunnable = true
+  static let requiresBuildAsDylib = false
 
   /// Computes the location of the desktop file created in the given context.
   static func desktopFileLocation(for context: BundlerContext) -> URL {

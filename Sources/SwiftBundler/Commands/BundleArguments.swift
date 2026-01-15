@@ -7,6 +7,7 @@ struct BundleArguments: ParsableArguments {
     help: "The name of the app to build.")
   var appName: String?
 
+  /// The bundler to use.
   @Option(
     help: "The bundler to use \(BundlerChoice.possibleValuesDescription).",
     transform: {
@@ -15,7 +16,8 @@ struct BundleArguments: ParsableArguments {
       }
       return choice
     })
-  var bundler = BundlerChoice.defaultForHostPlatform
+  var bundler: BundlerChoice?
+
   /// An alternative Swift toolchain to use.
   @Option(
     help: "An alternative Swift toolchain to use",

@@ -240,8 +240,10 @@ enum Xcodebuild {
       switch destination {
         case .host, .macCatalyst, nil:
           break
-        case .connected:
+        case .connectedAppleDevice:
           throw Error(.universalBuildIncompatibleWithConcreteDestination)
+        case .connectedAndroidDevice:
+          throw Error(.xcodebuildCannotTargetAndroid)
       }
 
       destinationString = "generic/platform=\(platformName)"
