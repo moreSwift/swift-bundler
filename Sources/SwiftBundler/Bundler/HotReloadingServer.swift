@@ -110,6 +110,7 @@
     func start(
       product: String,
       buildContext: GenericBuildContext,
+      swiftToolchain: URL?,
       appConfiguration: AppConfiguration.Flat
     ) async throws(Error) {
       let connection = try await accept()
@@ -144,6 +145,7 @@
 
                 let context = SwiftPackageManager.BuildContext(
                   genericContext: buildContext,
+                  toolchain: swiftToolchain,
                   hotReloadingEnabled: true,
                   isGUIExecutable: true,
                   compiledMetadata: compiledMetadata

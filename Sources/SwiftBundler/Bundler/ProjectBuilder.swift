@@ -18,6 +18,7 @@ enum ProjectBuilder {
     _ dependencies: [AppConfiguration.Dependency],
     packageConfiguration: PackageConfiguration.Flat,
     context: GenericBuildContext,
+    swiftToolchain: URL?,
     appName: String,
     dryRun: Bool
   ) async throws(Error) -> [String: BuiltProduct] {
@@ -26,8 +27,9 @@ enum ProjectBuilder {
     for dependency in dependencies {
       try await buildDependency(
         dependency,
-        context: context,
         packageConfiguration: packageConfiguration,
+        context: context,
+        swiftToolchain: swiftToolchain,
         appName: appName,
         dryRun: dryRun,
         builtProjects: &builtProjects,
@@ -39,8 +41,9 @@ enum ProjectBuilder {
 
   private static func buildDependency(
     _ dependency: AppConfiguration.Dependency,
-    context: GenericBuildContext,
     packageConfiguration: PackageConfiguration.Flat,
+    context: GenericBuildContext,
+    swiftToolchain: URL?,
     appName: String,
     dryRun: Bool,
     builtProjects: inout Set<String>,
@@ -57,6 +60,7 @@ enum ProjectBuilder {
       let (productName, builtProduct) = try await buildRootProjectProduct(
         dependency.product,
         context: context,
+        swiftToolchain: swiftToolchain,
         dryRun: dryRun
       )
       builtProducts[productName] = builtProduct
@@ -112,7 +116,8 @@ enum ProjectBuilder {
           configuration: project,
           builders: packageConfiguration.builders,
           packageDirectory: context.projectDirectory,
-          scratchDirectory: projectScratchDirectory
+          scratchDirectory: projectScratchDirectory,
+          swiftToolchain: swiftToolchain
         )
       } catch {
         throw Error(.failedToBuildProject(name: projectName), cause: error)
@@ -179,12 +184,14 @@ enum ProjectBuilder {
   static func buildRootProjectProduct(
     _ product: String,
     context: GenericBuildContext,
+    swiftToolchain: URL?,
     dryRun: Bool
   ) async throws(Error) -> (String, BuiltProduct) {
     let manifest: PackageManifest
     do {
       manifest = try await SwiftPackageManager.loadPackageManifest(
-        from: context.projectDirectory
+        from: context.projectDirectory,
+        toolchain: swiftToolchain
       )
     } catch {
       throw Error(.failedToBuildRootProjectProduct(name: product), cause: error)
@@ -210,6 +217,7 @@ enum ProjectBuilder {
     // Build product
     let buildContext = SwiftPackageManager.BuildContext(
       genericContext: context,
+      toolchain: swiftToolchain,
       hotReloadingEnabled: false,
       isGUIExecutable: false
     )
@@ -350,14 +358,16 @@ enum ProjectBuilder {
     _ builder: ProjectConfiguration.Builder.Flat,
     builders: [String: BuilderConfiguration.Flat],
     packageDirectory: URL,
-    scratchDirectory: ScratchDirectoryStructure
+    scratchDirectory: ScratchDirectoryStructure,
+    swiftToolchain: URL?
   ) async throws(Error) -> OnDiskBuilder {
     switch builder {
       case .inline(let inlineBuilder):
         return try await prepareInlineBuilder(
           forInlineBuilder: inlineBuilder,
           packageDirectory: packageDirectory,
-          scratchDirectory: scratchDirectory
+          scratchDirectory: scratchDirectory,
+          swiftToolchain: swiftToolchain
         )
       case .named(let name):
         guard let builderConfiguration = builders[name] else {
@@ -385,7 +395,8 @@ enum ProjectBuilder {
     configuration: ProjectConfiguration.Flat,
     builders: [String: BuilderConfiguration.Flat],
     packageDirectory: URL,
-    scratchDirectory: ScratchDirectoryStructure
+    scratchDirectory: ScratchDirectoryStructure,
+    swiftToolchain: URL?
   ) async throws(Error) {
     try await checkoutSource(
       configuration.source,
@@ -397,12 +408,14 @@ enum ProjectBuilder {
       configuration.builder,
       builders: builders,
       packageDirectory: packageDirectory,
-      scratchDirectory: scratchDirectory
+      scratchDirectory: scratchDirectory,
+      swiftToolchain: swiftToolchain
     )
 
     let builtBuilder = try await buildBuilder(
       builder,
-      scratchDirectory: scratchDirectory
+      scratchDirectory: scratchDirectory,
+      swiftToolchain: swiftToolchain
     )
 
     try await runBuilder(
@@ -414,7 +427,8 @@ enum ProjectBuilder {
 
   static func buildBuilder(
     _ builder: OnDiskBuilder,
-    scratchDirectory: ScratchDirectoryStructure
+    scratchDirectory: ScratchDirectoryStructure,
+    swiftToolchain: URL?
   ) async throws(Error) -> URL {
     // Build the builder
     let buildContext = SwiftPackageManager.BuildContext(
@@ -426,6 +440,7 @@ enum ProjectBuilder {
         platform: HostPlatform.hostPlatform.platform,
         additionalArguments: []
       ),
+      toolchain: swiftToolchain,
       isGUIExecutable: false
     )
 
