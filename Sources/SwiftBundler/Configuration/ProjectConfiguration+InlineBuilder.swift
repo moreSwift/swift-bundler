@@ -41,7 +41,8 @@ extension ProjectBuilder {
   static func prepareInlineBuilder(
     forInlineBuilder builder: ProjectConfiguration.InlineBuilder.Flat,
     packageDirectory: URL,
-    scratchDirectory: ScratchDirectoryStructure
+    scratchDirectory: ScratchDirectoryStructure,
+    swiftToolchain: URL?
   ) async throws(Error) -> OnDiskBuilder {
     // Create builder source file symlink
     try Error.catch(withMessage: .failedToSymlinkBuilderSourceFile) {
@@ -57,7 +58,10 @@ extension ProjectBuilder {
 
     // Create/update the builder's Package.swift
     let toolsVersion = try await Error.catch {
-      try await SwiftPackageManager.getToolsVersion(packageDirectory)
+      try await SwiftPackageManager.getToolsVersion(
+        packageDirectory,
+        toolchain: swiftToolchain
+      )
     }
 
     let manifestContents = generateBuilderPackageManifest(

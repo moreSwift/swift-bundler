@@ -18,7 +18,8 @@ enum DeviceManager {
 
       try await SwiftPackageManager.createPackage(
         in: dummyProject,
-        name: dummyProjectName
+        name: dummyProjectName,
+        toolchain: nil
       )
     } catch {
       throw Error(.failedToCreateDummyProject)

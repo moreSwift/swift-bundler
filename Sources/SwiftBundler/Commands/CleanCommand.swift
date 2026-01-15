@@ -22,6 +22,12 @@ struct CleanCommand: ErrorHandledCommand {
     transform: URL.init(fileURLWithPath:))
   var scratchDirectory: URL?
 
+  /// An alternative Swift toolchain to use.
+  @Option(
+    help: "An alternative Swift toolchain to use",
+    transform: URL.init(fileURLWithPath:))
+  var toolchain: URL?
+
   @Flag(
     name: .shortAndLong,
     help: "Print verbose error messages.")
@@ -44,7 +50,7 @@ struct CleanCommand: ErrorHandledCommand {
 
     try await RichError<SwiftBundlerError>.catch {
       try await Process.create(
-        "swift",
+        SwiftPackageManager.swiftPath(toolchain: toolchain),
         arguments: [
           "package",
           "--scratch-path",
