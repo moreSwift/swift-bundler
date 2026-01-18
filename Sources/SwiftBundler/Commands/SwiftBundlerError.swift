@@ -18,6 +18,8 @@ enum SwiftBundlerError: Throwable {
   case codesigningNotSupported(HostPlatform)
   case failedToEncodeJSONOutput
   case xcodeCannotBuildAsDylib
+  case unsupportedTargetArchitectures([BuildArchitecture], Platform)
+  case platformDoesNotSupportMultiArchitectureBuilds(Platform, universalFlag: Bool)
 
   var userFriendlyMessage: String {
     switch self {
@@ -89,6 +91,17 @@ enum SwiftBundlerError: Throwable {
           dynamic libraries, but the currently selected bundler requires a \
           dynamic library.
           """
+      case .unsupportedTargetArchitectures(let architectures, let platform):
+        return """
+        The architectures \(architectures) are not supported when targeting \
+        \(platform.displayName).
+        """
+      case .platformDoesNotSupportMultiArchitectureBuilds(let platform, let universalFlag):
+        if universalFlag {
+          return "\(platform.displayName) does not support '--universal' builds."
+        } else {
+          return "\(platform.displayName) does not support multi-architecture builds."
+        }
     }
   }
 }

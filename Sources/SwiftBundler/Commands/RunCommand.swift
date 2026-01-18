@@ -136,7 +136,7 @@ struct RunCommand: ErrorHandledCommand {
     }
 
     let platformVersion = device.platform.platformVersion(from: manifest)
-    let architectures = bundleCommand.getArchitectures(
+    let architectures = try bundleCommand.getArchitectures(
       platform: device.platform
     )
 

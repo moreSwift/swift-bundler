@@ -307,9 +307,13 @@ enum SwiftPackageManager {
           ].flatMap { ["-Xcc", $0] }
         }
       case .android:
+        guard buildContext.genericContext.architectures.count == 1 else {
+          throw Error(.cannotBuildForMultipleAndroidArchitecturesAtOnce)
+        }
+
         let targetTriple = try Error.catch {
           try platform.targetTriple(
-            withArchitecture: .arm64,
+            withArchitecture: buildContext.genericContext.architectures[0],
             andPlatformVersion: "28"
           )
         }
