@@ -166,6 +166,44 @@ enum Platform: String, CaseIterable {
     }
   }
 
+  /// The set of compilation architectures supported by the platform.
+  var supportedCompilationArchitectures: [BuildArchitecture] {
+    switch self {
+      case .macOS, .macCatalyst:
+        [.x86_64, .arm64]
+      case .iOS, .visionOS, .tvOS:
+        [.arm64]
+      case .linux, .windows:
+        [.x86_64, .arm64]
+      case .android:
+        [.x86_64, .arm64, .armv7]
+      case .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
+        [.x86_64, .arm64]
+    }
+  }
+
+  /// Whether the platform supports multi-architecture builds.
+  var supportsMultiArchitectureBuilds: Bool {
+    switch self {
+      case .macOS, .macCatalyst, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
+        true
+      case .linux, .windows, .android, .iOS, .visionOS, .tvOS:
+        false
+    }
+  }
+
+  /// Default compilation architecture used when targeting the platform without
+  /// a user-specified target architecture.
+  func defaultCompilationArchitecture(_ host: BuildArchitecture) -> BuildArchitecture {
+    switch self {
+      case .macOS, .macCatalyst, .linux, .windows, .iOSSimulator,
+        .visionOSSimulator, .tvOSSimulator:
+        host
+      case .android, .iOS, .visionOS, .tvOS:
+        .arm64
+    }
+  }
+
   /// Whether the platform is a simulator or not.
   var isSimulator: Bool {
     asApplePlatform?.isSimulator == true

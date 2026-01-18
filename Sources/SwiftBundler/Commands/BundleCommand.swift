@@ -181,6 +181,11 @@ struct BundleCommand: ErrorHandledCommand {
       }
     }
 
+    if platform != .macOS && arguments.standAlone {
+      log.error("'--experimental-stand-alone' only works when targeting macOS (and that excludes Mac Catalyst)")
+      return false
+    }
+
     // macOS-only arguments
     #if os(macOS)
       if (arguments.universal || arguments.architectures.count > 1)
@@ -201,11 +206,6 @@ struct BundleCommand: ErrorHandledCommand {
           \(platform.rawValue)'
           """
         )
-        return false
-      }
-
-      if platform != .macOS && arguments.standAlone {
-        log.error("'--experimental-stand-alone' only works when targeting macOS (and that excludes Mac Catalyst)")
         return false
       }
 
@@ -588,14 +588,42 @@ struct BundleCommand: ErrorHandledCommand {
     }
   }
 
-  func getArchitectures(platform: Platform) -> [BuildArchitecture] {
-    let architectures: [BuildArchitecture]
-    if arguments.universal {
-      architectures = platform.supportedArchitectures
-    } else if !arguments.architectures.isEmpty {
-      architectures = arguments.architectures
-    } else {
-      architectures = [platform.defaultTargetArchitecture(hostArchitecture: .host)]
+  /// Gets the architectures to use for the current build. Validates the '--arch'
+  /// arguments passed in by the user.
+  func getArchitectures(platform: Platform)
+    throws(RichError<SwiftBundlerError>) -> [BuildArchitecture]
+  {
+    guard !arguments.universal || platform.supportsMultiArchitectureBuilds else {
+      let message = SwiftBundlerError.platformDoesNotSupportMultiArchitectureBuilds(
+        platform,
+        universalFlag: true
+      )
+      throw RichError(message)
+    }
+
+    let supportedArchitectures = platform.supportedCompilationArchitectures
+    let architectures = arguments.universal ? supportedArchitectures : arguments.architectures
+    guard !architectures.isEmpty else {
+      return [platform.defaultCompilationArchitecture(.host)]
+    }
+
+    var unsupportedArchitectures: [BuildArchitecture] = []
+    for architecture in architectures {
+      if !supportedArchitectures.contains(architecture) {
+        unsupportedArchitectures.append(architecture)
+      }
+    }
+
+    guard unsupportedArchitectures.isEmpty else {
+      throw RichError(.unsupportedTargetArchitectures(unsupportedArchitectures, platform))
+    }
+
+    guard architectures.count == 1 || platform.supportsMultiArchitectureBuilds else {
+      let message = SwiftBundlerError.platformDoesNotSupportMultiArchitectureBuilds(
+        platform,
+        universalFlag: false
+      )
+      throw RichError(message)
     }
     return architectures
   }
@@ -647,15 +675,26 @@ struct BundleCommand: ErrorHandledCommand {
         platform: resolvedPlatform
       )
 
+    guard
+      Self.validateArguments(
+        arguments,
+        platform: resolvedPlatform,
+        skipBuild: skipBuild,
+        builtWithXcode: builtWithXcode
+      )
+    else {
+      Foundation.exit(1)
+    }
+
+    // Get relevant configuration
+    let architectures = try getArchitectures(platform: resolvedPlatform)
+
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
       // Load configuration
       let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
       let scratchDirectory =
         arguments.scratchDirectory ?? (packageDirectory / ".build")
-
-      // Get relevant configuration
-      let architectures = getArchitectures(platform: resolvedPlatform)
 
       let configurationFlattenerContext = ConfigurationFlattener.Context(
         platform: resolvedPlatform,
