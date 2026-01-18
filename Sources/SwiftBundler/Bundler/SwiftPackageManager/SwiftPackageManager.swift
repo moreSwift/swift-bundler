@@ -205,6 +205,14 @@ enum SwiftPackageManager {
         case .android:
           modifiedArguments.removeAll { $0 == "-emit-executable" }
           modifiedArguments.append("-emit-library")
+          // If we don't set an soname, then the library gets linked at its
+          // absolute path on the host machine when used with CMake in gradle
+          // projects. That leads to a runtime linker error when running the
+          // built app on an Android device, because the absolute path of the
+          // library on the host machine doesn't exist on the Android device.
+          modifiedArguments.append(contentsOf: [
+            "-Xlinker", "-soname", "-Xlinker", dylibFile.lastPathComponent
+          ])
         case let platform:
           throw Error(.cannotCompileExecutableAsDylibForPlatform(platform))
       }
