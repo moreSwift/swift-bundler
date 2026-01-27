@@ -1,4 +1,5 @@
 import Foundation
+import Version
 
 extension RPMBundler {
   /// The structure of an `rpmbuild` directory.
@@ -23,7 +24,7 @@ extension RPMBundler {
 
     /// Describes the structure of an `rpmbuild` directory. Doesn't create
     /// anything on disk (see ``RPMBuildDirectory/createDirectories()``).
-    init(at root: URL, escapedAppName: String, appVersion: String) {
+    init(at root: URL, escapedAppName: String, appVersion: Version) {
       self.root = root
       build = root / "BUILD"
       buildRoot = root / "BUILDROOT"

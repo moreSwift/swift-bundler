@@ -61,12 +61,10 @@ extension GenericLinuxBundler {
     /// Creates all directories (including intermediate directories) required to
     /// create this bundle structure.
     func createDirectories() throws(Error) {
-      do {
+      try Error.catch(withMessage: .failedToCreateBundleStructure(root: root)) {
         for directory in directories {
           try FileManager.default.createDirectory(at: directory)
         }
-      } catch {
-        throw Error(.failedToCreateBundleStructure(root: root))
       }
     }
 

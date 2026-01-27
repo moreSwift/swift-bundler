@@ -27,4 +27,17 @@ enum BuildArchitecture: String, CaseIterable, ExpressibleByArgument {
         return rawValue
     }
   }
+
+  /// The name that Android tools use for the architecture. This is
+  /// different to the name that SwiftPM uses.
+  var androidName: String {
+    switch self {
+      case .arm64:
+        "arm64-v8a"
+      case .armv7:
+        "armeabi-v7a"
+      case .x86_64:
+        "x86_64"
+    }
+  }
 }

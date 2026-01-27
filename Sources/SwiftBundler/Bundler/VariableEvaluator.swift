@@ -1,4 +1,5 @@
 import Foundation
+import Version
 import Parsing
 
 // Due to https://github.com/swiftlang/swift/issues/83510, we need to 'decouple'
@@ -18,7 +19,7 @@ enum VariableEvaluator {
     /// The root directory of the package.
     var packageDirectory: URL?
     /// The app's version.
-    var version: String?
+    var version: Version?
     /// The app's identifier.
     var identifier: String?
   }
@@ -170,7 +171,7 @@ enum VariableEvaluator {
           throw Error(.failedToEvaluateRevisionNumber(directory: packageDirectory), cause: error)
         }
       case "VERSION", "MARKETING_VERSION", "CURRENT_PROJECT_VERSION":
-        value = context.version
+        value = context.version?.description
       case "PRODUCT_BUNDLE_IDENTIFIER":
         value = context.identifier
       case "PRODUCT_NAME":

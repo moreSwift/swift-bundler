@@ -20,6 +20,7 @@ enum SwiftBundlerError: Throwable {
   case xcodeCannotBuildAsDylib
   case unsupportedTargetArchitectures([BuildArchitecture], Platform)
   case platformDoesNotSupportMultiArchitectureBuilds(Platform, universalFlag: Bool)
+  case invalidVersionString(String)
 
   var userFriendlyMessage: String {
     switch self {
@@ -102,6 +103,12 @@ enum SwiftBundlerError: Throwable {
         } else {
           return "\(platform.displayName) does not support multi-architecture builds."
         }
+      case .invalidVersionString(let versionString):
+        return """
+          Failed to parse version '\(versionString)'. Swift Bundler expects \
+          semantic versions, but uses tolerant parsing so it also supports \
+          versions such as 10.0 and v3
+          """
     }
   }
 }

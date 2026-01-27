@@ -1,4 +1,5 @@
 import Foundation
+import Version
 
 /// The old configuration format (from swift-bundler 1.x.x). Kept for use in automatic configuration migration.
 struct PackageConfigurationV1: Codable {
@@ -90,10 +91,11 @@ struct PackageConfigurationV1: Codable {
       """
     )
 
+    let version = Version.parseOrFallback(versionString)
     let appConfiguration = AppConfiguration(
       identifier: bundleIdentifier,
       product: target,
-      version: versionString,
+      version: version,
       category: category,
       plist: extraPlistEntries.isEmpty ? nil : extraPlistEntries
     )
