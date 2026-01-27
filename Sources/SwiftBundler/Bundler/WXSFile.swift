@@ -1,4 +1,5 @@
 import XMLCoder
+import Version
 
 extension MSIBundler {
   /// A representation for WXS files with the parts that Swift Bundler needs.
@@ -24,7 +25,7 @@ extension MSIBundler {
       @Attribute var manufacturer: String
       @Attribute var name: String
       @Attribute var upgradeCode: String
-      @Attribute var version: String
+      @Attribute var version: Version
 
       @Element var majorUpgrade: MajorUpgrade
       @Element var mediaTemplate: MediaTemplate
@@ -79,7 +80,7 @@ extension MSIBundler {
         manufacturer: String,
         name: String,
         upgradeCode: String,
-        version: String,
+        version: Version,
         majorUpgrade: MajorUpgrade,
         mediaTemplate: MediaTemplate,
         icons: [Icon] = [],

@@ -675,6 +675,10 @@ struct BundleCommand: ErrorHandledCommand {
         platform: resolvedPlatform
       )
 
+    try RichError<SwiftBundlerError>.catch {
+      try resolvedBundler.bundler.checkHostCompatibility()
+    }
+
     guard
       Self.validateArguments(
         arguments,
@@ -860,6 +864,7 @@ struct BundleCommand: ErrorHandledCommand {
         packageDirectory: packageDirectory,
         productsDirectory: productsDirectory,
         outputDirectory: appOutputDirectory,
+        architectures: buildContext.genericContext.architectures,
         platform: resolvedPlatform,
         device: resolvedDevice,
         darwinCodeSigningContext: resolvedDarwinCodeSigningContext,
