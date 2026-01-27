@@ -19,6 +19,7 @@ enum SwiftBundlerError: Throwable {
   case unsupportedTargetArchitectures([BuildArchitecture], Platform)
   case platformDoesNotSupportMultiArchitectureBuilds(Platform, universalFlag: Bool)
   case failedToEncodeJSONOutput
+  case invalidVersionString(String)
 
   var userFriendlyMessage: String {
     switch self {
@@ -97,6 +98,12 @@ enum SwiftBundlerError: Throwable {
         }
       case .failedToEncodeJSONOutput:
         return "Failed to encode JSON output."
+      case .invalidVersionString(let versionString):
+        return """
+          Failed to parse version '\(versionString)'. Swift Bundler expects \
+          semantic versions, but uses tolerant parsing so it also supports \
+          versions such as 10.0 and v3
+          """
     }
   }
 }

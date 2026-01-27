@@ -86,8 +86,8 @@ enum PlistCreator {
       "CFBundleInfoDictionaryVersion": "6.0",
       "CFBundleName": appName,
       "CFBundlePackageType": "APPL",
-      "CFBundleShortVersionString": configuration.version,
-      "CFBundleVersion": configuration.version,
+      "CFBundleShortVersionString": configuration.version.description,
+      "CFBundleVersion": configuration.version.description,
       "LSApplicationCategoryType": configuration.category,
     ]
 

@@ -19,26 +19,24 @@ struct DarwinAppBundleStructure {
     let os = platform.os
     switch os {
       case .macOS:
-        contentsDirectory = bundleDirectory.appendingPathComponent("Contents")
-        executableDirectory = contentsDirectory.appendingPathComponent("MacOS")
-        resourcesDirectory = contentsDirectory.appendingPathComponent("Resources")
+        contentsDirectory = bundleDirectory / "Contents"
+        executableDirectory = contentsDirectory / "MacOS"
+        resourcesDirectory = contentsDirectory / "Resources"
       case .iOS, .tvOS, .visionOS:
         contentsDirectory = bundleDirectory
         executableDirectory = contentsDirectory
         resourcesDirectory = contentsDirectory
     }
 
-    librariesDirectory = contentsDirectory.appendingPathComponent("Libraries")
-    frameworksDirectory = contentsDirectory.appendingPathComponent("Frameworks")
+    librariesDirectory = contentsDirectory / "Libraries"
+    frameworksDirectory = contentsDirectory / "Frameworks"
 
-    infoPlistFile = contentsDirectory.appendingPathComponent("Info.plist")
-    pkgInfoFile = contentsDirectory.appendingPathComponent("PkgInfo")
-    provisioningProfileFile = contentsDirectory.appendingPathComponent(
-      "embedded.mobileprovision"
-    )
-    appIconFile = resourcesDirectory.appendingPathComponent("AppIcon.icns")
+    infoPlistFile = contentsDirectory / "Info.plist"
+    pkgInfoFile = contentsDirectory / "PkgInfo"
+    provisioningProfileFile = contentsDirectory / "embedded.mobileprovision"
+    appIconFile = resourcesDirectory / "AppIcon.icns"
 
-    mainExecutable = executableDirectory.appendingPathComponent(appName)
+    mainExecutable = executableDirectory / appName
   }
 
   /// Attempts to create all directories within the app bundle. Ignores directories which

@@ -1,4 +1,5 @@
 import Foundation
+import Version
 
 /// Inserts metadata into executable files.
 ///
@@ -15,7 +16,7 @@ enum MetadataInserter {
     /// The app's identifier.
     var appIdentifier: String
     /// The app's version.
-    var appVersion: String
+    var appVersion: Version
     /// Additional user-defined metadata.
     var additionalMetadata: [String: MetadataValue]
   }

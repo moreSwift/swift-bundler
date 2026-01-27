@@ -1,5 +1,6 @@
 import Foundation
 import TOMLKit
+import Version
 
 /// The configuration for a package.
 @Configuration(overlayable: false)
@@ -73,7 +74,10 @@ struct PackageConfiguration: Codable {
     let configuration: PackageConfiguration
     do {
       configuration = try Error.catch(withMessage: .failedToDeserializeConfiguration) {
-        try TOMLDecoder(strictDecoding: true).decode(
+        var decoder = TOMLDecoder(strictDecoding: true)
+        // Tolerant version parsing
+        decoder.userInfo[.decodingMethod] = DecodingMethod.tolerant
+        return try decoder.decode(
           PackageConfiguration.self,
           from: contents
         )

@@ -23,8 +23,14 @@ struct CreateCommand: ErrorHandledCommand {
   /// The app's initial version.
   @Option(
     name: .long,
-    help: "The app's initial version.")
-  var version: String?
+    help: "The app's initial version.",
+    transform: { versionString in
+      guard let version = Version(tolerant: versionString) else {
+        throw SwiftBundlerError.invalidVersionString(versionString)
+      }
+      return version
+    })
+  var version: Version?
 
   /// The app's category.
   @Option(

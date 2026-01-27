@@ -1,5 +1,6 @@
 import Foundation
 import Parsing
+import Version
 
 /// The configuration for an app.
 @Configuration(overlayable: true)
@@ -11,7 +12,7 @@ struct AppConfiguration: Codable {
   var product: String
 
   /// The app's current version.
-  var version: String
+  var version: Version
 
   /// A short summary describing the purpose of the app.
   @ConfigurationKey("description")
@@ -137,7 +138,7 @@ struct AppConfiguration: Codable {
   /// - Returns: The app configuration, or a failure if an error occurs.
   static func create(
     appName: String,
-    version: String?,
+    version: Version?,
     identifier: String?,
     category: String?,
     infoPlistFile: URL?,
@@ -157,7 +158,7 @@ struct AppConfiguration: Codable {
       }
 
       if version == nil, case let .string(versionString) = plist["CFBundleShortVersionString"] {
-        version = versionString
+        version = Version(tolerant: versionString)
       }
 
       if identifier == nil, case let .string(identifierString) = plist["CFBundleIdentifier"] {
@@ -174,7 +175,7 @@ struct AppConfiguration: Codable {
     let configuration = AppConfiguration(
       identifier: identifier ?? "com.example.\(appName)",
       product: appName,
-      version: version ?? "0.1.0",
+      version: version ?? Version.defaultFallback,
       category: category,
       icon: iconFile?.lastPathComponent
     )

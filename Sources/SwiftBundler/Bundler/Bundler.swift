@@ -15,6 +15,12 @@ protocol Bundler {
   /// executable before passing it to the bundler.
   static var requiresBuildAsDylib: Bool { get }
 
+  /// Checks whether the bundler is compatible with the current host. This
+  /// may include checking the host's architecture, it's OS, or the presence
+  /// installed dependencies, among other things. An error is thrown to indicate
+  /// incompatibility.
+  static func checkHostCompatibility() throws(Error)
+
   /// Computes the bundler's own context given the generic bundler context
   /// and Swift bundler's parsed command-line arguments, options, and flags.
   ///
@@ -49,6 +55,10 @@ protocol Bundler {
   ) -> BundlerOutputStructure
 }
 
+extension Bundler {
+  static func checkHostCompatibility() throws(Error) {}
+}
+
 extension Bundler where Context == Void {
   static func computeContext(
     context: BundlerContext,
@@ -71,6 +81,9 @@ struct BundlerContext {
   var productsDirectory: URL
   /// The directory to output the app into.
   var outputDirectory: URL
+
+  /// The architectures that the app has been built for.
+  var architectures: [BuildArchitecture]
 
   /// The target platform.
   var platform: Platform
