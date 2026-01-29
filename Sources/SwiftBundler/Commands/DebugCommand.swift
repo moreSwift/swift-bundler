@@ -10,6 +10,7 @@ struct DebugCommand: AsyncParsableCommand {
     shouldDisplay: false,
     subcommands: [
       DumpPackageGraph.self,
+      ListSDKs.self,
     ]
   )
 
@@ -44,6 +45,34 @@ struct DebugCommand: AsyncParsableCommand {
       }
 
       try displayJSONOutput(graph)
+    }
+  }
+
+  struct ListSDKs: ErrorHandledCommand {
+    static var configuration = CommandConfiguration(
+      commandName: "list-sdks",
+      abstract: "Lists all SDKs that Swift Bundler knows about"
+    )
+
+    @Flag(
+      name: .shortAndLong,
+      help: "Print verbose error messages.")
+    var verbose = false
+
+    @Flag(help: "Display the output as JSON (includes more information)")
+    var json = false
+
+    func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+      let sdks = try RichError<SwiftBundlerError>.catch {
+        try SwiftSDKManager.enumerateInstalledSwiftSDKs()
+      }
+
+      try displayOutput(sdks, json: json) { sdk in
+        let name = "\(sdk.artifactIdentifier):\(sdk.triple)"
+        return KeyedList.Entry(name.bold) {
+          sdk.artifactVariant.path
+        }
+      }
     }
   }
 

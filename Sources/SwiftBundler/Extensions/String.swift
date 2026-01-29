@@ -32,6 +32,15 @@ extension String {
       return "a \(self)"
     }
   }
+
+  /// A stable hash of the string using the djb2 algorithm.
+  var stableHash: UInt64 {
+    // Ref: http://www.cse.yorku.ca/~oz/hash.html
+    // Code adapted from: https://stackoverflow.com/a/39238545
+    utf8.reduce(5381) { hash, byte in
+      (hash << 5) &+ hash &+ UInt64(byte)
+    }
+  }
 }
 
 extension String.Index {

@@ -5,6 +5,7 @@ import Version
 /// The root command of Swift Bundler.
 public struct SwiftBundler: AsyncParsableCommand {
   public static let version = Version(3, 0, 0)
+  public static let identifier = "dev.moreswift.swift-bundler"
 
   public static let configuration = CommandConfiguration(
     commandName: "swift-bundler",
