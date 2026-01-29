@@ -64,6 +64,8 @@ struct LLVMTargetTriple: CustomStringConvertible {
     static let linux = Self(name: "linux")
 
     static let windows = Self(name: "windows")
+
+    static let darwin = Self(name: "darwin")
   }
 
   enum ABI: CustomStringConvertible {

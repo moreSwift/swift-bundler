@@ -320,20 +320,42 @@ enum SwiftPackageManager {
             andPlatformVersion: "28"
           )
         }
-        
+
+        let sdk = try Error.catch {
+          try SwiftSDKManager.locateSDKMatching(
+            hostPlatform: .hostPlatform,
+            hostArchitecture: .host,
+            targetTriple: targetTriple
+          )
+        }
+
+        let silo = try Error.catch {
+          try SwiftSDKManager.getPopulatedSDKSilo(forSDK: sdk)
+        }
+
+        log.debug("Using Swift SDK silo at '\(silo.path)'")
+
         let debugArguments = buildContext.genericContext.configuration == .debug
           ? ["-Xswiftc", "-g"]
           : []
 
-        platformArguments = ["--swift-sdk", targetTriple.description] + debugArguments
+        platformArguments = [
+          "--swift-sdks-path", silo.path,
+          "--swift-sdk", sdk.triple
+        ] + debugArguments
       case .macOS, .linux:
         platformArguments = buildContext.genericContext.configuration == .debug
           ? ["-Xswiftc", "-g"]
           : []
     }
 
-    let architectureArguments = buildContext.genericContext.architectures.flatMap { architecture in
-      ["--arch", architecture.argument(for: buildContext.genericContext.platform)]
+    let architectureArguments: [String]
+    if platformArguments.contains("--triple") {
+      architectureArguments = []
+    } else {
+      architectureArguments = buildContext.genericContext.architectures.flatMap { architecture in
+          ["--arch", architecture.argument(for: buildContext.genericContext.platform)]
+      }
     }
 
     let productArguments = product.map { ["--product", $0] } ?? []
@@ -541,5 +563,35 @@ enum SwiftPackageManager {
       throw Error(.invalidToolsVersion(version))
     }
     return parsedVersion
+  }
+
+  /// Returns the standard locations of SwiftPM's config/data directory. Only
+  /// returns those that actually exist.
+  static func standardSwiftPMDirectories() -> [URL] {
+    var directories = [
+      FileManager.default.homeDirectoryForCurrentUser / ".swiftpm"
+    ]
+    #if os(macOS)
+      directories += FileManager.default.urls(
+        for: .libraryDirectory,
+        in: .userDomainMask
+      ).map { $0 / "org.swift.swiftpm" }
+    #endif
+    directories = directories.map { directory in
+      directory.actuallyResolvingSymlinksInPath()
+    }.uniqued().filter { directory in
+      directory.exists()
+    }
+    return directories
+  }
+
+  /// Parses the metadata of the provided artifactbundle. Metadata is read from
+  /// the bundle's info.json file.
+  static func parseArtifactBundle(_ bundle: URL) throws(Error) -> ArtifactBundleMetadata {
+    let infoFile = bundle / "info.json"
+    return try Error.catch(withMessage: .failedToReadArtifactBundleInfoJSON(infoFile)) {
+      let data = try Data(contentsOf: infoFile)
+      return try JSONDecoder().decode(ArtifactBundleMetadata.self, from: data)
+    }
   }
 }

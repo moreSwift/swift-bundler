@@ -39,6 +39,17 @@ extension Array {
     }
     return result
   }
+
+  /// A typed-throws version of `flatMap`.
+  func flatMap<NewElement, E: Error>(
+    _ transform: (Element) throws(E) -> [NewElement]
+  ) throws(E) -> [NewElement] {
+    var result: [NewElement] = []
+    for element in self {
+      result.append(contentsOf: try transform(element))
+    }
+    return result
+  }
 }
 
 struct Verb {

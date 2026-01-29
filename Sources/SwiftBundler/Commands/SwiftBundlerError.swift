@@ -18,6 +18,7 @@ enum SwiftBundlerError: Throwable {
   case xcodeCannotBuildAsDylib
   case unsupportedTargetArchitectures([BuildArchitecture], Platform)
   case platformDoesNotSupportMultiArchitectureBuilds(Platform, universalFlag: Bool)
+  case failedToEncodeJSONOutput
 
   var userFriendlyMessage: String {
     switch self {
@@ -94,6 +95,8 @@ enum SwiftBundlerError: Throwable {
         } else {
           return "\(platform.displayName) does not support multi-architecture builds."
         }
+      case .failedToEncodeJSONOutput:
+        return "Failed to encode JSON output."
     }
   }
 }

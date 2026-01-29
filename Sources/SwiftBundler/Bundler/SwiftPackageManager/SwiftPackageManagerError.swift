@@ -24,6 +24,7 @@ extension SwiftPackageManager {
     case invalidToolsVersion(String)
     case cannotCompileExecutableAsDylibForPlatform(Platform)
     case cannotBuildForMultipleAndroidArchitecturesAtOnce
+    case failedToReadArtifactBundleInfoJSON(URL)
 
     var userFriendlyMessage: String {
       switch self {
@@ -69,6 +70,8 @@ extension SwiftPackageManager {
           return "Cannot compile executable as dylib for platform '\(platform)'"
         case .cannotBuildForMultipleAndroidArchitecturesAtOnce:
           return "Cannot build for multiple Android architectures at once"
+        case .failedToReadArtifactBundleInfoJSON(let file):
+          return "Failed to read artifactbundle's info.json at '\(file.path)'"
       }
     }
   }
