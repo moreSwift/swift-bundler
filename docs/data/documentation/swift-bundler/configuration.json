@@ -97,8 +97,11 @@
             "# Only used by the Darwin bundler at the moment. Corresponds to Apple's category",
             "# identifiers. See https:\/\/developer.apple.com\/documentation\/bundleresources\/information-property-list\/lsapplicationcategorytype",
             "category = \"public.app-category.education\" # Optional",
-            "# The app's icon. Must be a 1024x1024px PNG file, or a `.icns` file. `.icns`",
-            "# files only work on Apple platforms.",
+            "# The app's icon.",
+            "# Can be any of the following formats:",
+            "# - 1024x1024px PNG file (`.png`)",
+            "# - ICNS file (`.icns`) (Apple platforms only)",
+            "# - Icon Composer file (`.icon`) (Apple platforms only)",
             "icon = \"icon.png\" # Optional",
             "# Custom URL schemes supported by the app (for deep linking). Swift Bundler",
             "# sets up the required metadata to get such URL schemes redirected to your",
@@ -406,31 +409,84 @@
         {
           "inlineContent" : [
             {
-              "text" : "Icons can either be ",
+              "text" : "Icons can be provided in any of the following formats:",
               "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "items" : [
+            {
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "1024x1024px PNG file (",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : ".png",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : ")",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
             },
             {
-              "code" : ".icns",
-              "type" : "codeVoice"
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "ICNS file (",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : ".icns",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : ") (Apple platforms only)",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
             },
             {
-              "text" : " files or 1024x1024px ",
-              "type" : "text"
-            },
+              "content" : [
+                {
+                  "inlineContent" : [
+                    {
+                      "text" : "Icon Composer file (",
+                      "type" : "text"
+                    },
+                    {
+                      "code" : ".icon",
+                      "type" : "codeVoice"
+                    },
+                    {
+                      "text" : ") (Apple platforms only)",
+                      "type" : "text"
+                    }
+                  ],
+                  "type" : "paragraph"
+                }
+              ]
+            }
+          ],
+          "type" : "unorderedList"
+        },
+        {
+          "inlineContent" : [
             {
-              "code" : ".png",
-              "type" : "codeVoice"
-            },
-            {
-              "text" : " files. ",
-              "type" : "text"
-            },
-            {
-              "code" : ".icns",
-              "type" : "codeVoice"
-            },
-            {
-              "text" : " is not",
+              "text" : "Overlays can be used to specify an ICNS or Icon Composer icons on Apple platforms",
               "type" : "text"
             },
             {
@@ -438,39 +494,28 @@
               "type" : "text"
             },
             {
-              "text" : "compatible with Linux. If you want cross-platform support or you want to use",
+              "text" : "only:",
               "type" : "text"
-            },
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "[apps.Example]",
+            "icon = \"AppIcon.png\"",
+            "",
+            "[[apps.Example.overlays]]",
+            "condition = \"platform(macOS)\"",
+            "icon = \"AppIcon.icon\""
+          ],
+          "syntax" : "toml",
+          "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
             {
-              "text" : " ",
-              "type" : "text"
-            },
-            {
-              "text" : "the same icon for all screen resolutions, provide the icon as a ",
-              "type" : "text"
-            },
-            {
-              "code" : ".png",
-              "type" : "codeVoice"
-            },
-            {
-              "text" : " file.",
-              "type" : "text"
-            },
-            {
-              "text" : " ",
-              "type" : "text"
-            },
-            {
-              "text" : "Otherwise use a ",
-              "type" : "text"
-            },
-            {
-              "code" : ".icns",
-              "type" : "codeVoice"
-            },
-            {
-              "text" : " file. The easiest method for creating an ",
+              "text" : "The easiest method to create an ",
               "type" : "text"
             },
             {
@@ -478,15 +523,7 @@
               "type" : "codeVoice"
             },
             {
-              "text" : " file is",
-              "type" : "text"
-            },
-            {
-              "text" : " ",
-              "type" : "text"
-            },
-            {
-              "text" : "to create an ",
+              "text" : " file is to create an ",
               "type" : "text"
             },
             {
@@ -494,7 +531,15 @@
               "type" : "codeVoice"
             },
             {
-              "text" : " using Xcode and then run the following command.",
+              "text" : " using Xcode",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "and then convert it using the following command:",
               "type" : "text"
             }
           ],
