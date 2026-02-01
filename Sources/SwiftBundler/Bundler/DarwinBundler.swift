@@ -90,18 +90,19 @@ enum DarwinBundler: Bundler {
       to: bundleStructure.mainExecutable
     )
 
-    // Create PkgInfo and Info.plist
-    try createMetadataFiles(
+    // Copy app icon and package resources
+    let partialInfoPlist = try await copyResources(
       bundleStructure: bundleStructure,
       context: context,
       additionalContext: additionalContext
     )
 
-    // Copy app icon and package resources
-    try await copyResources(
+    // Create PkgInfo and Info.plist
+    try createMetadataFiles(
       bundleStructure: bundleStructure,
       context: context,
-      additionalContext: additionalContext
+      additionalContext: additionalContext,
+      partialInfoPlist: partialInfoPlist
     )
 
     // Copy helper executables, dynamic libraries and frameworks
@@ -131,7 +132,8 @@ enum DarwinBundler: Bundler {
   private static func createMetadataFiles(
     bundleStructure: DarwinAppBundleStructure,
     context: BundlerContext,
-    additionalContext: Context
+    additionalContext: Context,
+    partialInfoPlist: [String: Any]?
   ) throws(Error) {
     try Self.createPkgInfoFile(at: bundleStructure.pkgInfoFile)
 
@@ -140,7 +142,8 @@ enum DarwinBundler: Bundler {
       appName: context.appName,
       appConfiguration: context.appConfiguration,
       platform: additionalContext.platform,
-      platformVersion: additionalContext.platformVersion
+      platformVersion: additionalContext.platformVersion,
+      partialInfoPlist: partialInfoPlist
     )
   }
 
@@ -149,13 +152,25 @@ enum DarwinBundler: Bundler {
     bundleStructure: DarwinAppBundleStructure,
     context: BundlerContext,
     additionalContext: Context
-  ) async throws(Error) {
+  ) async throws(Error) -> [String: Any]? {
+    var partialInfoPlist: [String: Any]? = nil
     if let path = context.appConfiguration.icon {
       let icon = context.packageDirectory / path
-      try await Self.compileAppIcon(at: icon, to: bundleStructure.appIconFile)
+      partialInfoPlist = try await Self.compileAppIcon(
+        at: icon,
+        to: bundleStructure.appIconFile,
+        for: context.platform,
+        withPlatformVersion: additionalContext.platformVersion
+      )
     }
 
     do {
+      let appIconURL: URL?
+      if let iconFile = context.appConfiguration.icon {
+        appIconURL = context.packageDirectory / iconFile
+      } else {
+        appIconURL = nil
+      }
       try await ResourceBundler.copyResources(
         from: context.productsDirectory,
         to: bundleStructure.resourcesDirectory,
@@ -163,11 +178,14 @@ enum DarwinBundler: Bundler {
         platform: context.platform,
         platformVersion: additionalContext.platformVersion,
         packageName: context.packageName,
-        productName: context.appConfiguration.product
+        productName: context.appConfiguration.product,
+        iconURL: appIconURL
       )
     } catch {
       throw Error(.failedToCopyResourceBundles, cause: error)
     }
+
+    return partialInfoPlist
   }
 
   /// Copies the app's helper executables, dynamic libraries and frameworks
@@ -268,7 +286,8 @@ enum DarwinBundler: Bundler {
     }
 
     do {
-      return try await ProvisioningProfileManager
+      return
+        try await ProvisioningProfileManager
         .locateOrGenerateSuitableProvisioningProfile(
           bundleIdentifier: context.appConfiguration.identifier,
           deviceId: device.id,
@@ -316,7 +335,8 @@ enum DarwinBundler: Bundler {
     appName: String,
     appConfiguration: AppConfiguration.Flat,
     platform: ApplePlatform,
-    platformVersion: String
+    platformVersion: String,
+    partialInfoPlist: [String: Any]?
   ) throws(Error) {
     log.info("Creating 'Info.plist'")
     try Error.catch(withMessage: .failedToCreateInfoPlist) {
@@ -325,7 +345,8 @@ enum DarwinBundler: Bundler {
         appName: appName,
         configuration: appConfiguration,
         platform: platform.platform,
-        platformVersion: platformVersion
+        platformVersion: platformVersion,
+        partialInfoPlist: partialInfoPlist
       )
     }
   }
@@ -338,13 +359,20 @@ enum DarwinBundler: Bundler {
   ///   - inputIconFile: The app's icon. Should be either an `icns` file or a
   ///     1024x1024 `png` with an alpha channel.
   ///   - outputIconFile: The `icns` file to output to.
+  ///   - platform: The platform the icon is being created for.
+  ///   - platformVersion: The platform version the icon is being created for.
   /// - Throws: If the png exists and there is an error while converting it to
   ///   `icns`, or if the file is neither an `icns` or a `png`.
   private static func compileAppIcon(
     at inputIconFile: URL,
-    to outputIconFile: URL
-  ) async throws(Error) {
+    to outputIconFile: URL,
+    for platform: Platform,
+    withPlatformVersion platformVersion: String
+  ) async throws(Error) -> [String: Any]? {
     // Copy `AppIcon.icns` if present
+
+    var partialInfoPlist: [String: Any]? = nil
+
     if inputIconFile.pathExtension == "icns" {
       log.info("Copying '\(inputIconFile.lastPathComponent)'")
       do {
@@ -355,6 +383,19 @@ enum DarwinBundler: Bundler {
           cause: error
         )
       }
+    } else if inputIconFile.pathExtension == "icon" {
+      log.info(
+        "Creating '\(outputIconFile.lastPathComponent)' from '\(inputIconFile.lastPathComponent)'")
+
+      partialInfoPlist = try await Error.catch(withMessage: .failedToCreateIcon) {
+        return try await LayeredIconCompiler.createIcon(
+          from: inputIconFile,
+          outputFile: outputIconFile,
+          forPlatform: platform,
+          withPlatformVersion: platformVersion
+        )
+      }
+
     } else if inputIconFile.pathExtension == "png" {
       log.info(
         "Creating '\(outputIconFile.lastPathComponent)' from '\(inputIconFile.lastPathComponent)'"
@@ -369,6 +410,8 @@ enum DarwinBundler: Bundler {
     } else {
       throw Error(.invalidAppIconFile(inputIconFile))
     }
+
+    return partialInfoPlist
   }
 
   private static func embedProvisioningProfile(

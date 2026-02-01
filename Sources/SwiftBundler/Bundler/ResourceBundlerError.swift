@@ -1,5 +1,5 @@
-import Foundation
 import ErrorKit
+import Foundation
 
 extension ResourceBundler {
   typealias Error = RichError<ErrorMessage>

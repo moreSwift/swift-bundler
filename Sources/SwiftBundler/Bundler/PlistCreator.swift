@@ -16,13 +16,15 @@ enum PlistCreator {
     appName: String,
     configuration: AppConfiguration.Flat,
     platform: Platform,
-    platformVersion: String
+    platformVersion: String,
+    partialInfoPlist: [String: Any]? = nil
   ) throws(Error) {
     let contents = try createAppInfoPlistContents(
       appName: appName,
       configuration: configuration,
       platform: platform,
-      platformVersion: platformVersion
+      platformVersion: platformVersion,
+      partialInfoPlist: partialInfoPlist
     )
 
     do {
@@ -75,7 +77,8 @@ enum PlistCreator {
     appName: String,
     configuration: AppConfiguration.Flat,
     platform: Platform,
-    platformVersion: String
+    platformVersion: String,
+    partialInfoPlist: [String: Any]? = nil
   ) throws(Error) -> Data {
     var entries: [String: Any?] = [
       "CFBundleDevelopmentRegion": "en",
@@ -134,6 +137,12 @@ enum PlistCreator {
           "CFBundleURLSchemes": configuration.urlSchemes,
         ]
       ]
+    }
+
+    if let partialInfoPlist {
+      for (key, value) in partialInfoPlist {
+        entries[key] = value
+      }
     }
 
     for (key, value) in configuration.plist {

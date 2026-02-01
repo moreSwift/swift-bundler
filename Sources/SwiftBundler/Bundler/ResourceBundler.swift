@@ -2,40 +2,42 @@ import Foundation
 
 /// A utility for handling resource bundles.
 enum ResourceBundler {
-  /// Compiles an `xcassets` directory into an `Assets.car` file.
+  /// Compiles multiple `xcassets` directories into an `Assets.car` file.
   /// - Parameters:
-  ///   - assetCatalog: The catalog to compile.
+  ///   - assetCatalogs: The catalogs to compile.
   ///   - destinationDirectory: The directory to output `Assets.car` to.
   ///   - platform: The platform to compile for.
   ///   - platformVersion: The platform version to target.
-  ///   - keepSource: If `false`, the catalog will be deleted after compilation.
   /// - Returns: A failure if an error occurs.
   static func compileAssetCatalog(
-    _ assetCatalog: URL,
+    _ assetCatalogs: [URL],
     to destinationDirectory: URL,
     for platform: Platform,
-    platformVersion: String,
-    keepSource: Bool = true
+    platformVersion: String
   ) async throws(Error) {
     // TODO: Move to an AssetCatalogCompiler
     log.info("Compiling asset catalog")
+    let targetDeviceArguments =
+      platform
+      .asApplePlatform?
+      .actoolTargetDeviceNames
+      .flatMap { ["--target-device", $0] } ?? []
     try await Error.catch(withMessage: .failedToCompileXCAssets) {
       try await Process.create(
         "/usr/bin/xcrun",
         arguments: [
-          "actool", assetCatalog.path,
+          "actool",
           "--compile", destinationDirectory.path,
+          "--enable-on-demand-resources", "NO",
+          "--app-icon", "AppIcon",
           "--platform", platform.sdkName,
+          "--enable-icon-stack-fallback-generation=disabled",
+          "--include-all-app-icons",
           "--minimum-deployment-target", platformVersion,
-        ]
+          "--output-partial-info-plist", "/dev/null",
+        ] + targetDeviceArguments
+          + assetCatalogs.map { $0.path }
       ).runAndWait()
-    }
-
-    if !keepSource {
-      try FileManager.default.removeItem(
-        at: assetCatalog,
-        errorMessage: ErrorMessage.failedToDeleteAssetCatalog
-      )
     }
   }
 
@@ -49,7 +51,8 @@ enum ResourceBundler {
   ///   - platform: The platform that the app should run on.
   ///   - platformVersion: The minimum platform version that the app should run on.
   ///   - packageName: The name of the package this app is in.
-  ///   - mainProductName: The name of the app's product.
+  ///   - productName: The name of the app's product.
+  ///   - iconURL: An optional icon URL to include in the main bundle's Assets.car.
   static func copyResources(
     from sourceDirectory: URL,
     to destinationDirectory: URL,
@@ -57,14 +60,27 @@ enum ResourceBundler {
     platform: Platform,
     platformVersion: String,
     packageName: String,
-    productName: String
+    productName: String,
+    iconURL: URL?,
   ) async throws(Error) {
+    let mainBundleName = "\(packageName)_\(productName)"
+
+    // When using Layered icons, create the main bundle if it doesn't exist
+    if iconURL?.pathExtension.lowercased() == "icon" {
+      let mainBundleURL = sourceDirectory.appendingPathComponent("\(mainBundleName).bundle")
+      if !mainBundleURL.exists(withType: .directory) {
+        try FileManager.default.createDirectory(
+          at: mainBundleURL,
+          errorMessage: ErrorMessage.failedToCreateBundleDirectory
+        )
+      }
+    }
+
     let contents = try FileManager.default.contentsOfDirectory(
       at: sourceDirectory,
       errorMessage: ErrorMessage.failedToEnumerateBundles
     )
 
-    let mainBundleName = "\(packageName)_\(productName)"
     for file in contents where file.pathExtension == "bundle" {
       guard file.exists(withType: .directory) else {
         continue
@@ -82,7 +98,8 @@ enum ResourceBundler {
           to: destinationDirectory,
           platform: platform,
           platformVersion: platformVersion,
-          isMainBundle: bundleName == mainBundleName
+          isMainBundle: bundleName == mainBundleName,
+          iconURL: iconURL
         )
       }
     }
@@ -117,12 +134,15 @@ enum ResourceBundler {
   ///   - platformVersion: The minimum platform version that the app should run on.
   ///   - isMainBundle: If `true`, the contents of the bundle are fixed and copied
   ///     straight into the app's resources directory.
+  ///   - iconURL: If present and the the icon type is a Icon Composer file, then
+  ///     the Icon Composer file will be bundled into the Assets.car
   static func fixAndCopyResourceBundle(
     _ bundle: URL,
     to destination: URL,
     platform: Platform,
     platformVersion: String,
-    isMainBundle: Bool
+    isMainBundle: Bool,
+    iconURL: URL?
   ) async throws(Error) {
     log.info("Compiling and copying resource bundle '\(bundle.lastPathComponent)'")
 
@@ -163,15 +183,40 @@ enum ResourceBundler {
 
     try copyResources(from: bundle, to: destinationBundleResources)
 
-    if assetCatalog.exists(withType: .directory) {
+    let assetCatalogExists = assetCatalog.exists(withType: .directory)
+    let layeredIcon: [URL]
+    if let iconURL, iconURL.pathExtension.lowercased() == "icon", isMainBundle {
+      let tempIconURL = destinationBundleResources.appendingPathComponent("AppIcon.icon")
+      try FileManager.default.copyItem(
+        at: iconURL, to: tempIconURL, errorMessage: ErrorMessage.failedToCopyResource)
+      layeredIcon = [tempIconURL]
+    } else {
+      layeredIcon = []
+    }
+
+    if assetCatalogExists || !layeredIcon.isEmpty {
       // Compile asset catalog if present
       try await compileAssetCatalog(
-        assetCatalog,
+        (assetCatalogExists ? [assetCatalog] : [])
+          + layeredIcon,
         to: destinationBundleResources,
         for: platform,
-        platformVersion: platformVersion,
-        keepSource: false
+        platformVersion: platformVersion
       )
+
+      if assetCatalogExists {
+        // Remove the source asset catalog
+        try FileManager.default.removeItem(
+          at: assetCatalog,
+          errorMessage: ErrorMessage.failedToDeleteAssetCatalog
+        )
+      }
+      for icon in layeredIcon {
+        try FileManager.default.removeItem(
+          at: icon,
+          errorMessage: ErrorMessage.failedToDeleteAssetCatalog
+        )
+      }
     }
 
     // Copile metal shaders

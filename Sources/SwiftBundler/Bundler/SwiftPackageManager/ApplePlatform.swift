@@ -148,6 +148,22 @@ enum ApplePlatform: String, CaseIterable {
     }
   }
 
+  /// The device names when passed to `--target-device` in actool.
+  var actoolTargetDeviceNames: [String] {
+    switch self {
+      case .macOS:
+        return ["mac"]
+      case .macCatalyst:
+        return ["mac", "ipad", "iphone"]
+      case .iOS, .iOSSimulator:
+        return ["iphone", "ipad"]
+      case .tvOS, .tvOSSimulator:
+        return ["tv"]
+      case .visionOS, .visionOSSimulator:
+        return ["vision"]
+    }
+  }
+
   var xcodeDestinationVariant: String? {
     switch self {
       case .macCatalyst:
