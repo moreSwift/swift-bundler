@@ -40,6 +40,39 @@ extension Array {
     return result
   }
 
+  /// A typed-throws async version of `map`.
+  func asyncMap<NewElement, E: Error>(
+    _ transform: (Element) async throws(E) -> NewElement
+  ) async throws(E) -> [NewElement] {
+    var result: [NewElement] = []
+    for element in self {
+      result.append(try await transform(element))
+    }
+    return result
+  }
+
+  /// A typed-throws version of `filter`.
+  func filter<E: Error>(
+    _ predicate: (Element) throws(E) -> Bool
+  ) throws(E) -> [Element] {
+    var result: [Element] = []
+    for element in self where try predicate(element) {
+      result.append(element)
+    }
+    return result
+  }
+
+  /// A typed-throws async version of `filter`.
+  func typedAsyncFilter<E: Error>(
+    _ predicate: (Element) async throws(E) -> Bool
+  ) async throws(E) -> [Element] {
+    var result: [Element] = []
+    for element in self where try await predicate(element) {
+      result.append(element)
+    }
+    return result
+  }
+
   /// A typed-throws version of `flatMap`.
   func flatMap<NewElement, E: Error>(
     _ transform: (Element) throws(E) -> [NewElement]
@@ -103,5 +136,19 @@ extension Array<String> {
     } else {
       return base
     }
+  }
+}
+
+extension Array where Element: Hashable {
+  /// Return the array with all duplicates removed.
+  ///
+  /// i.e. `[ 1, 2, 3, 1, 2 ].uniqued() == [ 1, 2, 3 ]`
+  ///
+  /// - note: Taken from stackoverflow.com/a/46354989/3141234, as
+  ///         per @Alexander's comment.
+  /// - note: Taken from https://github.com/tuist/XcodeProj
+  public func uniqued() -> [Element] {
+    var seen = Set<Element>()
+    return filter { seen.insert($0).inserted }
   }
 }

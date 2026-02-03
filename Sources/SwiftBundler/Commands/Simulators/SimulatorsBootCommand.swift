@@ -5,7 +5,7 @@ import Foundation
 struct SimulatorsBootCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "boot",
-    abstract: "Boot an iOS or visionOS simulator."
+    abstract: "Boot an iOS, tvOS or visionOS simulator."
   )
 
   /// The id or name of the simulator to start.
