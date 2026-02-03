@@ -4,7 +4,7 @@ struct List: OutputComponent {
   var elements: [String]
 
   var body: String {
-    for element in elements {
+    for element in elements where !element.isEmpty {
       "* " + element
     }
   }
