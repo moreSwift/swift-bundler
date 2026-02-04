@@ -7,7 +7,7 @@
   <a href="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-macos.yml" alt="Build macOS"><img src="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-macos.yml/badge.svg"></a>
   <a href="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-linux.yml" alt="Build Linux"><img src="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-linux.yml/badge.svg"></a>
   <a href="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-windows.yml" alt="Build Linux"><img src="https://github.com/moreSwift/swift-bundler/actions/workflows/swift-windows.yml/badge.svg"></a>
-  <a href="https://discord.gg/6mUFu3KtAn"><img src="https://img.shields.io/discord/949626773295988746?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a> 
+  <a href="https://moreswift.dev/discord"><img src="https://img.shields.io/discord/1123965445687484466?color=6A7EC2&label=discord&logo=discord&logoColor=ffffff"></a> 
 </p>
 
 <p align="center">
@@ -21,6 +21,8 @@ If you find Swift Bundler useful, please consider supporting me by [becoming a s
 ## Documentation 📚
 
 The documentation is hosted on [the Swift Bundler website](https://swiftbundler.dev/documentation/swift-bundler).
+
+Join [the moreSwift Discord server](https://moreswift.dev/discord) if you have any questions.
 
 ## Installation 📦
 
@@ -73,6 +75,8 @@ To learn more about Swift Bundler refer to the [documentation](https://swiftbund
 ## Contributing 🛠
 
 Contributions of all kinds are very welcome! Just make sure to check out [the contributing guidelines](CONTRIBUTING.md) before getting started. Read through [the open issues](https://github.com/moreSwift/swift-bundler/issues) for contribution ideas.
+
+Contributors generally discuss moreSwift development in [the moreSwift Discord server](https://moreswift.dev/discord); it's a great place to discuss contribution ideas or to get assistance with your contributions.
 
 ## Bug response policy 🐞
 
