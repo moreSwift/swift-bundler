@@ -89,8 +89,8 @@ enum PlistCreator {
       "CFBundleInfoDictionaryVersion": "6.0",
       "CFBundleName": appName,
       "CFBundlePackageType": "APPL",
-      "CFBundleShortVersionString": configuration.version,
-      "CFBundleVersion": configuration.version,
+      "CFBundleShortVersionString": configuration.version.description,
+      "CFBundleVersion": configuration.version.description,
       "LSApplicationCategoryType": configuration.category,
     ]
 
@@ -126,7 +126,7 @@ enum PlistCreator {
         ]
         entries["UINativeSizeClass"] = 1
         entries["UIDeviceFamily"] = [7]
-      case .linux, .windows:
+      case .linux, .windows, .android:
         break
     }
 
@@ -189,7 +189,7 @@ enum PlistCreator {
         // TODO: Make the produced Info.plist for visionOS identical to Xcode's
         entries["MinimumOSVersion"] = platformVersion
         entries["CFBundleSupportedPlatforms"] = ["XROS"]
-      case .linux, .windows:
+      case .linux, .windows, .android:
         break
     }
 

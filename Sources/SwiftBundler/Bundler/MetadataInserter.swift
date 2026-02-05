@@ -1,4 +1,5 @@
 import Foundation
+import Version
 
 /// Inserts metadata into executable files.
 ///
@@ -15,7 +16,7 @@ enum MetadataInserter {
     /// The app's identifier.
     var appIdentifier: String
     /// The app's version.
-    var appVersion: String
+    var appVersion: Version
     /// Additional user-defined metadata.
     var additionalMetadata: [String: MetadataValue]
   }
@@ -148,10 +149,12 @@ enum MetadataInserter {
     var platformArguments: [String] = []
 
     if let platform = platform.asApplePlatform {
-      let target = platform.platform.targetTriple(
-        withArchitecture: architecture,
-        andPlatformVersion: platform.minimumSwiftSupportedVersion
-      )
+      let target = try Error.catch {
+        try platform.platform.targetTriple(
+          withArchitecture: architecture,
+          andPlatformVersion: platform.minimumSwiftSupportedVersion
+        )
+      }
       platformArguments += ["-target", target.description]
 
       let sdkPath = try await Error.catch(withMessage: .failedToGetSDKPath) {

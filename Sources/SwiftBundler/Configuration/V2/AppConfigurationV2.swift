@@ -1,4 +1,5 @@
 import Foundation
+import Version
 
 /// The configuration for an app made with Swift Bundler v2.
 struct AppConfigurationV2: Codable {
@@ -46,10 +47,11 @@ struct AppConfigurationV2: Codable {
       }
     }
 
+    let parsedVersion = Version.parseOrFallback(version)
     return AppConfiguration(
       identifier: bundleIdentifier,
       product: product,
-      version: version,
+      version: parsedVersion,
       category: category,
       icon: icon,
       plist: plist

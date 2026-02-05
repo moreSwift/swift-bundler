@@ -6,6 +6,7 @@ enum BundlerChoice: String, CaseIterable {
   case linuxRPM
   case windowsGeneric
   case windowsMSI
+  case androidAPK
 
   /// The bundler this choice corresponds to.
   var bundler: any Bundler.Type {
@@ -22,6 +23,8 @@ enum BundlerChoice: String, CaseIterable {
         return GenericWindowsBundler.self
       case .windowsMSI:
         return MSIBundler.self
+      case .androidAPK:
+        return APKBundler.self
     }
   }
 
@@ -39,6 +42,21 @@ enum BundlerChoice: String, CaseIterable {
         return .linuxGeneric
       case .windows:
         return .windowsGeneric
+    }
+  }
+
+  /// Gets the default bundler for the given target platform.
+  static func defaultForTargetPlatform(_ platform: Platform) -> Self {
+    switch platform {
+      case .macOS, .macCatalyst, .iOS, .iOSSimulator,
+        .tvOS, .tvOSSimulator, .visionOS, .visionOSSimulator:
+        .darwinApp
+      case .linux:
+        .linuxGeneric
+      case .windows:
+        .windowsGeneric
+      case .android:
+        .androidAPK
     }
   }
 
@@ -64,6 +82,8 @@ enum BundlerChoice: String, CaseIterable {
         return [.linux]
       case .windowsGeneric, .windowsMSI:
         return [.windows]
+      case .androidAPK:
+        return [.android]
     }
   }
 
@@ -76,6 +96,8 @@ enum BundlerChoice: String, CaseIterable {
         return [.linux]
       case .windowsGeneric, .windowsMSI:
         return [.windows]
+      case .androidAPK:
+        return [.macOS, .linux, .windows]
     }
   }
 }

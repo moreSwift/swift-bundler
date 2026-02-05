@@ -15,6 +15,11 @@ enum SwiftBundlerError: Throwable {
   case failedToResolveCodesigningConfiguration(reason: String)
   case failedToCopyOutBundle
   case missingConfigurationFile(URL)
+  case xcodeCannotBuildAsDylib
+  case unsupportedTargetArchitectures([BuildArchitecture], Platform)
+  case platformDoesNotSupportMultiArchitectureBuilds(Platform, universalFlag: Bool)
+  case failedToEncodeJSONOutput
+  case invalidVersionString(String)
 
   var userFriendlyMessage: String {
     switch self {
@@ -73,6 +78,31 @@ enum SwiftBundlerError: Throwable {
         return """
           Could not find \(file.lastPathComponent) at standard location. Are you \
           sure that you're in the root of a Swift Bundler project?
+          """
+      case .xcodeCannotBuildAsDylib:
+        return """
+          The xcodebuild backend can't be used to build executable products as \
+          dynamic libraries, but the currently selected bundler requires a \
+          dynamic library.
+          """
+      case .unsupportedTargetArchitectures(let architectures, let platform):
+        return """
+        The architectures \(architectures) are not supported when targeting \
+        \(platform.displayName).
+        """
+      case .platformDoesNotSupportMultiArchitectureBuilds(let platform, let universalFlag):
+        if universalFlag {
+          return "\(platform.displayName) does not support '--universal' builds."
+        } else {
+          return "\(platform.displayName) does not support multi-architecture builds."
+        }
+      case .failedToEncodeJSONOutput:
+        return "Failed to encode JSON output."
+      case .invalidVersionString(let versionString):
+        return """
+          Failed to parse version '\(versionString)'. Swift Bundler expects \
+          semantic versions, but uses tolerant parsing so it also supports \
+          versions such as 10.0 and v3
           """
     }
   }

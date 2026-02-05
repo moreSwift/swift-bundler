@@ -5,7 +5,7 @@ import Foundation
 struct SimulatorsCommand: AsyncParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "simulators",
-    abstract: "Manage and list available simulators.",
+    abstract: "Manage and list available iOS, tvOS and visionOS simulators.",
     subcommands: [
       SimulatorsListCommand.self,
       SimulatorsBootCommand.self,

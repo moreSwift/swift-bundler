@@ -23,8 +23,14 @@ struct CreateCommand: ErrorHandledCommand {
   /// The app's initial version.
   @Option(
     name: .long,
-    help: "The app's initial version.")
-  var version: String?
+    help: "The app's initial version.",
+    transform: { versionString in
+      guard let version = Version(tolerant: versionString) else {
+        throw SwiftBundlerError.invalidVersionString(versionString)
+      }
+      return version
+    })
+  var version: Version?
 
   /// The app's category.
   @Option(
@@ -65,6 +71,12 @@ struct CreateCommand: ErrorHandledCommand {
     help: "A directory to search for the template in.",
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
+
+  /// An alternative Swift toolchain to use.
+  @Option(
+    help: "An alternative Swift toolchain to use",
+    transform: URL.init(fileURLWithPath:))
+  var toolchain: URL?
 
   /// The indentation style to create the package with.
   @Option(
@@ -136,7 +148,8 @@ struct CreateCommand: ErrorHandledCommand {
             configuration: configuration,
             forceCreation: force,
             indentationStyle: indentation,
-            addVSCodeOverlay: addVSCodeOverlay
+            addVSCodeOverlay: addVSCodeOverlay,
+            swiftToolchain: toolchain
           )
         }
       } else {
@@ -148,7 +161,8 @@ struct CreateCommand: ErrorHandledCommand {
             configuration: configuration,
             forceCreation: force,
             indentationStyle: indentation,
-            addVSCodeOverlay: addVSCodeOverlay
+            addVSCodeOverlay: addVSCodeOverlay,
+            swiftToolchain: toolchain
           )
         }
       }

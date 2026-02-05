@@ -25,9 +25,13 @@ struct SimulatorsListCommand: ErrorHandledCommand {
 
     Output {
       Section("Simulators") {
-        KeyedList {
-          for simulator in simulators {
-            KeyedList.Entry(simulator.id, simulator.name)
+        if simulators.isEmpty {
+          "No simulators found".italic
+        } else {
+          KeyedList {
+            for simulator in simulators {
+              KeyedList.Entry(simulator.id, simulator.name)
+            }
           }
         }
       }

@@ -383,9 +383,12 @@ enum XcodeprojConverter {
       var apps: [String: AppConfiguration] = [:]
       for target in targets {
         do {
+          let version = target.version.map(Version.parseOrFallback(_:))
+            ?? Version.defaultFallback
+
           apps[target.name] = try AppConfiguration.create(
             appName: target.name,
-            version: target.version ?? "0.1.0",
+            version: version,
             identifier: target.identifier ?? "com.example.\(target.name)",
             category: nil,
             infoPlistFile: target.infoPlist,

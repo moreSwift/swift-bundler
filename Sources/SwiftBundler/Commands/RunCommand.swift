@@ -56,18 +56,6 @@ struct RunCommand: ErrorHandledCommand {
       Foundation.exit(1)
     }
 
-    guard arguments.bundler.bundler.outputIsRunnable else {
-      log.error(
-        """
-        The chosen bundler (\(arguments.bundler.rawValue)) is bundling-only \
-        (i.e. it doesn't output a runnable bundle). Choose a different bundler \
-        or stick to bundling and manually install the bundle on your system to \
-        run your app.
-        """
-      )
-      Foundation.exit(1)
-    }
-
     #if !SUPPORT_HOT_RELOADING
       if hot {
         log.error(
@@ -90,12 +78,27 @@ struct RunCommand: ErrorHandledCommand {
       simulatorSpecifier: arguments.simulatorSpecifier
     )
 
+    let resolvedBundler = arguments.bundler
+      ?? BundlerChoice.defaultForTargetPlatform(device.platform)
+
+    guard resolvedBundler.bundler.outputIsRunnable else {
+      log.error(
+        """
+        The chosen bundler (\(resolvedBundler.rawValue)) is bundling-only \
+        (i.e. it doesn't output a runnable bundle). Choose a different bundler \
+        or stick to bundling and manually install the bundle on your system to \
+        run your app.
+        """
+      )
+      Foundation.exit(1)
+    }
+
     let (_, appConfiguration, _) = try await BundleCommand.getConfiguration(
       arguments.appName,
       packageDirectory: packageDirectory,
       context: ConfigurationFlattener.Context(
         platform: device.platform,
-        bundler: arguments.bundler
+        bundler: resolvedBundler
       ),
       customFile: arguments.configurationFileOverride
     )
@@ -112,6 +115,7 @@ struct RunCommand: ErrorHandledCommand {
     let bundlerOutput = try await bundleCommand.doBundling(
       dryRun: skipBuild,
       resolvedPlatform: device.platform,
+      resolvedBundler: resolvedBundler,
       resolvedDevice: device
     )
 
@@ -124,15 +128,13 @@ struct RunCommand: ErrorHandledCommand {
     // TODO: Avoid loading manifest twice
     let manifest = try await RichError<SwiftBundlerError>.catch {
       try await SwiftPackageManager.loadPackageManifest(
-        from: packageDirectory
+        from: packageDirectory,
+        toolchain: arguments.toolchain
       )
     }
 
-    let platformVersion =
-      device.platform.asApplePlatform.map { platform in
-        manifest.platformVersion(for: platform)
-      } ?? nil
-    let architectures = bundleCommand.getArchitectures(
+    let platformVersion = device.platform.platformVersion(from: manifest)
+    let architectures = try bundleCommand.getArchitectures(
       platform: device.platform
     )
 
@@ -159,6 +161,7 @@ struct RunCommand: ErrorHandledCommand {
             try await server.start(
               product: appConfiguration.product,
               buildContext: buildContext,
+              swiftToolchain: arguments.toolchain,
               appConfiguration: appConfiguration
             )
           } catch {

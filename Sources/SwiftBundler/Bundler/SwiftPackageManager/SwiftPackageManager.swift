@@ -11,6 +11,8 @@ enum SwiftPackageManager {
   struct BuildContext {
     /// Generic build context properties shared between most build systems.
     var genericContext: GenericBuildContext
+    /// An alternative Swift toolchain to use.
+    var toolchain: URL?
     /// Controls whether the hot reloading environment variables are added to
     /// the build command or not.
     var hotReloadingEnabled: Bool = false
@@ -28,10 +30,12 @@ enum SwiftPackageManager {
   /// - Parameters:
   ///   - directory: The package's root directory (will be created if it doesn't exist).
   ///   - name: The name for the package.
+  ///   - toolchain: An alternative Swift toolchain to use.
   /// - Returns: If an error occurs, a failure is returned.
   static func createPackage(
     in directory: URL,
-    name: String
+    name: String,
+    toolchain: URL?
   ) async throws(Error) {
     // Create the package directory if it doesn't exist
     if !directory.exists(withType: .directory) {
@@ -49,7 +53,7 @@ enum SwiftPackageManager {
     ]
 
     let process = Process.create(
-      "swift",
+      swiftPath(toolchain: toolchain),
       arguments: arguments,
       directory: directory
     )
@@ -58,6 +62,13 @@ enum SwiftPackageManager {
     try await Error.catch {
       try await process.runAndWait()
     }
+  }
+
+  /// Gets the path of the Swift executable for the given toolchain (if any).
+  /// Returns the literal string `"swift"` when no toolchain is specified, so
+  /// that Process can perform its usual executable path resolution.
+  private static func swiftPath(toolchain: URL?) -> String {
+    toolchain.map { $0 / "usr/bin/swift" }.map(\.path) ?? "swift"
   }
 
   /// Builds the specified product of a Swift package.
@@ -75,7 +86,7 @@ enum SwiftPackageManager {
     )
 
     let process = Process.create(
-      "swift",
+      swiftPath(toolchain: buildContext.toolchain),
       arguments: arguments,
       directory: buildContext.genericContext.projectDirectory,
       runSilentlyWhenNotVerbose: false
@@ -117,7 +128,16 @@ enum SwiftPackageManager {
   ) async throws(Error) -> URL {
     #if os(macOS)
       let productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext)
-      let dylibFile = productsDirectory / "lib\(product).dylib"
+      let dylibExtension: String
+      switch buildContext.genericContext.platform {
+        case .macOS:
+          dylibExtension = "dylib"
+        case .android:
+          dylibExtension = "so"
+        case let platform:
+          throw Error(.cannotCompileExecutableAsDylibForPlatform(platform))
+      }
+      let dylibFile = productsDirectory / "lib\(product).\(dylibExtension)"
 
       try await build(
         product: product,
@@ -128,11 +148,26 @@ enum SwiftPackageManager {
         / "\(buildContext.genericContext.configuration).yaml"
       let buildPlan = try readBuildPlan(buildPlanFile)
 
-      let targetInfo = try await getHostTargetInfo()
+      let triple: String
+      switch buildContext.genericContext.platform {
+        case .macOS:
+          let targetInfo = try await getHostTargetInfo(toolchain: buildContext.toolchain)
+          triple = targetInfo.target.triple
+        case .android:
+          triple = try Error.catch {
+            try buildContext.genericContext.platform.targetTriple(
+              // TODO: Clean this up so that we don't have to assume that there's exactly 1
+              //   architecture specified for Android builds (make it more verifiable).
+              withArchitecture: buildContext.genericContext.architectures[0],
+              andPlatformVersion: buildContext.genericContext.platformVersion
+            ).description
+          }
+        case let platform:
+          throw Error(.cannotCompileExecutableAsDylibForPlatform(platform))
+      }
 
       // Swift versions before 6.0 or so named commands differently in the build plan.
       // We check for the newer format (with triple) then the older format (no triple).
-      let triple = targetInfo.target.triple
       let configuration = buildContext.genericContext.configuration
       let commandName = "C.\(product)-\(triple)-\(configuration).exe"
       let oldCommandName = "C.\(product)-\(configuration).exe"
@@ -159,12 +194,28 @@ enum SwiftPackageManager {
 
       modifiedArguments.remove(at: index)
       modifiedArguments.remove(at: index)
-      modifiedArguments.append(contentsOf: [
-        "-o",
-        dylibFile.path,
-        "-Xcc",
-        "-dynamiclib",
-      ])
+      modifiedArguments.append(contentsOf: ["-o", dylibFile.path])
+
+      switch buildContext.genericContext.platform {
+        case .macOS:
+          modifiedArguments.append(contentsOf: [
+            "-Xcc",
+            "-dynamiclib",
+          ])
+        case .android:
+          modifiedArguments.removeAll { $0 == "-emit-executable" }
+          modifiedArguments.append("-emit-library")
+          // If we don't set an soname, then the library gets linked at its
+          // absolute path on the host machine when used with CMake in gradle
+          // projects. That leads to a runtime linker error when running the
+          // built app on an Android device, because the absolute path of the
+          // library on the host machine doesn't exist on the Android device.
+          modifiedArguments.append(contentsOf: [
+            "-Xlinker", "-soname", "-Xlinker", dylibFile.lastPathComponent
+          ])
+        case let platform:
+          throw Error(.cannotCompileExecutableAsDylibForPlatform(platform))
+      }
 
       do {
         let process = Process.create(
@@ -229,12 +280,14 @@ enum SwiftPackageManager {
         guard let platformVersion = buildContext.genericContext.platformVersion else {
           throw Error(.missingDarwinPlatformVersion(platform))
         }
-        let hostArchitecture = BuildArchitecture.current
+        let hostArchitecture = BuildArchitecture.host
 
-        let targetTriple = platform.targetTriple(
-          withArchitecture: platform.usesHostArchitecture ? hostArchitecture : .arm64,
-          andPlatformVersion: platformVersion
-        )
+        let targetTriple = try Error.catch {
+          try platform.targetTriple(
+            withArchitecture: platform.usesHostArchitecture ? hostArchitecture : .arm64,
+            andPlatformVersion: platformVersion
+          )
+        }
 
         platformArguments =
           [
@@ -256,14 +309,53 @@ enum SwiftPackageManager {
             "-isystem", "\(sdkPath)/System/iOSSupport/usr/include"
           ].flatMap { ["-Xcc", $0] }
         }
+      case .android:
+        guard buildContext.genericContext.architectures.count == 1 else {
+          throw Error(.cannotBuildForMultipleAndroidArchitecturesAtOnce)
+        }
+
+        let targetTriple = try Error.catch {
+          try platform.targetTriple(
+            withArchitecture: buildContext.genericContext.architectures[0],
+            andPlatformVersion: "28"
+          )
+        }
+
+        let sdk = try Error.catch {
+          try SwiftSDKManager.locateSDKMatching(
+            hostPlatform: .hostPlatform,
+            hostArchitecture: .host,
+            targetTriple: targetTriple
+          )
+        }
+
+        let silo = try Error.catch {
+          try SwiftSDKManager.getPopulatedSDKSilo(forSDK: sdk)
+        }
+
+        log.debug("Using Swift SDK silo at '\(silo.path)'")
+
+        let debugArguments = buildContext.genericContext.configuration == .debug
+          ? ["-Xswiftc", "-g"]
+          : []
+
+        platformArguments = [
+          "--swift-sdks-path", silo.path,
+          "--swift-sdk", sdk.triple
+        ] + debugArguments
       case .macOS, .linux:
         platformArguments = buildContext.genericContext.configuration == .debug
           ? ["-Xswiftc", "-g"]
           : []
     }
 
-    let architectureArguments = buildContext.genericContext.architectures.flatMap { architecture in
-      ["--arch", architecture.argument(for: buildContext.genericContext.platform)]
+    let architectureArguments: [String]
+    if platformArguments.contains("--triple") {
+      architectureArguments = []
+    } else {
+      architectureArguments = buildContext.genericContext.architectures.flatMap { architecture in
+          ["--arch", architecture.argument(for: buildContext.genericContext.platform)]
+      }
     }
 
     let productArguments = product.map { ["--product", $0] } ?? []
@@ -348,11 +440,12 @@ enum SwiftPackageManager {
   }
 
   /// Gets the version of the current Swift installation.
+  /// - Parameter toolchain: An alternative Swift toolchain to use.
   /// - Returns: The swift version.
-  static func getSwiftVersion() async throws(Error) -> Version {
+  static func getSwiftVersion(toolchain: URL?) async throws(Error) -> Version {
     let output = try await Error.catch(withMessage: .failedToGetSwiftVersion) {
       try await Process.create(
-        "swift",
+        swiftPath(toolchain: toolchain),
         arguments: ["--version"]
       ).getOutput()
     }
@@ -375,7 +468,7 @@ enum SwiftPackageManager {
     )
 
     let process = Process.create(
-      "swift",
+      swiftPath(toolchain: buildContext.toolchain),
       arguments: arguments + ["--show-bin-path"],
       directory: buildContext.genericContext.projectDirectory
     )
@@ -392,13 +485,16 @@ enum SwiftPackageManager {
   }
 
   /// Loads a root package manifest from a package's root directory.
-  /// - Parameter packageDirectory: The package's root directory.
+  /// - Parameters:
+  ///   - packageDirectory: The package's root directory.
+  ///   - toolchain: An alternative Swift toolchain to use.
   /// - Returns: The loaded manifest.
   static func loadPackageManifest(
-    from packageDirectory: URL
+    from packageDirectory: URL,
+    toolchain: URL?
   ) async throws(Error) -> PackageManifest {
     let process = Process.create(
-      "swift",
+      swiftPath(toolchain: toolchain),
       arguments: ["package", "describe", "--type", "json"],
       directory: packageDirectory
     )
@@ -424,10 +520,12 @@ enum SwiftPackageManager {
     }
   }
 
-  static func getHostTargetInfo() async throws(Error) -> SwiftTargetInfo {
+  /// Gets build target info about the host machine.
+  /// - Parameter toolchain: An alternative Swift toolchain to use.
+  static func getHostTargetInfo(toolchain: URL?) async throws(Error) -> SwiftTargetInfo {
     // TODO: This could be a nice easy one to unit test
     let process = Process.create(
-      "swift",
+      swiftPath(toolchain: toolchain),
       arguments: ["-print-target-info"]
     )
 
@@ -443,10 +541,15 @@ enum SwiftPackageManager {
     }
   }
 
-  static func getToolsVersion(_ packageDirectory: URL) async throws(Error) -> Version {
+  /// Gets the Swift tools version.
+  /// - Parameter toolchain: An alternative Swift toolchain version to use.
+  static func getToolsVersion(
+    _ packageDirectory: URL,
+    toolchain: URL?
+  ) async throws(Error) -> Version {
     let version = try await Error.catch(withMessage: .failedToGetToolsVersion) {
       try await Process.create(
-        "swift",
+        swiftPath(toolchain: toolchain),
         arguments: ["package", "tools-version"],
         directory: packageDirectory
       ).getOutput()
@@ -460,5 +563,35 @@ enum SwiftPackageManager {
       throw Error(.invalidToolsVersion(version))
     }
     return parsedVersion
+  }
+
+  /// Returns the standard locations of SwiftPM's config/data directory. Only
+  /// returns those that actually exist.
+  static func standardSwiftPMDirectories() -> [URL] {
+    var directories = [
+      FileManager.default.homeDirectoryForCurrentUser / ".swiftpm"
+    ]
+    #if os(macOS)
+      directories += FileManager.default.urls(
+        for: .libraryDirectory,
+        in: .userDomainMask
+      ).map { $0 / "org.swift.swiftpm" }
+    #endif
+    directories = directories.map { directory in
+      directory.actuallyResolvingSymlinksInPath()
+    }.uniqued().filter { directory in
+      directory.exists()
+    }
+    return directories
+  }
+
+  /// Parses the metadata of the provided artifactbundle. Metadata is read from
+  /// the bundle's info.json file.
+  static func parseArtifactBundle(_ bundle: URL) throws(Error) -> ArtifactBundleMetadata {
+    let infoFile = bundle / "info.json"
+    return try Error.catch(withMessage: .failedToReadArtifactBundleInfoJSON(infoFile)) {
+      let data = try Data(contentsOf: infoFile)
+      return try JSONDecoder().decode(ArtifactBundleMetadata.self, from: data)
+    }
   }
 }

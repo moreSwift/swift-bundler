@@ -15,4 +15,23 @@ extension Version {
     }
     return string
   }
+
+  /// The default fallback version to use when we fail to parse a version
+  /// or the user doesn't supply one.
+  static let defaultFallback = Version(0, 1, 0)
+
+  /// Parses a version or falls back to ``Self/defaultFallback``.
+  ///
+  /// Exists as a standalone method because we do it in a few places and
+  /// the logging of the warning makes the code a bit verbose.
+  static func parseOrFallback(_ string: String) -> Version {
+    if let version = Version(tolerant: string) {
+      return version
+    } else {
+      log.warning("Failed to parse version '\(string)', falling back to \(defaultFallback)")
+      return defaultFallback
+    }
+  }
 }
+
+extension Version: TriviallyFlattenable {}

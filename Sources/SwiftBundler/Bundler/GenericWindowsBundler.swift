@@ -12,9 +12,10 @@ import Foundation
 /// take the output and bundle it up into an often distro-specific package file
 /// or standalone executable.
 enum GenericWindowsBundler: Bundler {
-  static let outputIsRunnable = true
+  typealias Context = Void
 
-  struct Context {}
+  static let outputIsRunnable = true
+  static let requiresBuildAsDylib = false
 
   private static let dllBundlingAllowList: [String] = [
     "swiftCore",
@@ -57,12 +58,7 @@ enum GenericWindowsBundler: Bundler {
     context: BundlerContext,
     command: BundleCommand,
     manifest: PackageManifest
-  ) throws(Error) -> Context {
-    // GenericWindowsBundler's additional context only exists to allow other
-    // bundlers to configure it when building on top of it, so for command-line
-    // usage we can just use the defaults.
-    Context()
-  }
+  ) throws(Error) -> Context {}
 
   static func intendedOutput(
     in context: BundlerContext,

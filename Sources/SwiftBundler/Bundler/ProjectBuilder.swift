@@ -20,6 +20,7 @@ enum ProjectBuilder {
     _ dependencies: [AppConfiguration.Dependency],
     packageConfiguration: PackageConfiguration.Flat,
     context: GenericBuildContext,
+    swiftToolchain: URL?,
     appName: String,
     dryRun: Bool
   ) async throws(Error) -> [String: BuiltProduct] {
@@ -28,8 +29,9 @@ enum ProjectBuilder {
     for dependency in dependencies {
       try await buildDependency(
         dependency,
-        context: context,
         packageConfiguration: packageConfiguration,
+        context: context,
+        swiftToolchain: swiftToolchain,
         appName: appName,
         dryRun: dryRun,
         builtProjects: &builtProjects,
@@ -41,8 +43,9 @@ enum ProjectBuilder {
 
   private static func buildDependency(
     _ dependency: AppConfiguration.Dependency,
-    context: GenericBuildContext,
     packageConfiguration: PackageConfiguration.Flat,
+    context: GenericBuildContext,
+    swiftToolchain: URL?,
     appName: String,
     dryRun: Bool,
     builtProjects: inout Set<String>,
@@ -59,6 +62,7 @@ enum ProjectBuilder {
       let (productName, builtProduct) = try await buildRootProjectProduct(
         dependency.product,
         context: context,
+        swiftToolchain: swiftToolchain,
         dryRun: dryRun
       )
       builtProducts[productName] = builtProduct
@@ -113,7 +117,8 @@ enum ProjectBuilder {
           projectName,
           configuration: project,
           packageDirectory: context.projectDirectory,
-          scratchDirectory: projectScratchDirectory
+          scratchDirectory: projectScratchDirectory,
+          swiftToolchain: swiftToolchain
         )
       } catch {
         throw Error(.failedToBuildProject(name: projectName), cause: error)
@@ -180,12 +185,14 @@ enum ProjectBuilder {
   static func buildRootProjectProduct(
     _ product: String,
     context: GenericBuildContext,
+    swiftToolchain: URL?,
     dryRun: Bool
   ) async throws(Error) -> (String, BuiltProduct) {
     let manifest: PackageManifest
     do {
       manifest = try await SwiftPackageManager.loadPackageManifest(
-        from: context.projectDirectory
+        from: context.projectDirectory,
+        toolchain: swiftToolchain
       )
     } catch {
       throw Error(.failedToBuildRootProjectProduct(name: product), cause: error)
@@ -211,6 +218,7 @@ enum ProjectBuilder {
     // Build product
     let buildContext = SwiftPackageManager.BuildContext(
       genericContext: context,
+      toolchain: swiftToolchain,
       hotReloadingEnabled: false,
       isGUIExecutable: false
     )
@@ -347,7 +355,8 @@ enum ProjectBuilder {
     _ name: String,
     configuration: ProjectConfiguration.Flat,
     packageDirectory: URL,
-    scratchDirectory: ScratchDirectoryStructure
+    scratchDirectory: ScratchDirectoryStructure,
+    swiftToolchain: URL?
   ) async throws(Error) {
     // Just sitting here to raise alarms when more types are added
     switch configuration.builder.type {
@@ -364,11 +373,13 @@ enum ProjectBuilder {
     try await createBuilderPackage(
       for: configuration,
       packageDirectory: packageDirectory,
-      scratchDirectory: scratchDirectory
+      scratchDirectory: scratchDirectory,
+      swiftToolchain: swiftToolchain
     )
     let builder = try await buildBuilder(
       for: configuration,
-      scratchDirectory: scratchDirectory
+      scratchDirectory: scratchDirectory,
+      swiftToolchain: swiftToolchain
     )
     try await runBuilder(
       builder,
@@ -380,7 +391,8 @@ enum ProjectBuilder {
   static func createBuilderPackage(
     for configuration: ProjectConfiguration.Flat,
     packageDirectory: URL,
-    scratchDirectory: ScratchDirectoryStructure
+    scratchDirectory: ScratchDirectoryStructure,
+    swiftToolchain: URL?
   ) async throws(Error) {
     // Create builder source file symlink
     try Error.catch(withMessage: .failedToSymlinkBuilderSourceFile) {
@@ -396,7 +408,7 @@ enum ProjectBuilder {
 
     // Create/update the builder's Package.swift
     let toolsVersion = try await Error.catch {
-      try await SwiftPackageManager.getToolsVersion(packageDirectory)
+      try await SwiftPackageManager.getToolsVersion(packageDirectory, toolchain: swiftToolchain)
     }
 
     let manifestContents = generateBuilderPackageManifest(
@@ -415,7 +427,8 @@ enum ProjectBuilder {
 
   static func buildBuilder(
     for configuration: ProjectConfiguration.Flat,
-    scratchDirectory: ScratchDirectoryStructure
+    scratchDirectory: ScratchDirectoryStructure,
+    swiftToolchain: URL?
   ) async throws(Error) -> URL {
     // Build the builder
     let buildContext = SwiftPackageManager.BuildContext(
@@ -423,10 +436,11 @@ enum ProjectBuilder {
         projectDirectory: scratchDirectory.builder,
         scratchDirectory: scratchDirectory.builder / ".build",
         configuration: .debug,
-        architectures: [.current],
+        architectures: [.host],
         platform: HostPlatform.hostPlatform.platform,
         additionalArguments: []
       ),
+      toolchain: swiftToolchain,
       isGUIExecutable: false
     )
 

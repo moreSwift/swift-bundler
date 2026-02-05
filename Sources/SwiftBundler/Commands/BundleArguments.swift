@@ -7,6 +7,7 @@ struct BundleArguments: ParsableArguments {
     help: "The name of the app to build.")
   var appName: String?
 
+  /// The bundler to use.
   @Option(
     help: "The bundler to use \(BundlerChoice.possibleValuesDescription).",
     transform: {
@@ -15,7 +16,13 @@ struct BundleArguments: ParsableArguments {
       }
       return choice
     })
-  var bundler = BundlerChoice.defaultForHostPlatform
+  var bundler: BundlerChoice?
+
+  /// An alternative Swift toolchain to use.
+  @Option(
+    help: "An alternative Swift toolchain to use",
+    transform: URL.init(fileURLWithPath:))
+  var toolchain: URL?
 
   /// The directory containing the package to build.
   @Option(
@@ -75,7 +82,7 @@ struct BundleArguments: ParsableArguments {
     parsing: .singleValue,
     help: {
       let possibleValues = BuildArchitecture.possibleValuesDescription
-      let defaultValue = BuildArchitecture.current.rawValue
+      let defaultValue = BuildArchitecture.host.rawValue
       return "The architectures to build for \(possibleValues). (default: [\(defaultValue)])"
     }(),
     transform: { string in

@@ -8,7 +8,8 @@ enum Device: Equatable, CustomStringConvertible {
   /// Mac Catalyst, so it can't live under the `.host` case. But for all intents
   /// and purposes, this `.macCatalyst` case functions very similarly to `.host`.
   case macCatalyst
-  case connected(ConnectedDevice)
+  case connectedAppleDevice(ConnectedAppleDevice)
+  case connectedAndroidDevice(ConnectedAndroidDevice)
 
   var description: String {
     switch self {
@@ -16,8 +17,10 @@ enum Device: Equatable, CustomStringConvertible {
         return "\(platform.platform.name) host machine"
       case .macCatalyst:
         return "Mac Catalyst host machine"
-      case .connected(let device):
+      case .connectedAppleDevice(let device):
         return "\(device.name) (\(device.platform.platform), id: \(device.id))"
+      case .connectedAndroidDevice(let device):
+        return "\(device.name)"
     }
   }
 
@@ -25,7 +28,9 @@ enum Device: Equatable, CustomStringConvertible {
     switch self {
       case .host, .macCatalyst:
         return nil
-      case .connected(let device):
+      case .connectedAppleDevice(let device):
+        return device.id
+      case .connectedAndroidDevice(let device):
         return device.id
     }
   }
@@ -36,8 +41,10 @@ enum Device: Equatable, CustomStringConvertible {
         return platform.platform
       case .macCatalyst:
         return .macCatalyst
-      case .connected(let device):
+      case .connectedAppleDevice(let device):
         return device.platform.platform
+      case .connectedAndroidDevice:
+        return .android
     }
   }
 
@@ -45,7 +52,7 @@ enum Device: Equatable, CustomStringConvertible {
     applePlatform platform: ApplePlatform,
     name: String,
     id: String,
-    status: ConnectedDevice.Status
+    status: ConnectedAppleDevice.Status
   ) {
     switch platform.partitioned {
       case .macOS:
@@ -68,14 +75,14 @@ enum Device: Equatable, CustomStringConvertible {
     nonMacApplePlatform platform: NonMacApplePlatform,
     name: String,
     id: String,
-    status: ConnectedDevice.Status
+    status: ConnectedAppleDevice.Status
   ) {
-    let device = ConnectedDevice(
+    let device = ConnectedAppleDevice(
       platform: platform,
       name: name,
       id: id,
       status: status
     )
-    self = .connected(device)
+    self = .connectedAppleDevice(device)
   }
 }

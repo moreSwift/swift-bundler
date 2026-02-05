@@ -59,9 +59,17 @@ enum Runner {
           arguments: arguments,
           environmentVariables: environmentVariables
         )
-      case .connected(let connectedDevice):
+      case .connectedAppleDevice(let connectedAppleDevice):
         try await runApp(
-          on: connectedDevice,
+          on: connectedAppleDevice,
+          bundlerOutput: bundlerOutput,
+          bundleIdentifier: bundleIdentifier,
+          arguments: arguments,
+          environmentVariables: environmentVariables
+        )
+      case .connectedAndroidDevice(let connectedAndroidDevice):
+        try await runApp(
+          on: connectedAndroidDevice,
           bundlerOutput: bundlerOutput,
           bundleIdentifier: bundleIdentifier,
           arguments: arguments,
@@ -179,7 +187,7 @@ enum Runner {
     }
   }
 
-  /// Runs an app on a connected device or simulator.
+  /// Runs an app on a connected Apple device or Apple simulator.
   /// - Parameters:
   ///   - connectedDevice: The device/simulator to run the app on.
   ///   - bundlerOutput: The output of the bundler.
@@ -187,7 +195,7 @@ enum Runner {
   ///   - arguments: Command line arguments to pass to the app.
   ///   - environmentVariables: Environment variables to pass to the app.
   static func runApp(
-    on connectedDevice: ConnectedDevice,
+    on connectedDevice: ConnectedAppleDevice,
     bundlerOutput: BundlerOutputStructure,
     bundleIdentifier: String,
     arguments: [String],
@@ -210,6 +218,23 @@ enum Runner {
         environmentVariables: environmentVariables
       )
     }
+  }
+
+  /// Runs an app on a connected Android device or Android emulator.
+  /// - Parameters:
+  ///   - connectedDevice: The device/simulator to run the app on.
+  ///   - bundlerOutput: The output of the bundler.
+  ///   - bundleIdentifier: The app's bundle identifier.
+  ///   - arguments: Command line arguments to pass to the app.
+  ///   - environmentVariables: Environment variables to pass to the app.
+  static func runApp(
+    on connectedDevice: ConnectedAndroidDevice,
+    bundlerOutput: BundlerOutputStructure,
+    bundleIdentifier: String,
+    arguments: [String],
+    environmentVariables: [String: String]
+  ) async throws(Error) {
+    fatalError("TODO")
   }
 
   static func runAppOnPhysicalDevice(

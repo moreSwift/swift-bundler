@@ -15,6 +15,7 @@ import Parsing
 /// or standalone executable.
 enum GenericLinuxBundler: Bundler {
   static let outputIsRunnable = true
+  static let requiresBuildAsDylib = false
 
   struct Context {
     /// Used in log messages to avoid exposing that everything's just the

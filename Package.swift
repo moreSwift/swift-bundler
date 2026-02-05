@@ -111,6 +111,11 @@ let package = Package(
           condition: .when(platforms: [.macOS, .linux])
         ),
       ],
+      resources: [
+        .embedInCode("Resources/gradlew"),
+        .embedInCode("Resources/gradle-wrapper.jar"),
+        .embedInCode("Resources/DefaultAndroidIcon.webp"),
+      ],
       swiftSettings: [
         .define("SUPPORT_HOT_RELOADING", .when(platforms: [.macOS, .linux])),
         .define("SUPPORT_XCODEPROJ", .when(platforms: [.macOS])),

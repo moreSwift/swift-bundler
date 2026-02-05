@@ -22,6 +22,7 @@ enum Templater {
   ///   - addVSCodeOverlay: If `true`, the VSCode overlay (containing
   ///     `launch.json` and `.vscode/tasks.json`), will be added to the package
   ///     (enabling ergonomic debugging with VSCode).
+  ///   - swiftToolchain: An alternative Swift toolchain to use.
   /// - Returns: The template that the package was created from (or nil if none
   ///   were used), or a failure if package creation failed.
   static func createPackage(
@@ -31,7 +32,8 @@ enum Templater {
     configuration: AppConfiguration,
     forceCreation: Bool,
     indentationStyle: IndentationStyle,
-    addVSCodeOverlay: Bool
+    addVSCodeOverlay: Bool,
+    swiftToolchain: URL?
   ) async throws(Error) -> Template? {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
       throw RichError(.packageDirectoryAlreadyExists(outputDirectory))
@@ -46,7 +48,8 @@ enum Templater {
         do {
           try await SwiftPackageManager.createPackage(
             in: outputDirectory,
-            name: packageName
+            name: packageName,
+            toolchain: swiftToolchain
           )
         } catch {
           throw Error(.failedToCreateBareMinimumPackage, cause: error)
@@ -82,7 +85,8 @@ enum Templater {
       configuration: configuration,
       forceCreation: forceCreation,
       indentationStyle: indentationStyle,
-      addVSCodeOverlay: addVSCodeOverlay
+      addVSCodeOverlay: addVSCodeOverlay,
+      swiftToolchain: swiftToolchain
     )
   }
 
@@ -97,6 +101,7 @@ enum Templater {
   ///   - indentationStyle: The indentation style to use.
   ///   - addVSCodeOverlay: If `true`, the VSCode overlay (containing `launch.json` and `.vscode/tasks.json`),
   ///     will be added to the package (enabling ergonomic debugging with VSCode).
+  ///   - swiftToolchain: An alternative Swift toolchain to use.
   /// - Returns: The template that the package was created from, or a failure if package creation failed.
   static func createPackage(
     in outputDirectory: URL,
@@ -106,7 +111,8 @@ enum Templater {
     configuration: AppConfiguration,
     forceCreation: Bool,
     indentationStyle: IndentationStyle,
-    addVSCodeOverlay: Bool
+    addVSCodeOverlay: Bool,
+    swiftToolchain: URL?
   ) async throws(Error) -> Template {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
       throw Error(.packageDirectoryAlreadyExists(outputDirectory))
@@ -131,7 +137,7 @@ enum Templater {
 
     if !forceCreation {
       // Verify that this machine's Swift version is supported
-      try await verifyTemplateIsSupported(template, manifest)
+      try await verifyTemplateIsSupported(template, manifest, swiftToolchain: swiftToolchain)
     }
 
     // Create the output directory
@@ -253,14 +259,19 @@ enum Templater {
   }
 
   /// Verifies that the given template supports this machine's Swift version.
+  /// - Parameters:
+  ///   - name: The name of the template being checked.
+  ///   - manifest: The manifest of the template to check.
+  ///   - swiftToolchain: An alternative Swift toolchain to use.
   /// - Returns: An error if this machine's Swift version is not supported by the template.
   static func verifyTemplateIsSupported(
     _ name: String,
-    _ manifest: TemplateManifest
+    _ manifest: TemplateManifest,
+    swiftToolchain: URL?
   ) async throws(Error) {
     // Verify that the installed Swift version is supported
     let version = try await Error.catch {
-      try await SwiftPackageManager.getSwiftVersion()
+      try await SwiftPackageManager.getSwiftVersion(toolchain: swiftToolchain)
     }
 
     if version < manifest.minimumSwiftVersion {

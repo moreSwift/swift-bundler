@@ -1,5 +1,6 @@
 import Foundation
 import Parsing
+import Version
 
 /// The bundler for creating Linux RPM packages. The output of this bundler
 /// isn't executable.
@@ -7,6 +8,7 @@ enum RPMBundler: Bundler {
   typealias Context = Void
 
   static let outputIsRunnable = false
+  static let requiresBuildAsDylib = false
 
   static func intendedOutput(
     in context: BundlerContext,
@@ -146,7 +148,7 @@ enum RPMBundler: Bundler {
   static func generateSpec(
     escapedAppName: String,
     appIdentifier: String,
-    appVersion: String,
+    appVersion: Version,
     appDescription: String,
     appLicense: String,
     bundleStructure: GenericLinuxBundler.BundleStructure,
