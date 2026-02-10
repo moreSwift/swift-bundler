@@ -1,9 +1,10 @@
 /// A connected device or simulator.
-struct ConnectedDevice: Equatable {
+struct ConnectedDevice: Sendable, Equatable {
   let platform: NonMacApplePlatform
   let name: String
   let id: String
   let status: Status
+  let architecture: BuildArchitecture
 
   enum Status: Equatable, CustomStringConvertible {
     case available

@@ -1,6 +1,6 @@
 import Foundation
 
-struct Simulator {
+struct Simulator: Sendable, Equatable {
   var id: String
   var name: String
   var isAvailable: Bool
@@ -14,7 +14,8 @@ struct Simulator {
       id: id,
       status: isAvailable
         ? (isBooted ? .available : .summonable)
-        : .unavailable(message: "unavailable")
+        : .unavailable(message: "unavailable"),
+      architecture: .host
     )
   }
 }

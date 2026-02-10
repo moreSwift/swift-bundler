@@ -72,6 +72,26 @@ enum Platform: String, CaseIterable {
     }
   }
 
+  /// Architectures supported when targeting the platform.
+  var supportedArchitectures: [BuildArchitecture] {
+    switch partitioned {
+      case .apple(let applePlatform):
+        applePlatform.supportedArchitectures
+      case .linux, .windows:
+        [.x86_64, .arm64]
+    }
+  }
+
+  /// Gets the default architecture to use when building for the platform.
+  func defaultTargetArchitecture(hostArchitecture: BuildArchitecture) -> BuildArchitecture {
+    switch partitioned {
+      case .apple(let applePlatform):
+        applePlatform.defaultTargetArchitecture(hostArchitecture: hostArchitecture)
+      case .linux, .windows:
+        hostArchitecture
+    }
+  }
+
   /// The platform's name.
   var name: String {
     return rawValue
@@ -113,17 +133,6 @@ enum Platform: String, CaseIterable {
         return "linux"
       case .windows:
         return "windows"
-    }
-  }
-
-  /// Whether the platform uses the host architecture or not. Simulators
-  /// and Mac Catalyst use the host architecture.
-  var usesHostArchitecture: Bool {
-    switch partitioned {
-      case .apple(let applePlatform):
-        applePlatform.usesHostArchitecture
-      case .linux, .windows:
-        true
     }
   }
 

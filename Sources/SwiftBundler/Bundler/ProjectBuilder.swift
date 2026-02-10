@@ -423,7 +423,7 @@ enum ProjectBuilder {
         projectDirectory: scratchDirectory.builder,
         scratchDirectory: scratchDirectory.builder / ".build",
         configuration: .debug,
-        architectures: [.current],
+        architectures: [.host],
         platform: HostPlatform.hostPlatform.platform,
         additionalArguments: []
       ),

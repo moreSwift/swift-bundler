@@ -162,7 +162,7 @@ enum DeviceManager {
     try expect("}")
 
     guard let platform = dictionary["platform"] else {
-      throw failure("Missing platform")
+      throw failure("Missing platform (\(dictionary))")
     }
 
     let variant = dictionary["variant"]
@@ -182,7 +182,22 @@ enum DeviceManager {
     }
 
     guard let name = dictionary["name"] else {
-      throw failure("Missing name")
+      throw failure("Missing name '\(dictionary)'")
+    }
+
+    let architecture: BuildArchitecture
+    if parsedPlatform.supportedArchitectures.count == 1 {
+      architecture = parsedPlatform.supportedArchitectures[0]
+    } else {
+      guard let archString = dictionary["arch"] else {
+        throw failure("Missing arch (\(dictionary))")
+      }
+
+      guard let parsedArchitecture = BuildArchitecture(rawValue: archString) else {
+        throw failure("Unknown arch '\(archString)'")
+      }
+
+      architecture = parsedArchitecture
     }
 
     return Device(
@@ -190,7 +205,8 @@ enum DeviceManager {
       name: name,
       id: id,
       status: dictionary["error"].map(ConnectedDevice.Status.unavailable)
-        ?? .available
+        ?? .available,
+      architecture: architecture
     )
   }
 
@@ -200,7 +216,7 @@ enum DeviceManager {
   ) async throws(Error) -> Device {
     guard specifier != "host" else {
       if platform == nil || platform == HostPlatform.hostPlatform.platform {
-        return .host(HostPlatform.hostPlatform)
+        return .host(HostPlatform.hostPlatform, BuildArchitecture.host)
       } else {
         throw Error(.deviceNotFound(specifier: specifier, platform: platform))
       }

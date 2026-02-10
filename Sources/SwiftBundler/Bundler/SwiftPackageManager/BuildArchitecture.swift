@@ -7,9 +7,9 @@ enum BuildArchitecture: String, CaseIterable, ExpressibleByArgument {
   case arm64
 
   #if arch(x86_64)
-    static let current: BuildArchitecture = .x86_64
+    static let host: BuildArchitecture = .x86_64
   #elseif arch(arm64)
-    static let current: BuildArchitecture = .arm64
+    static let host: BuildArchitecture = .arm64
   #endif
 
   var defaultValueDescription: String {
