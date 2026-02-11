@@ -1,23 +1,42 @@
-/// A component that displays a list of elements, each on a new line.
+/// A component that displays a list of entries, each on a new line.
 struct List: OutputComponent {
-  /// The list's elements.
-  var elements: [String]
+  /// The list's entries.
+  var entries: [Entry]
 
   var body: String {
-    for element in elements where !element.isEmpty {
-      "* " + element
+    for entry in entries {
+      entry.body
     }
   }
 
-  /// Creates a component to display a list of elements.
-  /// - Parameter content: The elements to display.
-  init(@OutputPartsBuilder _ content: () -> [String]) {
-    self.elements = content()
+  /// An entry in a list.
+  struct Entry: OutputComponent {
+    var content: String
+
+    var body: String {
+      "* " + content
+    }
+
+    /// Creates a list entry.
+    init(_ content: String) {
+      self.content = content
+    }
+
+    /// Creates a list entry.
+    init(@OutputBuilder _ content: () -> String) {
+      self.content = content()
+    }
   }
 
-  /// Creates a component to display a list of elements.
-  /// - Parameter elements: The elements to display.
-  init(_ elements: [String]) {
-    self.elements = elements
+  /// Creates a component to display a list of entries.
+  /// - Parameter content: The entries to display.
+  init(@ListBuilder _ content: () -> [Entry]) {
+    self.entries = content()
+  }
+
+  /// Creates a component to display a list of entries.
+  /// - Parameter entries: The entries to display.
+  init(_ entries: [Entry]) {
+    self.entries = entries
   }
 }

@@ -4,6 +4,7 @@ import ErrorKit
 /// A top-level error thrown by the Swift Bundler.
 enum SwiftBundlerError: Throwable {
   case invalidPlatform(String)
+  case invalidSimulatorOS(String)
   case invalidArchitecture(String)
   case invalidBuildConfiguration(String)
   case invalidBundlerChoice(String)
@@ -21,6 +22,7 @@ enum SwiftBundlerError: Throwable {
   case unsupportedTargetArchitectures([BuildArchitecture], Platform)
   case platformDoesNotSupportMultiArchitectureBuilds(Platform, universalFlag: Bool)
   case invalidVersionString(String)
+  case commandLineValidationError(String)
 
   var userFriendlyMessage: String {
     switch self {
@@ -28,6 +30,11 @@ enum SwiftBundlerError: Throwable {
         return """
           Invalid platform '\(platform)'. Must be one of \
           \(Platform.possibleValuesDescription)
+          """
+      case .invalidSimulatorOS(let os):
+        return """
+          Invalid simulator OS '\(os)'. Must be one of \
+          \(SimulatorOS.possibleValuesDescription)
           """
       case .invalidArchitecture(let architecture):
         return """
@@ -109,6 +116,8 @@ enum SwiftBundlerError: Throwable {
           semantic versions, but uses tolerant parsing so it also supports \
           versions such as 10.0 and v3
           """
+      case .commandLineValidationError(let message):
+        return message
     }
   }
 }

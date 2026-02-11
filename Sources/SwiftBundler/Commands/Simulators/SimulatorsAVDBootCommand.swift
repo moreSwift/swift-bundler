@@ -1,16 +1,18 @@
 import ArgumentParser
 import Foundation
 
-/// The subcommand for booting Android emulators.
-struct EmulatorsBootCommand: ErrorHandledCommand {
+/// The subcommand for booting Android Virtual Devices.
+struct SimulatorsAVDBootCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "boot",
-    abstract: "Boot an Android emulator."
+    abstract: "Boot an Android Virtual Device."
   )
 
   /// The name of the emulator to boot.
   @Argument(
-    help: "The name of the emulator to start.")
+    help: """
+      The name of the emulator to start. Supports partial substring matching.
+      """)
   var name: String
 
   /// Arguments to pass through to the 'emulator' CLI.
@@ -30,10 +32,17 @@ struct EmulatorsBootCommand: ErrorHandledCommand {
   var attach = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+    let simulator = try await RichError<SwiftBundlerError>.catch {
+      try await SimulatorManager.locateSimulator(
+        oses: [.android],
+        searchTerm: name
+      )
+    }
+
     try await RichError<SwiftBundlerError>.catch {
-      log.info("Booting '\(name)'")
+      log.info("Booting '\(simulator.name)'")
       try await AndroidVirtualDeviceManager.bootVirtualDevice(
-        AndroidVirtualDevice(name: name),
+        AndroidVirtualDevice(name: simulator.name),
         additionalArguments: emulatorArguments,
         detach: !attach
       )

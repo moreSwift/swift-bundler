@@ -15,6 +15,7 @@ extension APKBundler {
     case failedToCreateDefaultIcon(_ destination: URL)
     case multiArchitectureBuildsNotSupported
     case failedToCopyExecutable(source: URL, destination: URL)
+    // swiftlint:disable:next identifier_name
     case hostRequiresX86_64Compatibility
     case failedToEnumerateDynamicDependenciesOfLibrary(_ library: URL)
     case failedToLocateDynamicDependencyOfLibrary(
