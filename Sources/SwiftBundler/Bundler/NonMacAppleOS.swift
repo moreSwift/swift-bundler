@@ -1,5 +1,5 @@
 /// A non-macOS Apple operating system.
-enum NonMacAppleOS: CaseIterable {
+enum NonMacAppleOS: String, CaseIterable {
   case iOS
   case tvOS
   case visionOS

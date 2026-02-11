@@ -122,7 +122,7 @@ struct BundleArguments: ParsableArguments {
       return "The platform to build for \(possibleValues). (default: macOS)"
     }(),
     transform: { string -> Platform in
-      // also support getting a platform by its apple sdk equivalent.
+      // Also support getting a platform by its apple sdk equivalent.
       if let appleSDK = AppleSDKPlatform(rawValue: string) {
         return appleSDK.platform
       }

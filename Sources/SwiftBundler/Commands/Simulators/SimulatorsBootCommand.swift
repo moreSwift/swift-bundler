@@ -5,12 +5,15 @@ import Foundation
 struct SimulatorsBootCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "boot",
-    abstract: "Boot an iOS, tvOS or visionOS simulator."
+    abstract: "Boot an iOS, tvOS, visionOS, or Android simulator."
   )
 
   /// The id or name of the simulator to start.
   @Argument(
-    help: "The id or name of the simulator to start.")
+    help: """
+      The id or name of the simulator to start. Supports partial substring \
+      matching.
+      """)
   var idOrName: String
 
   @Flag(
@@ -19,11 +22,18 @@ struct SimulatorsBootCommand: ErrorHandledCommand {
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+    let simulator = try await RichError<SwiftBundlerError>.catch {
+      try await SimulatorManager.locateSimulator(searchTerm: idOrName)
+    }
+
+    if simulator.id != simulator.name {
+      log.info("Booting '\(simulator.name)' (id: \(simulator.id))")
+    } else {
+      log.info("Booting '\(simulator.name)'")
+    }
+
     try await RichError<SwiftBundlerError>.catch {
-      log.info("Booting '\(idOrName)'")
-      try await SimulatorManager.bootSimulator(id: idOrName)
-      log.info("Opening 'Simulator.app'")
-      try await SimulatorManager.openSimulatorApp()
+      try await SimulatorManager.bootSimulator(simulator)
     }
   }
 }

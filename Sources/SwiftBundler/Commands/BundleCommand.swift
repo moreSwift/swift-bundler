@@ -316,7 +316,7 @@ struct BundleCommand: ErrorHandledCommand {
       }
 
       let matchedSimulators = try await RichError<SwiftBundlerError>.catch {
-        try await SimulatorManager.listAvailableSimulators(
+        try await AppleSimulatorManager.listAvailableSimulators(
           searchTerm: simulatorSpecifier
         )
       }.sorted { first, second in
@@ -334,7 +334,7 @@ struct BundleCommand: ErrorHandledCommand {
       }.filter { simulator in
         // Filter out simulators with the wrong platform
         if let platform = platform {
-          return simulator.os.simulatorPlatform.platform == platform
+          return simulator.os.os == platform.os
         } else {
           return true
         }
@@ -365,11 +365,11 @@ struct BundleCommand: ErrorHandledCommand {
           return Device.macCatalyst
         case .some(let platform) where platform.isSimulator:
           let matchedSimulators = try await RichError<SwiftBundlerError>.catch {
-            try await SimulatorManager.listAvailableSimulators()
+            try await AppleSimulatorManager.listAvailableSimulators()
           }.filter { simulator in
             simulator.isBooted
               && simulator.isAvailable
-              && simulator.os.simulatorPlatform.platform == platform
+              && simulator.os.os == platform.os
           }.sorted { first, second in
             first.name < second.name
           }

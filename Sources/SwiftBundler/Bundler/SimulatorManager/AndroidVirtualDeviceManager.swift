@@ -59,6 +59,25 @@ enum AndroidVirtualDeviceManager {
     }
   }
 
+  /// Converts a virtual device to its simulator representation.
+  ///
+  /// We take the list of booted virtual devices as input rather than fetching
+  /// it within the function in order to force more efficient usage of the
+  /// function. Otherwise, if someone wanted to convert an array of `n` virtual
+  /// devices, we'd have to fetch the list of booted virtual devices `n` times.
+  static func virtualDeviceToSimulator(
+    _ device: AndroidVirtualDevice,
+    bootedVirtualDevices: [AndroidVirtualDevice]
+  ) async throws(Error) -> Simulator {
+    Simulator(
+      id: device.name,
+      name: device.name,
+      isAvailable: true,
+      isBooted: bootedVirtualDevices.contains { $0.name == device.name },
+      os: .android
+    )
+  }
+
   /// Enumerates booted Android virtual devices.
   static func enumerateBootedVirtualDevices() async throws(Error) -> [AndroidVirtualDevice] {
     let connectedDevices = try await Error.catch {

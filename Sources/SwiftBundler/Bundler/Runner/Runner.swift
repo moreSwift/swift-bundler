@@ -338,16 +338,16 @@ enum Runner {
   ) async throws(Error) {
     do {
       log.info("Preparing simulator")
-      try await SimulatorManager.bootSimulator(id: simulatorId)
+      try await AppleSimulatorManager.bootSimulator(id: simulatorId)
 
       log.info("Installing app")
-      try await SimulatorManager.installApp(bundlerOutput.bundle, simulatorId: simulatorId)
+      try await AppleSimulatorManager.installApp(bundlerOutput.bundle, simulatorId: simulatorId)
 
       log.info("Opening Simulator")
-      try await SimulatorManager.openSimulatorApp()
+      try await AppleSimulatorManager.openSimulatorApp()
 
       log.info("Launching \(bundleIdentifier)")
-      try await SimulatorManager.launchApp(
+      try await AppleSimulatorManager.launchApp(
         bundleIdentifier,
         simulatorId: simulatorId,
         connectConsole: true,
