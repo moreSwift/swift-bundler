@@ -78,30 +78,14 @@ enum Device: Sendable, Equatable, CustomStringConvertible {
       case .macCatalyst:
         self = .macCatalyst(architecture)
       case .other(let nonMacPlatform):
-        self.init(
-          nonMacApplePlatform: nonMacPlatform,
+        let device = ConnectedAppleDevice(
+          platform: nonMacPlatform,
           name: name,
           id: id,
           status: status,
           architecture: architecture
         )
+        self = .connectedAppleDevice(device)
     }
-  }
-
-  init(
-    nonMacApplePlatform platform: NonMacApplePlatform,
-    name: String,
-    id: String,
-    status: ConnectedAppleDevice.Status,
-    architecture: BuildArchitecture
-  ) {
-    let device = ConnectedAppleDevice(
-      platform: platform,
-      name: name,
-      id: id,
-      status: status,
-      architecture: architecture
-    )
-    self = .connectedAppleDevice(device)
   }
 }

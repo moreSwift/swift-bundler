@@ -11,6 +11,7 @@ extension AndroidSDKManager {
     case androidHomeDoesNotExist(environmentVariable: String, value: URL)
     case noBuildToolsFound(_ sdk: URL)
     case ndkNotInstalled(_ ndkDirectory: URL)
+    // swiftlint:disable:next identifier_name
     case ndkLLVMPrebuiltsOnlyDistributedForX86_64(HostPlatform, BuildArchitecture)
     case ndkMissingNDKPrebuilts(_ prebuiltDirectory: URL)
     case ndkMissingReadelfTool(_ readelfTool: URL)

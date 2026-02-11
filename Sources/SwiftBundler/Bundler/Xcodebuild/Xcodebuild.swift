@@ -203,12 +203,12 @@ enum Xcodebuild {
           //   builds and don't let us override the architecture set, so we
           //   have to select a target simulator.
           let simulators = try await Error.catch {
-            try await SimulatorManager.listAvailableSimulators()
+            try await AppleSimulatorManager.listAvailableSimulators()
           }
 
           let matchingSimulators = simulators.filter { simulator in
             // os os os, oi oi oi
-            simulator.os.os == platform.os
+            simulator.os.os == platform.os.os
           }
 
           guard let simulator = matchingSimulators.first else {

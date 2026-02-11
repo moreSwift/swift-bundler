@@ -1,140 +1,103 @@
-import Foundation
-
-/// A utility for managing simulators.
+/// A general simulator manager supporting both Apple simulators and Android emulators.
 enum SimulatorManager {
-  /// Lists available simulators.
-  /// - Parameter searchTerm: If provided, the simulators will be filtered using
-  ///   the search term.
-  /// - Returns: A list of available simulators matching the search term (if
-  ///   provided), or a failure if an error occurs.
-  static func listAvailableSimulators(
+  /// Lists all available simulators, optionally matching a specific set of OSes
+  /// and a search term if given.
+  static func listSimulators(
+    oses: [SimulatorOS]? = nil,
     searchTerm: String? = nil
   ) async throws(Error) -> [Simulator] {
-    let data = try await Error.catch(withMessage: .failedToRunSimCTL) {
-      try await Process.create(
-        "/usr/bin/xcrun",
-        arguments: [
-          "simctl", "list", "devices",
-          searchTerm, "available", "--json",
-        ].compactMap { $0 }
-      ).getOutputData(excludeStdError: true)
+    var simulators: [Simulator] = []
+
+    let oses = oses ?? SimulatorOS.allCases
+    if HostPlatform.hostPlatform == .macOS && oses.contains(where: { $0.isAppleOS }) {
+      log.debug("Enumerating Apple simulators")
+      let appleSimulators = try await Error.catch {
+        try await AppleSimulatorManager.listAvailableSimulators()
+      }
+      simulators.append(contentsOf: appleSimulators)
     }
 
-    let simulatorList = try Error.catch(withMessage: .failedToDecodeJSON) {
-      try JSONDecoder().decode(SimulatorList.self, from: data)
-    }
-
-    return simulatorList.devices
-      .compactMap { (platform, platformSimulators) -> [Simulator]? in
-        guard
-          let os = NonMacAppleOS.allCases.first(where: { osCandidate in
-            platform.hasPrefix(osCandidate.simulatorRuntimePrefix)
-          })
-        else {
-          return nil
+    if oses.contains(.android) {
+      if (try? AndroidSDKManager.locateAndroidSDK()) == nil {
+        log.warning("Android SDK not found, skipping Android emulators")
+      } else {
+        log.debug("Enumerating Android emulators")
+        let emulators = try await Error.catch {
+          try await AndroidVirtualDeviceManager.enumerateVirtualDevices()
         }
+        let bootedVirtualDevices = try await Error.catch {
+          try await AndroidVirtualDeviceManager.enumerateBootedVirtualDevices()
+        }
+        let androidSimulators = try await Error.catch {
+          try await emulators.typedAsyncMap { emulator in
+            try await AndroidVirtualDeviceManager.virtualDeviceToSimulator(
+              emulator,
+              bootedVirtualDevices: bootedVirtualDevices
+            )
+          }
+        }
+        simulators.append(contentsOf: androidSimulators)
+      }
+    }
 
-        return platformSimulators.map { simulator in
-          Simulator(
-            id: simulator.id,
-            name: simulator.name,
-            isAvailable: simulator.isAvailable,
-            isBooted: simulator.state == .booted,
-            os: os
+    // Sort by name, then id, then os. The idea behind this is just to enforce
+    // a stable ordering. The ordering that we've chosen isn't that important
+    // in and of itself.
+    simulators = simulators.sorted { first, second in
+      first.name < second.name || (
+        first.name == second.name && (
+          first.id < second.id || (
+            first.id == second.id && first.os.displayName < second.os.displayName
+          )
+        )
+      )
+    }
+
+    if let searchTerm {
+      return simulators.filter { simulator in
+        simulator.name.contains(searchTerm) || simulator.id == searchTerm
+      }
+    } else {
+      return simulators
+    }
+  }
+
+  /// Locates a simulator by name or id. Supports partial matching.
+  static func locateSimulator(
+    oses: [SimulatorOS]? = nil,
+    searchTerm: String
+  ) async throws(Error) -> Simulator {
+    let simulators = try await listSimulators(oses: oses, searchTerm: searchTerm)
+    guard let simulator = simulators.first else {
+      throw Error(.failedToLocateSimulator(oses, searchTerm))
+    }
+
+    if simulators.count > 1 {
+      log.warning(
+        "Multiple simulators match '\(searchTerm)', using '\(simulator.name)'"
+      )
+      log.debug("Matching simulators: \(simulators.map(\.id))")
+    }
+
+    return simulator
+  }
+
+  /// Boots the given simulator.
+  static func bootSimulator(_ simulator: Simulator) async throws(Error) {
+    switch simulator.os {
+      case .apple(_):
+        try await Error.catch {
+          try await AppleSimulatorManager.bootSimulator(id: simulator.id)
+          log.info("Opening 'Simulator.app'")
+          try await AppleSimulatorManager.openSimulatorApp()
+        }
+      case .android:
+        try await Error.catch {
+          try await AndroidVirtualDeviceManager.bootVirtualDevice(
+            AndroidVirtualDevice(name: simulator.id),
+            additionalArguments: []
           )
         }
-      }
-      .flatMap { $0 }
-  }
-
-  /// Boots a simulator. If it's already running, nothing is done.
-  /// - Parameter id: The name or id of the simulator to start.k
-  static func bootSimulator(id: String) async throws(Error) {
-    do {
-      // We use getOutputData to access the data on error
-      _ = try await Process.create(
-        "/usr/bin/xcrun",
-        arguments: ["simctl", "boot", id]
-      ).getOutputData()
-    } catch {
-      // If the device is already booted, count it as a success
-      guard
-        case let .nonZeroExitStatusWithOutput(data, _, _) = error.message,
-        let output = String(data: data, encoding: .utf8),
-        output.hasSuffix("Unable to boot device in current state: Booted\n")
-      else {
-        throw Error(.failedToRunSimCTL, cause: error)
-      }
-    }
-  }
-
-  /// Launches an app on the simulator (the app must already be installed).
-  /// - Parameters:
-  ///   - bundleIdentifier: The app's bundle identifier.
-  ///   - simulatorId: The name or id of the simulator to launch in.
-  ///   - connectConsole: If `true`, the function will block and the current
-  ///     process will print the stdout and stderr of the running app.
-  ///   - arguments: Command line arguments to pass to the app.
-  ///   - environmentVariables: Additional environment variables to pass to the
-  ///     app.
-  static func launchApp(
-    _ bundleIdentifier: String,
-    simulatorId: String,
-    connectConsole: Bool,
-    arguments: [String],
-    environmentVariables: [String: String]
-  ) async throws(Error) {
-    let process = Process.create(
-      "/usr/bin/xcrun",
-      arguments: [
-        "simctl", "launch", connectConsole ? "--console-pty" : nil,
-        simulatorId, bundleIdentifier,
-      ].compactMap { $0 } + arguments,
-      runSilentlyWhenNotVerbose: false
-    )
-
-    // TODO: Ensure that environment variables are passed correctly
-    var prefixedVariables: [String: String] = [:]
-    for (key, value) in environmentVariables {
-      prefixedVariables["SIMCTL_CHILD_" + key] = value
-    }
-
-    process.addEnvironmentVariables(prefixedVariables)
-
-    try await Error.catch(withMessage: .failedToRunSimCTL) {
-      try await process.runAndWait()
-    }
-  }
-
-  /// Installs an app on the simulator.
-  /// - Parameters:
-  ///   - bundle: The app bundle to install.
-  ///   - simulatorId: The name or id of the simulator to install on.
-  /// - Returns: A failure if an error occurs.
-  static func installApp(
-    _ bundle: URL,
-    simulatorId: String
-  ) async throws(Error) {
-    try await Error.catch(withMessage: .failedToRunSimCTL) {
-      try await Process.create(
-        "/usr/bin/xcrun",
-        arguments: [
-          "simctl", "install", simulatorId, bundle.path,
-        ]
-      ).runAndWait()
-    }
-  }
-
-  /// Opens the latest booted simulator in the simulator app.
-  /// - Returns: A failure if an error occurs.
-  static func openSimulatorApp() async throws(Error) {
-    try await Error.catch(withMessage: .failedToOpenSimulator) {
-      try await Process.create(
-        "/usr/bin/open",
-        arguments: [
-          "-a", "Simulator",
-        ]
-      ).runAndWait()
     }
   }
 }

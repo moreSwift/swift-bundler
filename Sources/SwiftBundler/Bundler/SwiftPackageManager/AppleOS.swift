@@ -13,6 +13,7 @@ enum AppleOS: String, CaseIterable {
     return rawValue
   }
 
+  /// Gets the Apple OS' underlying ``OS``.
   var os: OS {
     switch self {
       case .macOS:
