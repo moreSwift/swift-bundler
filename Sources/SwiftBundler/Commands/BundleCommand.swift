@@ -90,6 +90,18 @@ struct BundleCommand: ErrorHandledCommand {
       }
     #endif
 
+    for architecture in arguments.architectures {
+      guard platform.supportedArchitectures.contains(architecture) else {
+        log.error(
+          """
+          Architecture '\(architecture.rawValue)' is not supported when targeting \
+          '\(platform.displayName)'
+          """
+        )
+        return false
+      }
+    }
+
     if HostPlatform.hostPlatform != .macOS && platform != HostPlatform.hostPlatform.platform {
       let hostPlatform = HostPlatform.hostPlatform.platform.displayName
       log.error("'--platform \(platform)' is not supported on \(hostPlatform)")
@@ -128,25 +140,54 @@ struct BundleCommand: ErrorHandledCommand {
       return false
     }
 
+    if [.macOS, .macCatalyst].contains(platform)
+      && arguments.architectures.count == 1
+      && arguments.architectures[0] != .host
+    {
+      if arguments.xcodebuild {
+        // It throws the following error
+        // could not find module 'MacroToolkit' for target 'arm64-apple-macos';
+        // found: x86_64-apple-macos, at: <scratch>/Build/Products/Debug/
+        // MacroToolkit.swiftmodule
+        log.warning(
+          """
+          Cross compilation for macOS with '--xcodebuild' often fails due to a \
+          bug in xcodebuild's macro handling. Perform a '--universal' build instead \
+          or omit '--xcodebuild'.
+          """
+        )
+      } else {
+        log.warning(
+          """
+          Metadata insertion is broken when cross-compiling for macOS. Build with \
+          '--universal --xcodebuild' instead to work around this issue if you \
+          rely on metadata.
+          """
+        )
+      }
+    }
+
     // macOS-only arguments
     #if os(macOS)
-      if platform.isApplePlatform && ![.macOS, .macCatalyst].contains(platform) {
-        if arguments.universal {
-          log.error(
-            """
-            '--universal' is not compatible with '--platform \
-            \(platform.rawValue)'
-            """
-          )
-          return false
-        }
+      if (arguments.universal || arguments.architectures.count > 1)
+        && (!arguments.xcodebuild || arguments.noXcodebuild)
+      {
+        log.warning(
+          """
+          SwiftPM has multiple bugs related to universal builds. If this build fails, \
+          try building with '--xcodebuild' as a workaround.
+          """
+        )
+      }
 
-        if !arguments.architectures.isEmpty {
-          log.error(
-            "'--arch' is not compatible with '--platform \(platform.rawValue)'"
-          )
-          return false
-        }
+      if case .other(.physical) = platform.asApplePlatform?.partitioned, arguments.universal {
+        log.error(
+          """
+          '--universal' is not compatible with '--platform \
+          \(platform.rawValue)'
+          """
+        )
+        return false
       }
 
       if platform != .macOS && arguments.standAlone {
@@ -377,9 +418,11 @@ struct BundleCommand: ErrorHandledCommand {
       let hostPlatform = HostPlatform.hostPlatform
       switch platform {
         case .none, hostPlatform.platform:
-          return Device.host(hostPlatform)
+          // FIXME: Resolve architecture correctly here when cross compiling
+          return Device.host(hostPlatform, .host)
         case .macCatalyst:
-          return Device.macCatalyst
+          // FIXME: Resolve architecture correctly here when cross compiling
+          return Device.macCatalyst(.host)
         case .some(let platform) where platform.isSimulator:
           let matchedSimulators = try await RichError<SwiftBundlerError>.catch {
             try await SimulatorManager.listAvailableSimulators()
@@ -438,22 +481,13 @@ struct BundleCommand: ErrorHandledCommand {
 
   func getArchitectures(platform: Platform) -> [BuildArchitecture] {
     let architectures: [BuildArchitecture]
-    switch platform {
-      case .macOS, .macCatalyst:
-        if arguments.universal {
-          architectures = [.arm64, .x86_64]
-        } else {
-          architectures =
-            !arguments.architectures.isEmpty
-            ? arguments.architectures
-            : [BuildArchitecture.current]
-        }
-      case .iOS, .visionOS, .tvOS:
-        architectures = [.arm64]
-      case .linux, .windows, .iOSSimulator, .visionOSSimulator, .tvOSSimulator:
-        architectures = [BuildArchitecture.current]
+    if arguments.universal {
+      architectures = platform.supportedArchitectures
+    } else if !arguments.architectures.isEmpty {
+      architectures = arguments.architectures
+    } else {
+      architectures = [platform.defaultTargetArchitecture(hostArchitecture: .host)]
     }
-
     return architectures
   }
 
@@ -726,7 +760,8 @@ struct BundleCommand: ErrorHandledCommand {
           if isUsingXcodebuild {
             try await Xcodebuild.build(
               product: appConfiguration.product,
-              buildContext: buildContext
+              buildContext: buildContext,
+              destination: resolvedDevice
             )
           } else {
             try await SwiftPackageManager.build(

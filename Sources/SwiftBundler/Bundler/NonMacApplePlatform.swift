@@ -2,7 +2,7 @@ import Foundation
 
 /// A non-macOS Apple platform. Used to model Apple platforms that can be
 /// connected to computers to become run destinations.
-enum NonMacApplePlatform: Equatable {
+enum NonMacApplePlatform: Sendable, Equatable {
   case physical(NonMacAppleOS)
   case simulator(NonMacAppleOS)
 

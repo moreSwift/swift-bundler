@@ -10,10 +10,12 @@ enum Xcodebuild {
   /// - Parameters:
   ///   - product: The product to build.
   ///   - buildContext: The context to build in.
+  ///   - destination: The destination to build for.
   /// - Returns: If an error occurs, returns a failure.
   static func build(
     product: String,
-    buildContext: SwiftPackageManager.BuildContext
+    buildContext: SwiftPackageManager.BuildContext,
+    destination: Device?
   ) async throws(Error) {
     guard let applePlatform = buildContext.genericContext.platform.asApplePlatform else {
       throw Error(.unsupportedPlatform(buildContext.genericContext.platform))
@@ -86,25 +88,13 @@ enum Xcodebuild {
     }
 
     let context = buildContext.genericContext
-    let platform = context.platform
-    let archString = context.architectures
-      .map(\.rawValue)
-      .joined(separator: "_")
 
-    var destinationString: String
-    if [.macOS, .macCatalyst].contains(platform) {
-      if context.architectures.count == 1 {
-        destinationString = "platform=macOS,arch=\(archString)"
-      } else {
-        destinationString = "generic/platform=macOS"
-      }
-    } else {
-      destinationString = "generic/platform=\(applePlatform.xcodeDestinationName)"
-    }
-    if let variant = platform.asApplePlatform?.xcodeDestinationVariant {
-      destinationString += ",variant=\(variant)"
-    }
-    let destinationArguments = ["-destination", destinationString]
+    let destinationSpecifier = try await computeDestinationSpecifier(
+      platform: applePlatform,
+      architectures: context.architectures,
+      destination: destination
+    )
+    let destinationArguments = ["-destination", destinationSpecifier]
 
     let metadataArguments: [String]
     if let compiledMetadata = buildContext.compiledMetadata {
@@ -115,6 +105,9 @@ enum Xcodebuild {
       metadataArguments = []
     }
 
+    let archString = context.architectures
+      .map(\.rawValue)
+      .joined(separator: "_")
     let suffix = context.platform.xcodeProductDirectorySuffix ?? context.platform.rawValue
     process = Process.create(
       "xcodebuild",
@@ -161,6 +154,120 @@ enum Xcodebuild {
         cause: error
       )
     }
+  }
+
+  /// Computes the xcodebuild destination specifier required to perform a build
+  /// with the given target parameters.
+  static func computeDestinationSpecifier(
+    platform: ApplePlatform,
+    architectures: [BuildArchitecture],
+    destination: Device?
+  ) async throws(Error) -> String {
+    // NOTE: The reason that this code is complicated is that xcodebuild doesn't let
+    //   us build without a destination, and destinations are either specific
+    //   devices/simulators (single architecture by definition), or generic destinations
+    //   (which are universal builds targeting all architectures supported by the target
+    //   platform). We aren't able to specify architectures directly because xcodebuild
+    //   doesn't allow `-arch` with `-destination`, and can't build SwiftPM packages without
+    //   `-destination`. Kinda sucks...
+
+    let supportedArchitectures = platform.supportedArchitectures
+    for architecture in architectures {
+      guard supportedArchitectures.contains(architecture) else {
+        throw Error(.unsupportedArchitecture(platform, architecture))
+      }
+    }
+
+    var destinationString: String
+    let platformName = platform.xcodeDestinationName
+    if architectures.count == 1 {
+      // 1. If only one architecture, perform a single architecture build
+      let architecture = architectures[0]
+      if supportedArchitectures.count == 1 {
+        // 1.1. If the target platform only supports one architecture, then
+        //   we can use a generic destination (which is ideal because it
+        //   means that you can still build even if the target device is
+        //   unavailable due to being unlocked etc).
+        destinationString = "generic/platform=\(platformName)"
+      } else if let destinationId = destination?.id {
+        // 1.2. If we have a device then that's easy
+        destinationString = "id=\(destinationId),arch=\(architecture)"
+      } else if [.macOS, .macCatalyst].contains(platform) {
+        // TODO: Does this work when targeting a non-host architecture?
+        // 1.3. If we're on macOS then it's also easy
+        destinationString = "platform=\(platformName),arch=\(architecture)"
+      } else {
+        if platform.isSimulator {
+          // 1.4.1. If we're targeting a simulator platform it gets annoying.
+          //   xcodebuild's generic simulator destinations perform universal
+          //   builds and don't let us override the architecture set, so we
+          //   have to select a target simulator.
+          let simulators = try await Error.catch {
+            try await SimulatorManager.listAvailableSimulators()
+          }
+
+          let matchingSimulators = simulators.filter { simulator in
+            // os os os, oi oi oi
+            simulator.os.os == platform.os
+          }
+
+          guard let simulator = matchingSimulators.first else {
+            throw Error(.failedToLocateSuitableDestinationSimulator(
+              simulators,
+              platform.os,
+              architecture
+            ))
+          }
+
+          destinationString = "id=\(simulator.id),arch=\(architecture)"
+        } else {
+          // 1.4.2. If we're targeting a physical non-macOS Apple device, then we
+          //   assume that there's only a single supported architecture, so we should
+          //   have reached 1.1. Therefore reaching this is an error.
+          throw Error(cause: InvariantFailure(
+            """
+            Invariant failure: Swift Bundler assumes that non-macOS Apple platforms \
+            each support only a single architecture (when not targeting a simulator). \
+            Platform '\(platform)' supports '\(supportedArchitectures)'
+            """
+          ))
+        }
+      }
+    } else if architectures == supportedArchitectures {
+      // 2. If the set of architectures matches our target platform's supported
+      //   architectures, then we can simply use a generic destination to perform
+      //   a universal build.
+      switch destination {
+        case .host, .macCatalyst, nil:
+          break
+        case .connected:
+          throw Error(.universalBuildIncompatibleWithConcreteDestination)
+      }
+
+      destinationString = "generic/platform=\(platformName)"
+    } else {
+      // 3. xcodebuild doesn't let us specify arbitrary sets of architectures when
+      //   building Swift packages, but luckily we don't have to because this should
+      //   be unreachable (unless a future Apple platform breaks out assumptions about
+      //   Apple platform architecture support).
+      throw Error(cause: InvariantFailure(
+        """
+        Invariant failure: xcodebuild can either build for a single architecture, or for all \
+        supported architectures, but not in between; selected architectures were \
+        \(architectures), supported architectures are '\(supportedArchitectures)'. \
+        This is an invariant failure; we generally assume that each Apple platform \
+        supports a maximum of 2 architectures. Please open an issue at \
+        \(SwiftBundler.gitURL.absoluteString)/issues/new
+        """
+      ))
+    }
+    
+    // Don't forget the variant!
+    if let variant = platform.xcodeDestinationVariant {
+      destinationString += ",variant=\(variant)"
+    }
+
+    return destinationString
   }
 
   /// Whether or not the bundle command utilizes xcodebuild instead of swiftpm.

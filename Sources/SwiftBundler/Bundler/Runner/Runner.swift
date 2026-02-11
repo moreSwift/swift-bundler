@@ -24,7 +24,7 @@ enum Runner {
     log.info("Running '\(bundlerOutput.bundle.lastPathComponent)'")
 
     switch device {
-      case .host(let platform):
+      case .host(let platform, let architecture):
         guard let bundlerOutput = RunnableBundlerOutputStructure(bundlerOutput) else {
           throw Error(.missingExecutable(device, bundlerOutput))
         }
@@ -37,12 +37,30 @@ enum Runner {
               environmentVariables: environmentVariables
             )
           case .linux:
+            guard architecture == .host else {
+              throw Error(cause: InvariantFailure(
+                """
+                Invariant failure: Runner received device with unsupported \
+                architecture '\(architecture.rawValue)' (host architecture: \
+                \(BuildArchitecture.host.rawValue))
+                """
+              ))
+            }
             try await runLinuxAppOnHost(
               bundlerOutput: bundlerOutput,
               arguments: arguments,
               environmentVariables: environmentVariables
             )
           case .windows:
+            guard architecture == .host else {
+              throw Error(cause: InvariantFailure(
+                """
+                Invariant failure: Runner received device with unsupported \
+                architecture '\(architecture.rawValue)' (host architecture: \
+                \(BuildArchitecture.host.rawValue))
+                """
+              ))
+            }
             try await runWindowsAppOnHost(
               bundlerOutput: bundlerOutput,
               arguments: arguments,

@@ -1,5 +1,5 @@
 /// A supported Swift Bundler host platform.
-enum HostPlatform {
+enum HostPlatform: Sendable, Hashable {
   case macOS
   case linux
   case windows

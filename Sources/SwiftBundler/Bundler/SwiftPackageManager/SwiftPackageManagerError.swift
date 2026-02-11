@@ -22,6 +22,7 @@ extension SwiftPackageManager {
     case missingDarwinPlatformVersion(Platform)
     case failedToGetToolsVersion
     case invalidToolsVersion(String)
+    case swiftPMDoesntSupportUniversalBuildsForPlatform(Platform, [BuildArchitecture])
 
     var userFriendlyMessage: String {
       switch self {
@@ -63,6 +64,15 @@ extension SwiftPackageManager {
           return "Failed to get Swift package manifest tools version"
         case .invalidToolsVersion(let version):
           return "Invalid Swift tools version '\(version)' (expected a semantic version)"
+        case .swiftPMDoesntSupportUniversalBuildsForPlatform(let platform, let architectures):
+          // This should only be possible if the user has provided '--no-xcodebuild',
+          // so the error message should be pretty clear to users what they've done.
+          let clause = platform.isSimulator ? " without xcodebuild" : ""
+          return """
+            Swift Bundler cannot perform universal builds targeting \
+            \(platform.displayName)\(clause); multi-architecture build requested \
+            for \(architectures.map(\.rawValue).joinedGrammatically())
+            """
       }
     }
   }

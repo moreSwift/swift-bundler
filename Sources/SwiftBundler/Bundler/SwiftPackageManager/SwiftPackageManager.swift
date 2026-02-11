@@ -229,10 +229,15 @@ enum SwiftPackageManager {
         guard let platformVersion = buildContext.genericContext.platformVersion else {
           throw Error(.missingDarwinPlatformVersion(platform))
         }
-        let hostArchitecture = BuildArchitecture.current
 
+        let architectures = buildContext.genericContext.architectures
+        guard architectures.count == 1 else {
+          throw Error(.swiftPMDoesntSupportUniversalBuildsForPlatform(platform, architectures))
+        }
+
+        let architecture = architectures[0]
         let targetTriple = platform.targetTriple(
-          withArchitecture: platform.usesHostArchitecture ? hostArchitecture : .arm64,
+          withArchitecture: architecture,
           andPlatformVersion: platformVersion
         )
 

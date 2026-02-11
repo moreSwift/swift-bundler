@@ -40,10 +40,24 @@ enum ApplePlatform: String, CaseIterable {
     }
   }
 
-  /// Whether the platform uses the host architecture or not. Simulators
-  /// and Mac Catalyst use the host architecture.
-  var usesHostArchitecture: Bool {
-    isSimulator || self == .macCatalyst
+  /// Architectures supported when targeting the platform.
+  var supportedArchitectures: [BuildArchitecture] {
+    switch partitioned {
+      case .macOS, .macCatalyst, .other(.simulator(_)):
+        [.arm64, .x86_64]
+      case .other(.physical(_)):
+        [.arm64]
+    }
+  }
+
+  /// Gets the default architecture to use when building for the platform.
+  func defaultTargetArchitecture(hostArchitecture: BuildArchitecture) -> BuildArchitecture {
+    switch partitioned {
+      case .macOS, .macCatalyst, .other(.simulator(_)):
+        hostArchitecture
+      case .other(.physical(_)):
+        .arm64
+    }
   }
 
   /// Whether the platform is a simulator or not.
