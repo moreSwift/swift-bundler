@@ -602,6 +602,12 @@ enum SwiftPackageManager {
         for: .libraryDirectory,
         in: .userDomainMask
       ).map { $0 / "org.swift.swiftpm" }
+    #elseif os(Linux)
+      if let xdgConfigHome = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"] {
+        directories += [
+          URL(fileURLWithPath: xdgConfigHome) / "swiftpm"
+        ]
+      }
     #endif
     directories = directories.map { directory in
       directory.actuallyResolvingSymlinksInPath()
