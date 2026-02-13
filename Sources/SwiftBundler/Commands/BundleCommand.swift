@@ -410,7 +410,8 @@ struct BundleCommand: ErrorHandledCommand {
         }
 
         if identities.count > 1 {
-          log.info("Multiple codesigning identities found, using \(firstIdentity)")
+          log.warning("Multiple codesigning identities found; using '\(firstIdentity)'")
+          log.debug("Other identities: \(identities)")
         }
 
         identity = firstIdentity
@@ -477,29 +478,18 @@ struct BundleCommand: ErrorHandledCommand {
         )
       }
     } else if let simulatorSpecifier {
-      if let platform = platform, !platform.isSimulator {
+      if let platform = platform, !platform.hasSimulator {
         let reason = "'--simulator' is incompatible with '--platform \(platform)'"
         throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
       }
 
-      let matchedSimulators = try await RichError<SwiftBundlerError>.catch {
-        try await AppleSimulatorManager.listAvailableSimulators(
+      let matchingSimulators = try await RichError<SwiftBundlerError>.catch {
+        try await SimulatorManager.listSimulators(
+          oses: [],
           searchTerm: simulatorSpecifier
         )
-      }.sorted { first, second in
-        // Put booted simulators first for convenience and put shorter names
-        // first (otherwise there'd be no guarantee the "iPhone 15" matches
-        // "iPhone 15" when both "iPhone 15" and "iPhone 15 Pro" exist, and
-        // you'd be left with no way to disambiguate).
-        if !first.isBooted && second.isBooted {
-          return false
-        } else if first.name.count > second.name.count {
-          return false
-        } else {
-          return true
-        }
-      }.filter { simulator in
-        // Filter out simulators with the wrong platform
+      }.sorted().filter { simulator in
+        // Filter by platform if platform hint provided
         if let platform = platform {
           return simulator.os.os == platform.os
         } else {
@@ -507,7 +497,7 @@ struct BundleCommand: ErrorHandledCommand {
         }
       }
 
-      guard let simulator = matchedSimulators.first else {
+      guard let simulator = matchingSimulators.first else {
         let platformCondition = platform.map { " with platform '\($0)'" } ?? ""
         let reason = """
           No simulator found matching '\(simulatorSpecifier)'\(platformCondition). Use \
@@ -516,10 +506,11 @@ struct BundleCommand: ErrorHandledCommand {
         throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
       }
 
-      if matchedSimulators.count > 1 {
+      if matchingSimulators.count > 1 {
         log.warning(
-          "Multiple simulators matched '\(simulatorSpecifier)', using '\(simulator.name)'"
+          "Multiple simulators matched '\(simulatorSpecifier)'; using '\(simulator.name)'"
         )
+        log.debug("Matching simulators: \(matchingSimulators)")
       }
 
       return simulator.device
@@ -533,17 +524,15 @@ struct BundleCommand: ErrorHandledCommand {
           // FIXME: Resolve architecture correctly here when cross compiling
           return Device.macCatalyst(.host)
         case .some(let platform) where platform.isSimulator:
-          let matchedSimulators = try await RichError<SwiftBundlerError>.catch {
+          let matchingSimulators = try await RichError<SwiftBundlerError>.catch {
             try await AppleSimulatorManager.listAvailableSimulators()
           }.filter { simulator in
             simulator.isBooted
               && simulator.isAvailable
               && simulator.os.os == platform.os
-          }.sorted { first, second in
-            first.name < second.name
-          }
+          }.sorted()
 
-          guard let simulator = matchedSimulators.first else {
+          guard let simulator = matchingSimulators.first else {
             let reason =
               Output {
                 """
@@ -564,10 +553,11 @@ struct BundleCommand: ErrorHandledCommand {
             throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
           }
 
-          if matchedSimulators.count > 1 {
+          if matchingSimulators.count > 1 {
             log.warning(
               "Found multiple booted \(platform.os.rawValue) simulators, using '\(simulator.name)'"
             )
+            log.debug("Matching simulators: \(matchingSimulators)")
           }
 
           return simulator.device
