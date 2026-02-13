@@ -4,6 +4,10 @@
     components
   }
 
+  static func buildBlock(_ component: Void) -> [KeyedList.Entry] {
+    []
+  }
+
   static func buildBlock(_ components: [KeyedList.Entry]...) -> [KeyedList.Entry] {
     components.flatMap { $0 }
   }

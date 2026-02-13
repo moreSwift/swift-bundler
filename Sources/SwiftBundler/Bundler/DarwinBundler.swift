@@ -274,7 +274,7 @@ enum DarwinBundler: Bundler {
 
     // Simulators and hosts don't require provisioning profiles
     guard
-      case .connectedAppleDevice(let device) = context.device,
+      case .appleDevice(let device) = context.device,
       !device.platform.isSimulator
     else {
       return nil

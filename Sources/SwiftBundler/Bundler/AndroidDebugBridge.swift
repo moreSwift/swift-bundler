@@ -25,7 +25,7 @@ enum AndroidDebugBridge {
     var identifier: String
   }
 
-  /// Lists connected Android devices.
+  /// Lists connected Android devices and emulators.
   static func listConnectedDevices() async throws(Error) -> [ConnectedDevice] {
     let adb = try locateADBExecutable()
     let output = try await Error.catch {
@@ -44,6 +44,12 @@ enum AndroidDebugBridge {
       .dropFirst()
     var devices: [ConnectedDevice] = []
     for line in lines {
+      // Skip known status lines. If turn out to be more than just these two then
+      // we should handle this more generally.
+      if line == "* daemon started successfully" || line == "List of devices attached" {
+        continue
+      }
+
       let parts = line.split(separator: "\t")
       guard parts.count == 2, parts[1] == "device" else {
         log.warning("Failed to parse line of 'adb devices' output: '\(line)'")
@@ -54,6 +60,20 @@ enum AndroidDebugBridge {
     }
 
     return devices
+  }
+
+  /// Gets the model of the given device.
+  static func getModel(of device: ConnectedDevice) async throws(Error) -> String {
+    let adb = try locateADBExecutable()
+    let process = Process.create(
+      adb.path,
+      arguments: ["-s", device.identifier, "shell", "getprop", "ro.product.model"]
+    )
+
+    let output = try await Error.catch {
+      try await process.getOutput()
+    }
+    return output.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   /// Checks whether the given device is an emulator or not.
