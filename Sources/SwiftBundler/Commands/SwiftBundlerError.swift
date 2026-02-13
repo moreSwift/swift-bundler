@@ -4,6 +4,7 @@ import ErrorKit
 /// A top-level error thrown by the Swift Bundler.
 enum SwiftBundlerError: Throwable {
   case invalidPlatform(String)
+  case invalidOS(String)
   case invalidSimulatorOS(String)
   case invalidArchitecture(String)
   case invalidBuildConfiguration(String)
@@ -30,6 +31,10 @@ enum SwiftBundlerError: Throwable {
           Invalid platform '\(platform)'. Must be one of \
           \(Platform.possibleValuesDescription)
           """
+      case .invalidOS(let os):
+        return """
+        Invalid OS '\(os)'. Must be one of \(OS.possibleValuesDescription)
+        """
       case .invalidSimulatorOS(let os):
         return """
           Invalid simulator OS '\(os)'. Must be one of \

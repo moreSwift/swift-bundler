@@ -2,7 +2,7 @@ import Foundation
 import ErrorKit
 
 /// A platform to build for.
-enum Platform: String, CaseIterable {
+enum Platform: String, Sendable, Hashable, CaseIterable, Comparable {
   typealias Error = RichError<ErrorMessage>
 
   /// An error message related to ``Platform``.
@@ -198,6 +198,17 @@ enum Platform: String, CaseIterable {
     asApplePlatform?.isSimulator == true
   }
 
+  /// Whether there is a simulator for this platform. This is different from
+  /// ``isSimulator`` because it includes Android which isn't always a
+  /// simulator but has simulators.
+  var hasSimulator: Bool {
+    switch partitioned {
+      case .android: true
+      case .apple(let platform): platform.isSimulator
+      case .linux, .windows: false
+    }
+  }
+
   /// Gets the platform as an ``ApplePlatform`` if it is in fact an Apple
   /// platform.
   var asApplePlatform: ApplePlatform? {
@@ -244,6 +255,27 @@ enum Platform: String, CaseIterable {
     }
   }
 
+  /// The ordering used by the ``Comparable`` conformance.
+  private var order: Int {
+    switch self {
+      case .macOS: 0
+      case .macCatalyst: 1
+      case .iOS: 2
+      case .iOSSimulator: 3
+      case .tvOS: 4
+      case .tvOSSimulator: 5
+      case .visionOS: 6
+      case .visionOSSimulator: 7
+      case .linux: 8
+      case .windows: 9
+      case .android: 10
+    }
+  }
+
+  static func < (_ lhs: Self, _ rhs: Self) -> Bool {
+    lhs.order < rhs.order
+  }
+
   /// A simple lossless conversion.
   init(_ applePlatform: ApplePlatform) {
     switch applePlatform {
@@ -255,6 +287,16 @@ enum Platform: String, CaseIterable {
       case .visionOSSimulator: self = .visionOSSimulator
       case .tvOS: self = .tvOS
       case .tvOSSimulator: self = .tvOSSimulator
+    }
+  }
+
+  init?(rawValue: String) {
+    if let value = Self.allCases.first(where: { $0.rawValue == rawValue }) {
+      self = value
+    } else if let value = Self.allCases.first(where: { $0.displayName == rawValue }) {
+      self = value
+    } else {
+      return nil
     }
   }
 

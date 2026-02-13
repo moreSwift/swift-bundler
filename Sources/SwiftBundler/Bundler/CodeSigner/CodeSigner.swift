@@ -240,8 +240,9 @@ enum CodeSigner {
 
     if matchingIdentities.count > 1 {
       log.warning(
-        "Multiple identities matched short name '\(shortName)', using \(identity)"
+        "Multiple identities matched short name '\(shortName)'; using '\(identity)'"
       )
+      log.debug("Matching identities: \(matchingIdentities)")
     }
 
     return identity

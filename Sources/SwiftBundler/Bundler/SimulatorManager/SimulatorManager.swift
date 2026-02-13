@@ -55,7 +55,7 @@ enum SimulatorManager {
 
     if let searchTerm {
       return simulators.filter { simulator in
-        simulator.name.contains(searchTerm) || simulator.id == searchTerm
+        simulator.name.contains(searchTerm) || simulator.id.contains(searchTerm)
       }
     } else {
       return simulators
@@ -74,7 +74,7 @@ enum SimulatorManager {
 
     if simulators.count > 1 {
       log.warning(
-        "Multiple simulators match '\(searchTerm)', using '\(simulator.name)'"
+        "Multiple simulators match '\(searchTerm)'; using '\(simulator.name)'"
       )
       log.debug("Matching simulators: \(simulators.map(\.id))")
     }

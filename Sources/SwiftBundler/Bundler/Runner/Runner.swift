@@ -59,17 +59,17 @@ enum Runner {
           arguments: arguments,
           environmentVariables: environmentVariables
         )
-      case .connectedAppleDevice(let connectedAppleDevice):
+      case .appleDevice(let appleDevice):
         try await runApp(
-          on: connectedAppleDevice,
+          on: appleDevice,
           bundlerOutput: bundlerOutput,
           bundleIdentifier: bundleIdentifier,
           arguments: arguments,
           environmentVariables: environmentVariables
         )
-      case .connectedAndroidDevice(let connectedAndroidDevice):
+      case .androidDevice(let androidDevice):
         try await runApp(
-          on: connectedAndroidDevice,
+          on: androidDevice,
           bundlerOutput: bundlerOutput,
           bundleIdentifier: bundleIdentifier,
           arguments: arguments,
@@ -195,7 +195,7 @@ enum Runner {
   ///   - arguments: Command line arguments to pass to the app.
   ///   - environmentVariables: Environment variables to pass to the app.
   static func runApp(
-    on connectedDevice: ConnectedAppleDevice,
+    on connectedDevice: AppleDevice,
     bundlerOutput: BundlerOutputStructure,
     bundleIdentifier: String,
     arguments: [String],
@@ -222,13 +222,13 @@ enum Runner {
 
   /// Runs an app on a connected Android device or Android emulator.
   /// - Parameters:
-  ///   - connectedDevice: The device/simulator to run the app on.
+  ///   - device: The device/emulator to run the app on.
   ///   - bundlerOutput: The output of the bundler.
   ///   - bundleIdentifier: The app's bundle identifier.
   ///   - arguments: Command line arguments to pass to the app.
   ///   - environmentVariables: Environment variables to pass to the app.
   static func runApp(
-    on connectedDevice: ConnectedAndroidDevice,
+    on device: AndroidDevice,
     bundlerOutput: BundlerOutputStructure,
     bundleIdentifier: String,
     arguments: [String],

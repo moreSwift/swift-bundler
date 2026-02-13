@@ -1,21 +1,11 @@
-import Foundation
 import ErrorKit
 
 extension DeviceManager {
   typealias Error = RichError<ErrorMessage>
 
+  /// An error message related to ``DeviceManager``.
   enum ErrorMessage: Throwable {
     case deviceNotFound(specifier: String, platform: Platform?)
-    case failedToListXcodeDestinations
-    case failedToCreateDummyProject
-    case failedToParseXcodeDestinationList(
-      _ xcodeDestinationList: String,
-      reason: String
-    )
-    case failedToParseXcodeDestination(
-      _ xcodeDestination: String,
-      reason: String
-    )
 
     var userFriendlyMessage: String {
       switch self {
@@ -70,14 +60,6 @@ extension DeviceManager {
               ExampleCommand("swift bundler devices list")
             }
           }.description
-        case .failedToCreateDummyProject:
-          return "Failed to create dummy project required to list Xcode destinations"
-        case .failedToListXcodeDestinations:
-          return "Failed to list Xcode destinations"
-        case .failedToParseXcodeDestinationList(_, let reason):
-          return "Failed to parse Xcode destination list: \(reason)"
-        case .failedToParseXcodeDestination(_, let reason):
-          return "Failed to parse Xcode destination: \(reason)"
       }
     }
   }

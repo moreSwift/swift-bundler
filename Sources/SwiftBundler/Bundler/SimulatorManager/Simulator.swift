@@ -1,6 +1,7 @@
 import Foundation
 
-struct Simulator {
+/// A simulator that Swift Bundler can operate on.
+struct Simulator: Comparable {
   /// The simulator's id according to its corresponding management tool.
   var id: String
   /// The simulator's user facing name.
@@ -18,23 +19,28 @@ struct Simulator {
   var device: Device {
     switch os {
       case .apple(let appleOS):
-        let device = ConnectedAppleDevice(
+        let device = AppleDevice(
           platform: .simulator(appleOS),
           name: name,
           id: id,
           status: isAvailable
             ? (isBooted ? .available : .summonable)
-            : .unavailable(message: "unavailable")
+            : .unavailable(reason: "unavailable")
         )
-        return .connectedAppleDevice(device)
+        return .appleDevice(device)
       case .android:
-        let device = ConnectedAndroidDevice(
+        let device = AndroidDevice(
           id: id,
           name: name,
           isEmulator: true,
-          status: isBooted ? .available : .unavailable
+          status: isBooted ? .available : .summonable
         )
-        return .connectedAndroidDevice(device)
+        return .androidDevice(device)
     }
+  }
+
+  static func < (_ lhs: Self, _ rhs: Self) -> Bool {
+    // Define by proxy as a device
+    lhs.device < rhs.device
   }
 }
