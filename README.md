@@ -92,3 +92,4 @@ If you have made an app with Swift Bundler, I'd love to hear about it! Just open
 - [ModularMTL](https://github.com/JezewskiG/ModularMTL): A modular multiplication visualisation made with Swift Bundler, SwiftUI and Metal (macOS only)
 - [Friend](https://github.com/JoshuaBrest/Friend): A technical demo that showcases how system-based assistants can be integrated with LLMs to provide greater flexibility and functionality (macOS only)
 - [AutoDock](https://github.com/ghall89/AutoDock): A utility for automatically hiding and showing the macOS Dock based on connected display size. (macOS only)
+- [Arcmark](https://github.com/Geek-1001/arcmark): A bookmark manager that attaches to any browser window as a sidebar. (macOS only)
