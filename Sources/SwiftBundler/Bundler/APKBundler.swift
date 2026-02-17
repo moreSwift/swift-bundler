@@ -33,6 +33,14 @@ enum APKBundler: Bundler {
     }
   }
 
+  /// Computes the Android package identifier to give an app based off its
+  /// Swift Bundler app identifier.
+  static func computePackageIdentifier(
+    forAppIdentifier appIdentifier: String
+  ) -> String {
+    appIdentifier.lowercased()
+  }
+
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
@@ -86,7 +94,9 @@ enum APKBundler: Bundler {
     }
 
     // Create Gradle configuration files
-    let packageIdentifier = context.appConfiguration.identifier.lowercased()
+    let packageIdentifier = computePackageIdentifier(
+      forAppIdentifier: context.appConfiguration.identifier
+    )
     let targetAPI = 33
     let gradleBuildConfig = generateGradleBuildConfig(
       packageIdentifier: packageIdentifier,
