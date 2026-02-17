@@ -83,11 +83,12 @@ enum AndroidVirtualDeviceManager {
     let connectedDevices = try await Error.catch {
       try await AndroidDebugBridge.listConnectedDevices()
     }
-    let connectedEmulators = try await connectedDevices.typedAsyncFilter { (device) async throws(Error) in
-      try await Error.catch {
-        try await AndroidDebugBridge.checkIsEmulator(device)
+    let connectedEmulators = try await connectedDevices
+      .typedAsyncFilter { (device) async throws(Error) in
+        try await Error.catch {
+          try await AndroidDebugBridge.checkIsEmulator(device)
+        }
       }
-    }
     return try await connectedEmulators.asyncMap { (emulator) async throws(Error) in
       try await Error.catch {
         let name = try await AndroidDebugBridge.getEmulatorAVDName(emulator)

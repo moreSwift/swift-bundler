@@ -234,7 +234,60 @@ enum Runner {
     arguments: [String],
     environmentVariables: [String: String]
   ) async throws(Error) {
-    fatalError("TODO")
+    if !arguments.isEmpty {
+      log.warning(
+        """
+        Command-line argument passthrough is not supported when running APKs \
+        on Android devices
+        """
+      )
+    }
+
+    if !environmentVariables.isEmpty {
+      log.warning(
+        """
+        Environment variables are not supported when running APKs \
+        on Android devices
+        """
+      )
+    }
+
+    let apk = bundlerOutput.bundle
+
+    log.info("Installing '\(apk.lastPathComponent)' on '\(device.name)'")
+    let androidDevice = AndroidDebugBridge.ConnectedDevice(identifier: device.id)
+    try await Error.catch {
+      try await AndroidDebugBridge.installApk(
+        bundlerOutput.bundle,
+        on: androidDevice
+      )
+    }
+
+    let packageIdentifier = APKBundler.computePackageIdentifier(
+      forAppIdentifier: bundleIdentifier
+    )
+
+    log.info("Launching '\(packageIdentifier)' on '\(device.name)'")
+    let launchTime = Date()
+    try await Error.catch {
+      try await AndroidDebugBridge.launchApp(
+        withPackageIdentifier: packageIdentifier,
+        on: androidDevice
+      )
+    }
+
+    try await Error.catch {
+      let uid = try await AndroidDebugBridge.getAppUID(
+        packageIdentifier: packageIdentifier,
+        device: androidDevice
+      )
+      log.debug("App has UID \(uid)")
+      try await AndroidDebugBridge.connectToLogcat(
+        forAppWithUID: uid,
+        device: androidDevice,
+        startTime: launchTime
+      )
+    }
   }
 
   static func runAppOnPhysicalDevice(
