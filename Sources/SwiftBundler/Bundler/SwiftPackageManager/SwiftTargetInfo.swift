@@ -20,6 +20,8 @@ struct SwiftTargetInfo: Codable {
     var runtimeResourcePath: URL
   }
 
+  /// The compiler version string.
+  var compilerVersion: String
   /// Info about the target platform.
   var target: Target
   /// Paths to various parts of the current toolchain.

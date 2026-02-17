@@ -68,7 +68,9 @@ enum SwiftPackageManager {
   /// Returns the literal string `"swift"` when no toolchain is specified, so
   /// that Process can perform its usual executable path resolution.
   private static func swiftPath(toolchain: URL?) -> String {
-    toolchain.map { $0 / "usr/bin/swift" }.map(\.path) ?? "swift"
+    toolchain.map { toolchain in
+      SwiftToolchain.swiftExecutable(forToolchainWithRoot: toolchain)
+    }.map(\.path) ?? "swift"
   }
 
   /// Builds the specified product of a Swift package.
