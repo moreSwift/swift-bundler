@@ -123,4 +123,113 @@ enum AndroidDebugBridge {
 
     return String(lines[0])
   }
+
+  /// Installs an APK on the given device of emulator.
+  static func installApk(_ apk: URL, on device: ConnectedDevice) async throws(Error) {
+    let adb = try locateADBExecutable()
+    let process = Process.create(
+      adb.path,
+      arguments: ["-s", device.identifier, "install", apk.path]
+    )
+
+    try await Error.catch(withMessage: .failedToInstallAPK(apk, device)) {
+      try await process.runAndWait()
+    }
+  }
+
+  /// Launches the app identified by the given package identifier on the
+  /// given device or emulator.
+  static func launchApp(
+    withPackageIdentifier packageIdentifier: String,
+    on device: ConnectedDevice
+  ) async throws(Error) {
+    let adb = try locateADBExecutable()
+    let process = Process.create(
+      adb.path,
+      arguments: [
+        "-s", device.identifier,
+        "shell", "monkey",
+        "-p", packageIdentifier,
+        "-c", "android.intent.category.LAUNCHER",
+        "1"
+      ]
+    )
+
+    try await Error.catch(withMessage: .failedToLaunchApp(packageIdentifier, device)) {
+      try await process.runAndWait()
+    }
+  }
+
+  /// Gets the UID of the app identified by the given package identifier on the
+  /// given device or emulator.
+  ///
+  /// Android assigns each app a unique UID which can be used to filter logs
+  /// (among other purposes).
+  static func getAppUID(
+    packageIdentifier: String,
+    device: ConnectedDevice
+  ) async throws(Error) -> Int {
+    // Adapted from this great StackOverflow answer: https://stackoverflow.com/a/76551835
+    // Before finding that answer, I was pretty lost about how to filter logcat
+    // logs to a single application.
+    let adb = try locateADBExecutable()
+    let process = Process.create(
+      adb.path,
+      arguments: [
+        "-s", device.identifier,
+        "shell", "pm", "list", "package",
+        "-U", packageIdentifier
+      ]
+    )
+
+    let output = try await Error.catch(withMessage: .failedToGetAppUID(packageIdentifier, device)) {
+      try await process.getOutput()
+    }.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    let prefix = "uid:"
+    guard
+      let uidPart = output.split(separator: " ").first(where: { part in
+        part.starts(with: prefix)
+      }),
+      let uid = Int(uidPart.dropFirst(prefix.count))
+    else {
+      throw Error(.failedToParseAppUIDOutput(output))
+    }
+
+    return uid
+  }
+
+  /// Connects to the logcat output of the app with given UID on the given
+  /// device.
+  ///
+  /// Logcat output goes to stdout of this process. This function blocks until
+  /// logcat disconnects.
+  ///
+  /// - Parameter startTime: Only logs after the given time are shown. IF `nil`
+  ///   then all logs for the given app since logcat was last cleared are shown.
+  static func connectToLogcat(
+    forAppWithUID appUID: Int,
+    device: ConnectedDevice,
+    startTime: Date? = nil
+  ) async throws(Error) {
+    let adb = try locateADBExecutable()
+
+    var arguments = [
+      "-s", device.identifier,
+      "logcat", "--uid=\(appUID)",
+    ]
+    if let startTime {
+      arguments += ["-T", "\(startTime.timeIntervalSince1970)"]
+    }
+
+    let process = Process.create(
+      adb.path,
+      arguments: arguments,
+      runSilentlyWhenNotVerbose: false
+    )
+
+    try await Error.catch(withMessage: .failedToConnectToLogcat(appUID, device)) {
+      try await process.runAndWait()
+    }
+  }
 }
