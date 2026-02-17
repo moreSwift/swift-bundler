@@ -11,6 +11,7 @@ struct DebugCommand: AsyncParsableCommand {
     subcommands: [
       DumpPackageGraph.self,
       ListSDKs.self,
+      ListToolchains.self,
     ]
   )
 
@@ -72,6 +73,31 @@ struct DebugCommand: AsyncParsableCommand {
         return KeyedList.Entry(name.bold) {
           sdk.artifactVariant.path
         }
+      }
+    }
+  }
+
+  struct ListToolchains: ErrorHandledCommand {
+    static var configuration = CommandConfiguration(
+      commandName: "list-toolchains",
+      abstract: "List all Swift Toolchains that Swift Bundler knows about"
+    )
+
+    @Flag(
+      name: .shortAndLong,
+      help: "Print verbose error messages.")
+    var verbose = false
+
+    @Flag(help: "Display the output as JSON (includes more information)")
+    var json = false
+
+    func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+      let toolchains = try await RichError<SwiftBundlerError>.catch {
+        try await SwiftToolchainManager.locateSwiftToolchains()
+      }
+
+      try DebugCommand.displayOutput(toolchains, json: json) { toolchain in
+        KeyedList.Entry(toolchain.displayName.bold, toolchain.root.path)
       }
     }
   }
