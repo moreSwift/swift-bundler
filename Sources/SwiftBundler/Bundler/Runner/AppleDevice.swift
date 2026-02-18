@@ -4,5 +4,5 @@ struct AppleDevice: Sendable, Equatable {
   var name: String
   var id: String
   var status: Device.Status
-  let architecture: BuildArchitecture
+  var architecture: BuildArchitecture
 }

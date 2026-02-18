@@ -487,7 +487,6 @@ struct BundleCommand: ErrorHandledCommand {
 
       let matchingSimulators = try await RichError<SwiftBundlerError>.catch {
         try await SimulatorManager.listSimulators(
-          oses: [],
           searchTerm: simulatorSpecifier
         )
       }.sorted().filter { simulator in
@@ -582,8 +581,8 @@ struct BundleCommand: ErrorHandledCommand {
 
   /// Gets the architectures to use for the current build. Validates the '--arch'
   /// arguments passed in by the user.
-  func getArchitectures(platform: Platform)
-    throws(RichError<SwiftBundlerError>) -> [BuildArchitecture]
+  func getArchitectures(platform: Platform, device: Device?)
+    async throws(RichError<SwiftBundlerError>) -> [BuildArchitecture]
   {
     guard !arguments.universal || platform.supportsMultiArchitectureBuilds else {
       let message = SwiftBundlerError.platformDoesNotSupportMultiArchitectureBuilds(
@@ -617,6 +616,24 @@ struct BundleCommand: ErrorHandledCommand {
       )
       throw RichError(message)
     }
+
+    if let device, case .androidDevice(let androidDevice) = device {
+      let architecture = try await RichError<SwiftBundlerError>.catch {
+        let androidDevice = AndroidDebugBridge.ConnectedDevice(
+          identifier: androidDevice.id
+        )
+        return try await AndroidDebugBridge.getArchitecture(of: androidDevice)
+      }
+
+      guard architectures.contains(architecture) else {
+        throw RichError(.deviceArchitectureMismatch(
+          device,
+          architecture,
+          architectures
+        ))
+      }
+    }
+
     return architectures
   }
 
@@ -683,7 +700,10 @@ struct BundleCommand: ErrorHandledCommand {
     }
 
     // Get relevant configuration
-    let architectures = try getArchitectures(platform: resolvedPlatform)
+    let architectures = try await getArchitectures(
+      platform: resolvedPlatform,
+      device: resolvedDevice
+    )
 
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in

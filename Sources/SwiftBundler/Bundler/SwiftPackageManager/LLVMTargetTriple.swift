@@ -14,7 +14,7 @@ struct LLVMTargetTriple: CustomStringConvertible {
     // TODO: Ideally we'd be able to reuse BuildArchitecture.argument(for:) here
     var triple = ""
     switch architecture {
-      case .x86_64, .armv7:
+      case .x86_64, .armv7, .x86:
         triple = architecture.rawValue
       case .arm64:
         switch vendor {

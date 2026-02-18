@@ -227,6 +227,8 @@ enum APKBundler: Bundler {
         "arm-linux-androideabi"
       case .x86_64:
         "x86_64-linux-android"
+      case .x86:
+        "x86-linux-android"
     }
 
     let androidLibrarySearchDirectories = [
@@ -424,7 +426,7 @@ enum APKBundler: Bundler {
     architectures: [BuildArchitecture],
     projectStructure: ProjectStructure
   ) -> String {
-    let architectureNames = architectures.map(\.androidName)
+    let architectureNames = architectures.map(\.androidABIName)
     let abiFilters = architectureNames.map { architecture in
       "\"\(architecture)\""
     }.joined(separator: ", ")

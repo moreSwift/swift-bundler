@@ -15,6 +15,9 @@ extension AndroidDebugBridge {
     case failedToGetAppUID(_ identifier: String, ConnectedDevice)
     case failedToParseAppUIDOutput(_ output: String)
     case failedToConnectToLogcat(_ uid: Int, ConnectedDevice)
+    case unknownAndroidABI(String, ConnectedDevice)
+    case cannotSummonPhysicalDevice(AndroidDevice)
+    case cannotPrepareUnavailableDevice(AndroidDevice, _ unavailableReason: String)
 
     var userFriendlyMessage: String {
       switch self {
@@ -48,6 +51,21 @@ extension AndroidDebugBridge {
           return """
             Failed to connect to logcat output of app with UID \(uid) on \
             device '\(device.identifier)'
+            """
+        case .unknownAndroidABI(let abi, let device):
+          return """
+            Android device '\(device.identifier)' has unknown ABI '\(abi)'. \
+            Please open an issue at \(SwiftBundler.newIssueURL)
+            """
+        case .cannotSummonPhysicalDevice(let device):
+          return """
+            Swift Bundler cannot summon physical Android devices; '\(device.name)' \
+            is effectively unavailable
+            """
+        case .cannotPrepareUnavailableDevice(let device, let reason):
+          return """
+            Failed to prepare '\(device.name)' because it is unavailable \
+            (\(reason))
             """
       }
     }
