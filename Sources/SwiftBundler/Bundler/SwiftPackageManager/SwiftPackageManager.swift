@@ -26,6 +26,9 @@ enum SwiftPackageManager {
     var compiledMetadata: MetadataInserter.CompiledMetadata?
   }
 
+  /// The Android API version to target by default.
+  static let androidAPIVersion = "28"
+
   /// Creates a new package using the given directory as the package's root directory.
   /// - Parameters:
   ///   - directory: The package's root directory (will be created if it doesn't exist).
@@ -319,7 +322,7 @@ enum SwiftPackageManager {
         let targetTriple = try Error.catch {
           try platform.targetTriple(
             withArchitecture: buildContext.genericContext.architectures[0],
-            andPlatformVersion: "28"
+            andPlatformVersion: Self.androidAPIVersion
           )
         }
 

@@ -25,6 +25,47 @@ struct Tests {
     )
   }
 
+  @Test func testSwiftCompilerVersionParsing() throws {
+    let testCases: [(
+      versionString: String,
+      expected: (variant: String?, shortVersion: String, exactVersion: String)
+    )] = [
+      (
+        "Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)",
+        ("Apple", "6.1.2", "6.1.2.1.2")
+      ),
+      (
+        "SwiftWasm Swift version 5.9.2 (swift-5.9.2-RELEASE)",
+        ("SwiftWasm", "5.9.2", "5.9.2-RELEASE")
+      ),
+      (
+        "Apple Swift version 6.0.3 (swiftlang-6.0.3.1.10 clang-1600.0.30.1)",
+        ("Apple", "6.0.3", "6.0.3.1.10")
+      ),
+      (
+        "Apple Swift version 6.3-dev (LLVM 732b15bc343f6d4, Swift aec3d15e6fbe41c)",
+        ("Apple", "6.3-dev", "aec3d15e6fbe41c")
+      ),
+      (
+        "Swift version 6.3-dev effective-5.10 (Swift aec3d15e6fbe41c)",
+        (nil, "6.3-dev", "aec3d15e6fbe41c")
+      ),
+      (
+        "swift-driver version: 1.120.5 Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)",
+        ("Apple", "6.1.2", "6.1.2.1.2")
+      )
+    ]
+
+    for testCase in testCases {
+      let version = try SwiftToolchainManager.parseSwiftCompilerVersionString(
+        testCase.versionString
+      )
+      #expect(version.variant == testCase.expected.variant)
+      #expect(version.shortVersion == testCase.expected.shortVersion)
+      #expect(version.exactVersion == testCase.expected.exactVersion)
+    }
+  }
+
   @Test func testCreationWorkflow() async throws {
     let directory = FileManager.default.temporaryDirectory
       .appendingPathComponent("HelloWorld")

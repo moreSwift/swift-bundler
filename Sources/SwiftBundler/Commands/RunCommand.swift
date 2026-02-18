@@ -107,7 +107,8 @@ struct RunCommand: ErrorHandledCommand {
       arguments: _arguments,
       skipBuild: false,
       builtWithXcode: false,
-      hotReloadingEnabled: hot
+      hotReloadingEnabled: hot,
+      verbose: verbose
     )
 
     // Perform bundling, or do a dry run if instructed to skip building (so

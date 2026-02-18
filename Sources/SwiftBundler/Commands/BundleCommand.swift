@@ -61,12 +61,14 @@ struct BundleCommand: ErrorHandledCommand {
     arguments: OptionGroup<BundleArguments>,
     skipBuild: Bool,
     builtWithXcode: Bool,
-    hotReloadingEnabled: Bool
+    hotReloadingEnabled: Bool,
+    verbose: Bool
   ) {
     _arguments = arguments
     self.skipBuild = skipBuild
     self.builtWithXcode = builtWithXcode
     self.hotReloadingEnabled = hotReloadingEnabled
+    self.verbose = verbose
   }
 
   static func validateArguments(
@@ -515,6 +517,47 @@ struct BundleCommand: ErrorHandledCommand {
 
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
+      // Resolve toolchain
+      var resolvedToolchain = arguments.toolchain
+      if resolvedToolchain == nil && resolvedPlatform == .android {
+        // TODO(stackotter): Refactor SwiftPackageManager so that we can
+        //   resolve the Swift Android SDK once and pass it into each
+        //   piece of code that needs it.
+        let targetTriple = try RichError<SwiftBundlerError>.catch {
+          try resolvedPlatform.targetTriple(
+            withArchitecture: architectures[0],
+            andPlatformVersion: SwiftPackageManager.androidAPIVersion
+          )
+        }
+
+        let androidSDK = try RichError<SwiftBundlerError>.catch {
+          try SwiftSDKManager.locateSDKMatching(
+            hostPlatform: .hostPlatform,
+            hostArchitecture: .host,
+            targetTriple: targetTriple
+          )
+        }
+
+        log.info("Using Swift Android SDK at '\(androidSDK.bundle.path)'")
+
+        do {
+          let toolchain = try await SwiftToolchainManager.locateSwiftToolchain(
+            compatibleWithAndroidSDK: androidSDK
+          ).root
+
+          resolvedToolchain = toolchain
+
+          log.info("Found compatible Swift toolchain at '\(toolchain.path)'")
+        } catch {
+          log.warning(
+            """
+            Failed to resolve compatible toolchain to use for Android: \
+            \(chainDescription(for: error, verbose: verbose))
+            """
+          )
+        }
+      }
+
       // Load configuration
       let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
       let scratchDirectory =
@@ -566,7 +609,7 @@ struct BundleCommand: ErrorHandledCommand {
       let manifest = try await RichError<SwiftBundlerError>.catch {
         try await SwiftPackageManager.loadPackageManifest(
           from: packageDirectory,
-          toolchain: arguments.toolchain
+          toolchain: resolvedToolchain
         )
       }
 
@@ -609,7 +652,7 @@ struct BundleCommand: ErrorHandledCommand {
             ? arguments.additionalXcodeBuildArguments
             : arguments.additionalSwiftPMArguments
         ),
-        toolchain: arguments.toolchain,
+        toolchain: resolvedToolchain,
         hotReloadingEnabled: hotReloadingEnabled,
         isGUIExecutable: true,
         compiledMetadata: compiledMetadata
@@ -693,7 +736,7 @@ struct BundleCommand: ErrorHandledCommand {
           appConfiguration.dependencies,
           packageConfiguration: configuration,
           context: dependencyContext,
-          swiftToolchain: arguments.toolchain,
+          swiftToolchain: resolvedToolchain,
           appName: appName,
           dryRun: skipBuild
         )
