@@ -185,14 +185,15 @@ enum SwiftSDKManager {
           Unsupported Swift SDK schema version '\(schemaVersion)' in manifest \
           at '\(file.path)' (supported schema versions: \
           \(supportedSchemaVersions.joinedGrammatically())). Attempting to load \
-          SDK anyway. Please create an issue at \
-          https://github.com/moreSwift/swift-bundler/issues/new to notify us \
-          about the new schema version
+          SDK anyway. Please create an issue at \(SwiftBundler.newIssueURL) to \
+          notify us about the new schema version
           """
         )
       }
     } else {
-      log.warning("Failed to extract schemaVersion from Swift SDK manifest at '\(file.path)'")
+      log.warning(
+        "Failed to extract schemaVersion from Swift SDK manifest at '\(file.path)'"
+      )
     }
 
     return try Error.catch {

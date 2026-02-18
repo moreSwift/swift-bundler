@@ -5,9 +5,7 @@ import Foundation
 enum Device: Equatable, Sendable, CustomStringConvertible, Comparable {
   /// The host device.
   case host(HostPlatform, BuildArchitecture)
-  /// Mac Catalyst isn't a hst platform, because we don't run Swift Bundler under
-  /// Mac Catalyst, so it can't live under the `.host` case. But for all intents
-  /// and purposes, this `.macCatalyst` case functions very similarly to `.host`.
+  /// A human readable (but incomplete) description of the device.
   case macCatalyst(BuildArchitecture)
   /// A connected Apple device or simulator.
   case appleDevice(AppleDevice)

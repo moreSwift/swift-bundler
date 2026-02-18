@@ -129,7 +129,7 @@ extension APKBundler {
 
     /// Gets the subdirectory of 'jniLibs' used for the given architecture.
     func jniLibsSubdirectory(for architecture: BuildArchitecture) -> URL {
-      jniLibsDirectory / architecture.androidName
+      jniLibsDirectory / architecture.androidABIName
     }
   }
 }

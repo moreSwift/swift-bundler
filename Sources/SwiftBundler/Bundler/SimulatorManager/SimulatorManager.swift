@@ -94,7 +94,7 @@ enum SimulatorManager {
       case .android:
         try await Error.catch {
           try await AndroidVirtualDeviceManager.bootVirtualDevice(
-            AndroidVirtualDevice(name: simulator.id),
+            named: simulator.name,
             additionalArguments: []
           )
         }

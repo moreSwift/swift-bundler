@@ -32,7 +32,9 @@ enum AndroidVirtualDeviceManager {
   }
 
   /// Locates the `emulator` command executable in the given Android SDK.
-  static func locateEmulatorCommandExecutable(inAndroidSDK sdk: URL) throws(Error) -> URL {
+  static func locateEmulatorCommandExecutable(
+    inAndroidSDK sdk: URL
+  ) throws(Error) -> URL {
     // There a few different copies of emulator in the Android SDK. This seems
     // to be the one that works best. The one at tools/emulator can be an x86_64
     // executable on Apple Silicon Macs, which causes it to look for a non-existent
@@ -50,13 +52,80 @@ enum AndroidVirtualDeviceManager {
     let output = try await Error.catch {
       try await Process.create(
         avdManager.path,
-        arguments: ["list", "avd", "--compact"]
+        arguments: ["list", "avd"]
       ).getOutput(excludeStdError: true)
     }
-    let lines = output.trimmingCharacters(in: .newlines).split(separator: "\n")
-    return lines.map { deviceName in
-      AndroidVirtualDevice(name: String(deviceName))
+
+    let blocks = output.components(separatedBy: "---------")
+    return blocks.compactMap { block -> AndroidVirtualDevice? in
+      let lines = block.trimmingCharacters(in: .whitespacesAndNewlines)
+        .split(separator: "\n")
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+      let nameKeyPrefix = "Name: "
+      guard let nameLine = lines.first(where: { $0.starts(with: nameKeyPrefix) }) else {
+        log.warning("Failed to locate name of AVD, skipping")
+        log.debug("Output block lines: \(lines)")
+        return nil
+      }
+      let name = nameLine.dropFirst(nameKeyPrefix.count)
+
+      let pathKeyPrefix = "Path: "
+      guard let pathLine = lines.first(where: { $0.starts(with: pathKeyPrefix) }) else {
+        log.warning("Failed to locate path of AVD, skipping")
+        log.debug("Output block lines: \(lines)")
+        return nil
+      }
+      let path = pathLine.dropFirst(pathKeyPrefix.count)
+
+      let configIni = URL(fileURLWithPath: String(path)) / "config.ini"
+      let configIniContents: String
+      do {
+        configIniContents = try String(contentsOf: configIni)
+      } catch {
+        log.warning("Failed to read AVD config file; \(error.localizedDescription)")
+        return nil
+      }
+
+      let values = parseIniRelaxed(configIniContents)
+      guard let architectureString = values["hw.cpu.arch"] else {
+        log.warning("Failed to locate AVD architecture in \(configIni.path)")
+        return nil
+      }
+
+      guard let architecture = BuildArchitecture(fromAndroidName: architectureString) else {
+        log.warning(
+          "AVD '\(name)' has unrecognized architecture '\(architectureString)', skipping"
+        )
+        return nil
+      }
+
+      return AndroidVirtualDevice(
+        name: String(name),
+        architecture: architecture
+      )
     }
+  }
+
+  /// Parses an ini file (ignoring unexpected constructs). This only understands
+  /// the part of the ini language that we need to parse Android AVD config.ini files.
+  private static func parseIniRelaxed(_ iniContents: String) -> [String: String] {
+    var values: [String: String] = [:]
+    for line in iniContents.split(separator: "\n") {
+      let line = line.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !line.starts(with: "#") else {
+        continue
+      }
+
+      let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+      guard parts.count == 2 else {
+        log.warning("Failed to parse config.ini line; '\(line)'")
+        continue
+      }
+
+      values[String(parts[0])] = String(parts[1])
+    }
+    return values
   }
 
   /// Converts a virtual device to its simulator representation.
@@ -69,8 +138,9 @@ enum AndroidVirtualDeviceManager {
     _ device: AndroidVirtualDevice,
     bootedVirtualDevices: [AndroidVirtualDevice]
   ) async throws(Error) -> Simulator {
-    Simulator(
-      id: device.name,
+    let bootedDevice = bootedVirtualDevices.first { $0.name == device.name }
+    return Simulator(
+      id: bootedDevice?.adbIdentifier ?? "<not_booted \(device.name)>",
       name: device.name,
       isAvailable: true,
       isBooted: bootedVirtualDevices.contains { $0.name == device.name },
@@ -80,7 +150,9 @@ enum AndroidVirtualDeviceManager {
   }
 
   /// Enumerates booted Android virtual devices.
-  static func enumerateBootedVirtualDevices() async throws(Error) -> [AndroidVirtualDevice] {
+  static func enumerateBootedVirtualDevices()
+    async throws(Error) -> [AndroidVirtualDevice]
+  {
     let connectedDevices = try await Error.catch {
       try await AndroidDebugBridge.listConnectedDevices()
     }
@@ -90,17 +162,29 @@ enum AndroidVirtualDeviceManager {
           try await AndroidDebugBridge.checkIsEmulator(device)
         }
       }
-    return try await connectedEmulators.asyncMap { (emulator) async throws(Error) in
-      try await Error.catch {
-        let name = try await AndroidDebugBridge.getEmulatorAVDName(emulator)
-        return AndroidVirtualDevice(name: name)
+
+    let bootedAVDNames = try await connectedEmulators
+      .asyncMap { (emulator) async throws(Error) in
+        try await Error.catch {
+          try await AndroidDebugBridge.getEmulatorAVDName(emulator)
+        }
       }
+
+    let allEmulators = try await enumerateVirtualDevices()
+    return allEmulators.compactMap { emulator in
+      guard let bootedIndex = bootedAVDNames.firstIndex(of: emulator.name) else {
+        return nil
+      }
+
+      var emulator = emulator
+      emulator.adbIdentifier = connectedEmulators[bootedIndex].identifier
+      return emulator
     }
   }
 
   /// Boots a given Android virtual device.
   /// - Parameters:
-  ///   - device: The device to boot.
+  ///   - name: The name of the device to boot.
   ///   - additionalArguments: Additional arguments to pass to the 'emulator' CLI.
   ///   - checkAlreadyBooted: If `false`, skips checking whether the emulator has
   ///     already been booted. Setting this to `false` can lead to unintuitive
@@ -109,7 +193,7 @@ enum AndroidVirtualDeviceManager {
   ///     doesn't have its lifetime linked to Swift Bundler and gets its
   ///     stdout/stderr routed to /dev/null.
   static func bootVirtualDevice(
-    _ device: AndroidVirtualDevice,
+    named name: String,
     additionalArguments: [String],
     checkAlreadyBooted: Bool = true,
     detach: Bool = true
@@ -118,12 +202,12 @@ enum AndroidVirtualDeviceManager {
 
     if checkAlreadyBooted {
       let bootedDevices = try await enumerateBootedVirtualDevices()
-      guard !bootedDevices.contains(device) else {
+      guard !bootedDevices.map(\.name).contains(name) else {
         if detach {
           log.warning("Device already booted")
           return
         } else {
-          throw Error(.cannotAttachToAlreadyBootedEmulator(device.name))
+          throw Error(.cannotAttachToAlreadyBootedEmulator(name))
         }
       }
     }
@@ -132,7 +216,7 @@ enum AndroidVirtualDeviceManager {
     // or not the process gets killed along with Swift Bundler.
     let process = Process()
     process.executableURL = emulatorCommand
-    process.arguments = ["-avd", device.name] + additionalArguments
+    process.arguments = ["-avd", name] + additionalArguments
     if detach {
       let devNull = FileHandle(forWritingAtPath: "/dev/null")
       process.standardError = devNull

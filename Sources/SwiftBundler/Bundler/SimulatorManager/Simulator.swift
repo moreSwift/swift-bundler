@@ -1,7 +1,7 @@
 import Foundation
 
 /// A simulator that Swift Bundler can operate on.
-struct Simulator: Comparable, Sendable, Equatable {
+struct Simulator: Sendable, Equatable, Comparable {
   /// The simulator's id according to its corresponding management tool.
   var id: String
   /// The simulator's user facing name.
