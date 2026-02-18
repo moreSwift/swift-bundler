@@ -32,7 +32,9 @@ enum AndroidVirtualDeviceManager {
   }
 
   /// Locates the `emulator` command executable in the given Android SDK.
-  static func locateEmulatorCommandExecutable(inAndroidSDK sdk: URL) throws(Error) -> URL {
+  static func locateEmulatorCommandExecutable(
+    inAndroidSDK sdk: URL
+  ) throws(Error) -> URL {
     // There a few different copies of emulator in the Android SDK. This seems
     // to be the one that works best. The one at tools/emulator can be an x86_64
     // executable on Apple Silicon Macs, which causes it to look for a non-existent
@@ -69,17 +71,20 @@ enum AndroidVirtualDeviceManager {
     _ device: AndroidVirtualDevice,
     bootedVirtualDevices: [AndroidVirtualDevice]
   ) async throws(Error) -> Simulator {
-    Simulator(
-      id: device.name,
+    let bootedDevice = bootedVirtualDevices.first { $0.name == device.name }
+    return Simulator(
+      id: bootedDevice?.adbIdentifier ?? "<not_booted \(device.name)>",
       name: device.name,
       isAvailable: true,
-      isBooted: bootedVirtualDevices.contains { $0.name == device.name },
+      isBooted: bootedDevice != nil,
       os: .android
     )
   }
 
   /// Enumerates booted Android virtual devices.
-  static func enumerateBootedVirtualDevices() async throws(Error) -> [AndroidVirtualDevice] {
+  static func enumerateBootedVirtualDevices()
+    async throws(Error) -> [AndroidVirtualDevice]
+  {
     let connectedDevices = try await Error.catch {
       try await AndroidDebugBridge.listConnectedDevices()
     }
@@ -92,7 +97,10 @@ enum AndroidVirtualDeviceManager {
     return try await connectedEmulators.asyncMap { (emulator) async throws(Error) in
       try await Error.catch {
         let name = try await AndroidDebugBridge.getEmulatorAVDName(emulator)
-        return AndroidVirtualDevice(name: name)
+        return AndroidVirtualDevice(
+          adbIdentifier: emulator.identifier,
+          name: name
+        )
       }
     }
   }

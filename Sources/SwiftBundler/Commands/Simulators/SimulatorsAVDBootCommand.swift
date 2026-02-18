@@ -8,18 +8,21 @@ struct SimulatorsAVDBootCommand: ErrorHandledCommand {
     abstract: "Boot an Android Virtual Device."
   )
 
-  /// The name of the emulator to boot.
   @Argument(
     help: """
       The name of the emulator to start. Supports partial substring matching.
       """)
   var name: String
 
-  /// Arguments to pass through to the 'emulator' CLI.
   @Argument(
     parsing: .postTerminator,
     help: "Additional arguments for the 'emulator' CLI.")
   var emulatorArguments: [String] = []
+
+  @Option(
+    name: .customLong("arch"),
+    help: "Architecture to boot the emulator with.")
+  var architecture: BuildArchitecture
 
   @Flag(
     name: .shortAndLong,

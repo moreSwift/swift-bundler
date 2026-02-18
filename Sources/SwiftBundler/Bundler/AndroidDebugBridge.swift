@@ -51,8 +51,13 @@ enum AndroidDebugBridge {
       }
 
       let parts = line.split(separator: "\t")
-      guard parts.count == 2, parts[1] == "device" else {
+      guard parts.count == 2, parts[1] == "device" || parts[1] == "offline" else {
         log.warning("Failed to parse line of 'adb devices' output: '\(line)'")
+        continue
+      }
+
+      if parts[1] == "offline" {
+        log.debug("Skipping offline device '\(parts[0])'")
         continue
       }
 
@@ -62,18 +67,63 @@ enum AndroidDebugBridge {
     return devices
   }
 
-  /// Gets the model of the given device.
-  static func getModel(of device: ConnectedDevice) async throws(Error) -> String {
+  /// Gets whether the given device is ready for APK installations yet. Useful
+  /// for checking whether emulators are booted enough to accept installations.
+  static func getIsReadyForAPKInstall(
+    _ device: ConnectedDevice
+  ) async throws(Error) -> Bool {
     let adb = try locateADBExecutable()
     let process = Process.create(
       adb.path,
-      arguments: ["-s", device.identifier, "shell", "getprop", "ro.product.model"]
+      arguments: ["-s", device.identifier, "shell", "service", "check", "package"]
+    )
+
+    let output = try await Error.catch {
+      try await process.getOutput()
+    }.trimmingCharacters(in: .whitespacesAndNewlines)
+    return output.hasSuffix(": found")
+  }
+
+  /// Gets the given property of the given device using `adb shell getprop`.
+  static func getProperty(
+    _ property: String,
+    of device: ConnectedDevice
+  ) async throws(Error) -> String {
+    let adb = try locateADBExecutable()
+    let process = Process.create(
+      adb.path,
+      arguments: ["-s", device.identifier, "shell", "getprop", property]
     )
 
     let output = try await Error.catch {
       try await process.getOutput()
     }
     return output.trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  /// Gets the architecture of the given device.
+  static func getArchitecture(
+    of device: ConnectedDevice
+  ) async throws(Error) -> BuildArchitecture {
+    let abi = try await getABI(of: device)
+
+    guard let architecture = BuildArchitecture.allCases.first(where: {
+      $0.androidName == abi
+    }) else {
+      throw Error(.unknownAndroidABI(abi, device))
+    }
+
+    return architecture
+  }
+
+  /// Gets the ABI of the given device.
+  static func getABI(of device: ConnectedDevice) async throws(Error) -> String {
+    try await getProperty("ro.product.cpu.abi", of: device)
+  }
+
+  /// Gets the model of the given device.
+  static func getModel(of device: ConnectedDevice) async throws(Error) -> String {
+    try await getProperty("ro.product.model", of: device)
   }
 
   /// Checks whether the given device is an emulator or not.
@@ -89,7 +139,7 @@ enum AndroidDebugBridge {
       return true
     } catch {
       switch error.message {
-        case .nonZeroExitStatusWithOutput(_, _, 1):
+        case .nonZeroExitStatusWithOutput(_, _, 1), .nonZeroExitStatus(_, 1):
           return false
         default:
           throw Error(.failedToCheckWhetherDeviceIsEmulator(device.identifier), cause: error)
@@ -231,5 +281,96 @@ enum AndroidDebugBridge {
     try await Error.catch(withMessage: .failedToConnectToLogcat(appUID, device)) {
       try await process.runAndWait()
     }
+  }
+
+  /// Prepares a device for ADB operations such as app installation.
+  ///
+  /// This involves checking whether the device is available. And if it's a
+  /// simulator we boot it automatically. This either blocks until the device
+  /// is available or throws an error if the device cannot be made available.
+  static func prepareDevice(
+    _ device: AndroidDevice
+  ) async throws(Error) -> ConnectedDevice {
+    let androidDevice: ConnectedDevice
+    switch device.status {
+      case .available:
+        androidDevice = ConnectedDevice(identifier: device.id)
+      case .unavailable(let reason):
+        throw Error(.cannotPrepareUnavailableDevice(device, reason))
+      case .summonable:
+        guard device.isEmulator else {
+          throw Error(.cannotSummonPhysicalDevice(device))
+        }
+
+        log.info("Preparing emulator '\(device.name)'")
+        try await Error.catch {
+          try await AndroidVirtualDeviceManager.bootVirtualDevice(
+            AndroidVirtualDevice(adbIdentifier: nil, name: device.name),
+            additionalArguments: []
+          )
+        }
+
+        var iterationCount = 0
+        while true {
+          let bootedAVDs = try await Error.catch {
+            try await AndroidDebugBridge
+              .listConnectedDevices()
+              .typedAsyncFilter { device in
+                // The '&&' short-circuiting autoclosure doesn't allow async
+                let isEmulator = try await checkIsEmulator(device)
+                if !isEmulator {
+                  return false
+                } else {
+                  log.debug(
+                    """
+                    '\(device.identifier)' isn't ready for APK installation yet \
+                    (package service not available)
+                    """
+                  )
+                  return try await getIsReadyForAPKInstall(device)
+                }
+              }
+              .typedAsyncMap { device in
+                (
+                  device: device,
+                  name: try await getEmulatorAVDName(device)
+                )
+              }
+          }
+
+          if let bootedDevice = bootedAVDs.first(where: { $0.name == device.name }) {
+            androidDevice = bootedDevice.device
+            if iterationCount >= 2 {
+              // Print a new line after our progress indicator
+              print()
+            }
+            break
+          }
+
+          iterationCount += 1
+
+          // Only indicate that we're waiting once we know we actually have to wait
+          if iterationCount == 1 {
+            log.info("Waiting for emulator to boot")
+          }
+
+          // Show a progress indicator. Only show it after two failed iterations
+          // because it'd look weird if we just printed a single period and then
+          // succeeded.
+          if iterationCount == 2 {
+            print("..", terminator: "")
+          } else if iterationCount > 2 {
+            print(".", terminator: "")
+          }
+          fflush(stdout)
+
+          try await Error.catch {
+            // 0.5 seconds
+            try await Task.sleep(nanoseconds: 500_000_000)
+          }
+        }
+    }
+
+    return androidDevice
   }
 }

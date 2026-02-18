@@ -252,10 +252,12 @@ enum Runner {
       )
     }
 
-    let apk = bundlerOutput.bundle
+    let androidDevice = try await Error.catch {
+      try await AndroidDebugBridge.prepareDevice(device)
+    }
 
+    let apk = bundlerOutput.bundle
     log.info("Installing '\(apk.lastPathComponent)' on '\(device.name)'")
-    let androidDevice = AndroidDebugBridge.ConnectedDevice(identifier: device.id)
     try await Error.catch {
       try await AndroidDebugBridge.installApk(
         bundlerOutput.bundle,

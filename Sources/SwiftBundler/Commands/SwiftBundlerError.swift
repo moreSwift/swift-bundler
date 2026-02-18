@@ -23,6 +23,11 @@ enum SwiftBundlerError: Throwable {
   case failedToEncodeJSONOutput
   case invalidVersionString(String)
   case commandLineValidationError(String)
+  case deviceArchitectureMismatch(
+    Device,
+    _ deviceArchitecture: BuildArchitecture,
+    _ selectedArchitectures: [BuildArchitecture]
+  )
 
   var userFriendlyMessage: String {
     switch self {
@@ -118,6 +123,17 @@ enum SwiftBundlerError: Throwable {
           """
       case .commandLineValidationError(let message):
         return message
+      case .deviceArchitectureMismatch(
+        let device,
+        let architecture,
+        let selectedArchitectures
+      ):
+        return """
+          Device '\(device.name)' has architecture '\(architecture)', but build
+          is targeting \(
+            selectedArchitectures.map(\.rawValue).joinedGrammatically()
+          )
+          """
     }
   }
 }

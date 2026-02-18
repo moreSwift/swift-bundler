@@ -110,7 +110,11 @@ struct SimulatorsListCommand: ErrorHandledCommand {
           } else {
             List {
               for simulator in filteredAndroidSimulators {
-                List.Entry("\(simulator.name) (booted: \(simulator.isBooted))")
+                if simulator.isBooted {
+                  List.Entry("\(simulator.name) (booted: true, adbId: \(simulator.id))")
+                } else {
+                  List.Entry("\(simulator.name) (booted: false)")
+                }
               }
             }
           }
