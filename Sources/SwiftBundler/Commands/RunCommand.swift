@@ -83,7 +83,8 @@ struct RunCommand: ErrorHandledCommand {
       skipBuild: false,
       showBundlePath: false,
       builtWithXcode: false,
-      hotReloadingEnabled: hot
+      hotReloadingEnabled: hot,
+      verbose: verbose
     )
 
     let resolvedBundler = arguments.bundler

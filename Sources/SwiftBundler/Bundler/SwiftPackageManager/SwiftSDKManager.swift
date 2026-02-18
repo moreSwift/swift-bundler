@@ -246,4 +246,51 @@ enum SwiftSDKManager {
 
     return silo
   }
+
+  /// Attempts to detect the Swift compiler version used to generate a Swift
+  /// Android SDK.
+  ///
+  /// This is a bit hacky and might break at some point, but our approach is
+  /// to locate a known `swiftinterface` file and parse out the
+  /// `swift-compiler-version` included in the comments at the top of the file.
+  static func getCompilerVersionString(
+    fromAndroidSDK sdk: SwiftSDK
+  ) throws(Error) -> String {
+    // TODO(stackotter): Implement proper triple parsing. I generally do things
+    //   up-front, but this would probably take a little while to get right and
+    //   this is only here to catch unintended usage of the function (isn't part
+    //   of core functionality).
+    guard sdk.triple.contains("-unknown-linux-android") else {
+      throw Error(.cannotGetCompilerVersionStringFromNonAndroidSDK(sdk))
+    }
+
+    // Remove the API from the target triple
+    // TODO(stackotter): Implement proper triple parsing so that we can drop
+    //   the API version nicer
+    let baseTriple = sdk.triple.trimmingCharacters(in: .decimalDigits)
+    let interface = sdk.resourcesDirectory
+      / "android/Swift.swiftmodule/\(baseTriple).swiftinterface"
+    let interfaceContents = try Error.catch {
+      try String(contentsOf: interface)
+    }
+
+    let commentPrefix = "// "
+    let commentLines = interfaceContents.split(separator: "\n")
+      .prefix { $0.starts(with: commentPrefix) }
+      .map { $0.dropFirst(commentPrefix.count) }
+
+    let tag = "swift-compiler-version: "
+    guard
+      let compilerVersionComment = commentLines.first(where: { $0.starts(with: tag) })
+    else {
+      throw Error(.couldNotLocateCompilerVersionString(sdk, interface))
+    }
+
+    // Trim in case there's a carriage return or other unexpected whitespace. We
+    // aren't parsing something with a spec so we should be lenient.
+    let compilerVersion = compilerVersionComment.dropFirst(tag.count)
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+
+    return compilerVersion
+  }
 }
