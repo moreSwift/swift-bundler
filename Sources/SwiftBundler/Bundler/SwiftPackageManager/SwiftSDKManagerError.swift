@@ -13,6 +13,8 @@ extension SwiftSDKManager {
       hostArchitecture: BuildArchitecture,
       targetTriple: LLVMTargetTriple
     )
+    case cannotGetCompilerVersionStringFromNonAndroidSDK(SwiftSDK)
+    case couldNotLocateCompilerVersionString(SwiftSDK, _ interface: URL)
 
     var userFriendlyMessage: String {
       switch self {
@@ -24,6 +26,17 @@ extension SwiftSDKManager {
           return """
             No SDKs match host platform '\(hostPlatform.platform.displayName)', \
             host architecture '\(hostArchitecture)', and target triple '\(targetTriple)'
+            """
+        case .cannotGetCompilerVersionStringFromNonAndroidSDK(let sdk):
+          return """
+            Swift Bundler doesn't support fetching compiler version strings \
+            from non-Android SDKs; sdk=\(sdk.generallyUniqueIdentifier)
+            """
+        case .couldNotLocateCompilerVersionString(let sdk, let interface):
+          return """
+            Could not detect Swift compiler version used to generate Swift \
+            interface at '\(interface.path)' (in \
+            '\(sdk.generallyUniqueIdentifier)' sdk)
             """
       }
     }

@@ -1,4 +1,5 @@
 import Foundation
+import Parsing
 
 /// A manager for Swift toolchains.
 enum SwiftToolchainManager {
@@ -202,6 +203,226 @@ enum SwiftToolchainManager {
       displayName: displayName,
       compilerVersionString: versionString,
       kind: kind
+    )
+  }
+
+  /// Locates a Swift toolchain compatible with the given Swift Android SDK.
+  ///
+  /// Logs a warning if multiple compatible toolchains are found.
+  static func locateSwiftToolchain(
+    compatibleWithAndroidSDK androidSDK: SwiftSDK
+  ) async throws(Error) -> SwiftToolchain {
+    // TODO(stackotter): Update if we implement proper triple parsing
+    guard androidSDK.triple.contains("-unknown-linux-android") else {
+      throw Error(.cannotDoToolchainMatchingForNonAndroidSDKs(androidSDK))
+    }
+
+    let compilerVersionString = try Error.catch {
+      try SwiftSDKManager.getCompilerVersionString(fromAndroidSDK: androidSDK)
+    }
+    let compilerVersion = try parseSwiftCompilerVersionString(compilerVersionString)
+
+    let toolchains = try await Error.catch {
+      try await locateSwiftToolchains()
+    }
+
+    var parsedToolchains: [(toolchain: SwiftToolchain, version: SwiftCompilerVersion)] = []
+    for toolchain in toolchains {
+      do {
+        let toolchainCompilerVersion = try parseSwiftCompilerVersionString(
+          toolchain.compilerVersionString
+        )
+        parsedToolchains.append((toolchain, toolchainCompilerVersion))
+      } catch {
+        log.warning(
+          """
+          Failed to parse toolchain compiler version \
+          '\(toolchain.compilerVersionString)' of toolchain at \
+          '\(toolchain.root.path)'; skipping
+          """
+        )
+        continue
+      }
+    }
+
+    func computeKey(
+      toolchainVersion: SwiftCompilerVersion,
+      sdkVersion: SwiftCompilerVersion,
+      tieBreaker: SwiftToolchain?
+    ) -> (Int, Int, String) {
+      (
+        (toolchainVersion.exactVersion == sdkVersion.exactVersion) ? 1 : 0,
+        (toolchainVersion.shortVersion == sdkVersion.shortVersion) ? 1 : 0,
+        // Use toolchain paths to provide stable ordering in the case of ties
+        tieBreaker?.root.path ?? ""
+      )
+    }
+
+    let sortedToolchains = parsedToolchains.filter { toolchain in
+      toolchain.version.exactVersion == compilerVersion.exactVersion
+      || toolchain.version.shortVersion == compilerVersion.shortVersion
+    }.sorted { first, second in
+      computeKey(
+        toolchainVersion: first.version,
+        sdkVersion: compilerVersion,
+        tieBreaker: first.toolchain
+      ) <= computeKey(
+        toolchainVersion: second.version,
+        sdkVersion: compilerVersion,
+        tieBreaker: second.toolchain
+      )
+    }
+
+    log.debug(
+      """
+      Sorted toolchain candidates (in order of increasing relevance): \
+      \(sortedToolchains)
+      """
+    )
+
+    guard let toolchain = sortedToolchains.last else {
+      throw Error(.failedToFindToolchainMatchingAndroidSDK(androidSDK))
+    }
+
+    let bestKey = computeKey(
+      toolchainVersion: toolchain.version,
+      sdkVersion: compilerVersion,
+      tieBreaker: nil
+    )
+    let equalMatches = sortedToolchains.filter { otherToolchain in
+      computeKey(
+        toolchainVersion: otherToolchain.version,
+        sdkVersion: compilerVersion,
+        tieBreaker: nil
+      ) == bestKey
+    }
+
+    if equalMatches.count > 1 {
+      log.warning(
+        """
+        Found multiple Swift toolchains compatible with given Android SDK \
+        ('\(androidSDK.generallyUniqueIdentifier)'). Choosing one at \
+        '\(toolchain.toolchain.root.path)'. Use '-v' to see all compatible \
+        toolchains
+        """
+      )
+      log.debug("Compatible toolchains: \(equalMatches)")
+    }
+
+    return toolchain.toolchain
+  }
+
+  /// A parsed Swift compiler version (from `swift -version` or
+  /// `swift -print-target-info`)
+  struct SwiftCompilerVersion: Hashable, Sendable {
+    // The full un-parsed version string.
+    var fullVersionString: String
+    // The compiler's variant (e.g. Apple, or SwiftWasm).
+    var variant: String?
+    // The short version (e.g. 6.0.3).
+    var shortVersion: String
+    // The exact version (e.g. 6.0.3.1.10, or a commit hash).
+    var exactVersion: String
+  }
+
+  /// Parses a Swift compiler version string (from `swift -version` or
+  /// `swift -print-target-info`).
+  static func parseSwiftCompilerVersionString(
+    _ versionString: String
+  ) throws(Error) -> SwiftCompilerVersion {
+    // Example version strings:
+    //   Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)
+    //   SwiftWasm Swift version 5.9.2 (swift-5.9.2-RELEASE)
+    //   Apple Swift version 6.0.3 (swiftlang-6.0.3.1.10 clang-1600.0.30.1)
+    //   Apple Swift version 6.3-dev (LLVM 732b15bc343f6d4, Swift aec3d15e6fbe41c)
+    //   Swift version 6.3-dev effective-5.10 (Swift aec3d15e6fbe41c)
+    //   swift-driver version: 1.120.5 Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)
+    let parser = Parse(input: Substring.self) {
+      PrefixUpTo("Swift version ")
+      "Swift version "
+      PrefixUpTo(" ")
+
+      PrefixThrough("(").map { _ in }
+      PrefixUpTo(")")
+      ")"
+    }
+    let (variantPart, shortVersion, exactVersionsSection) = try Error.catch {
+      try parser.parse(versionString)
+    }
+
+    // There are two variants of the parenthesized exact version section; one
+    // that's space separated, and one that's comma separated. We can't use
+    // commas to detect the comma separated variant because the list sometimes
+    // only has a single entry. And we can't just separate on spaces and trim
+    // commas because the comma separated entries contain spaces within them.
+    // We use the string 'Swift ' to detect the comma separated variant because
+    // if it's not present we'd fail to extract the Swift version anyway.
+    let exactSwiftVersion: String
+    if exactVersionsSection.contains("Swift ") {
+      let exactVersionParts = exactVersionsSection.components(separatedBy: ", ")
+      let prefix = "Swift "
+      guard let swiftPart = exactVersionParts.first(where: {
+        $0.starts(with: prefix)
+      }) else {
+        throw Error(.failedToParseSwiftCompilerVersionString(
+          versionString: versionString,
+          message: """
+            Expected to find version preceeded by '\(prefix)' within the \
+            parenthesized section
+            """
+        ))
+      }
+
+      exactSwiftVersion = String(swiftPart.dropFirst(prefix.count))
+    } else {
+      let exactVersionParts = exactVersionsSection.split(separator: " ")
+      let prefix1 = "swift-"
+      let prefix2 = "swiftlang-"
+      guard let swiftPart = exactVersionParts.first(where: {
+        $0.starts(with: prefix1) || $0.starts(with: prefix2)
+      }) else {
+        throw Error(.failedToParseSwiftCompilerVersionString(
+          versionString: versionString,
+          message: """
+            Expected to find version preceeded by '\(prefix1)' or '\(prefix2)' \
+            within the parenthesized section
+            """
+        ))
+      }
+
+      if swiftPart.starts(with: prefix1) {
+        exactSwiftVersion = String(swiftPart.dropFirst(prefix1.count))
+      } else {
+        exactSwiftVersion = String(swiftPart.dropFirst(prefix2.count))
+      }
+    }
+
+    let variant: String?
+    let trimmedVariantPart = variantPart
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmedVariantPart.isEmpty {
+      variant = nil
+    } else {
+      // Drop the swift-driver version if provided. It feels like a bug that
+      // `swift -version` includes the driver version and Swift version on the
+      // same line, but it does
+      if trimmedVariantPart.starts(with: "swift-driver version: ") {
+        let parts = trimmedVariantPart.split(separator: " ", maxSplits: 3)
+        if parts.count == 4 {
+          variant = String(parts[3])
+        } else {
+          variant = nil
+        }
+      } else {
+        variant = trimmedVariantPart
+      }
+    }
+
+    return SwiftCompilerVersion(
+      fullVersionString: versionString,
+      variant: variant,
+      shortVersion: String(shortVersion),
+      exactVersion: exactSwiftVersion
     )
   }
 
