@@ -20,4 +20,10 @@ enum OS: String, CaseIterable {
         return "Windows"
     }
   }
+
+  /// The OS's name in encoded target dependency conditions in Swift
+  /// package manifests.
+  var manifestConditionName: String {
+    rawValue.lowercased()
+  }
 }

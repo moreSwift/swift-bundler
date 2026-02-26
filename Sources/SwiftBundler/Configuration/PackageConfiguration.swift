@@ -3,7 +3,7 @@ import TOMLKit
 
 /// The configuration for a package.
 @Configuration(overlayable: false)
-struct PackageConfiguration: Codable {
+struct PackageConfiguration: Codable, Sendable {
   /// The current configuration format version.
   static let currentFormatVersion = 2
 
@@ -12,29 +12,35 @@ struct PackageConfiguration: Codable {
 
   /// The configuration format version.
   var formatVersion: Int
-  /// The configuration for each app in the package (packages can contain multiple apps). Maps app name to app configuration.
-  var apps: [String: AppConfiguration]
-  /// The configuration for each lib in the package. Maps library name to
-  /// library configuration. Generally used when integrating libraries built
+  /// The configuration for each app in the package (packages can contain
+  /// multiple apps). Maps app name to app configuration.
+  var apps: [String: AppConfiguration]?
+  /// The configuration for each project in the package. Maps project name to
+  /// project configuration. Generally used when integrating libraries built
   /// with different build systems such as CMake.
   var projects: [String: ProjectConfiguration]?
   /// The configuration for each project builder defined within this package.
   /// Maps builder name to builder configuration.
   var builders: [String: BuilderConfiguration]?
+  /// Optional configuration for each target in the package. Maps target name
+  /// to target configuration.
+  var targets: [String: TargetConfiguration]?
 
   /// Creates a new package configuration.
   /// - Parameter apps: The package's apps.
   /// - Parameter projects: The package's subprojects.
   /// - Parameter builders: The package's project builders.
   init(
-    apps: [String: AppConfiguration] = [:],
+    apps: [String: AppConfiguration]? = nil,
     projects: [String: ProjectConfiguration]? = nil,
-    builders: [String: BuilderConfiguration]? = nil
+    builders: [String: BuilderConfiguration]? = nil,
+    targets: [String: TargetConfiguration]? = nil
   ) {
     formatVersion = Self.currentFormatVersion
     self.apps = apps
     self.projects = projects
     self.builders = builders
+    self.targets = targets
   }
 
   // MARK: Static methods
@@ -240,7 +246,7 @@ struct PackageConfiguration: Codable {
 
   /// Gets the standard configuration file location for a given directory.
   static func standardConfigurationFileLocation(for directory: URL) -> URL {
-    directory.appendingPathComponent(configurationFileName)
+    directory / configurationFileName
   }
 }
 
