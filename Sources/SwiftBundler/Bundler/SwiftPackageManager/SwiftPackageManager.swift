@@ -381,6 +381,19 @@ enum SwiftPackageManager {
     }
   }
 
+  /// Runs `swift package resolve`.
+  static func resolveDependencies(
+    packageDirectory: URL,
+    toolchain: URL?
+  ) async throws(Error) {
+    try await Error.catch(withMessage: .failedToResolveDependencies(packageDirectory)) {
+      try await Process.create(
+        swiftPath(toolchain: toolchain),
+        arguments: ["package", "resolve"]
+      ).runAndWait()
+    }
+  }
+
   /// Gets the default products directory for builds occuring within the given context.
   /// - Parameters:
   ///   - buildContext: The context the build is occuring within.

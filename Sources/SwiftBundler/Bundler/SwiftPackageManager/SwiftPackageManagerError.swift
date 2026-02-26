@@ -23,6 +23,15 @@ extension SwiftPackageManager {
     case failedToGetToolsVersion
     case invalidToolsVersion(String)
     case swiftPMDoesntSupportUniversalBuildsForPlatform(Platform, [BuildArchitecture])
+    case cannotCompileExecutableAsDylibForPlatform(Platform)
+    case failedToReadArtifactBundleInfoJSON(URL)
+    case failedToParsePackageDump
+    case failedToResolveDependencies(URL)
+    case missingDependencyCheckout(URL)
+    case packageNotFoundInGraph(PackageReference)
+    case targetNotFoundInPackage(_ target: String, PackageReference)
+    case productNotFoundInPackage(_ product: String, PackageReference)
+    case packageIntentionallyExcludedFromPackageGraph(PackageReference)
 
     var userFriendlyMessage: String {
       switch self {
@@ -72,6 +81,47 @@ extension SwiftPackageManager {
             Swift Bundler cannot perform universal builds targeting \
             \(platform.displayName)\(clause); multi-architecture build requested \
             for \(architectures.map(\.rawValue).joinedGrammatically())
+            """
+        case .cannotCompileExecutableAsDylibForPlatform(let platform):
+          return "Cannot compile executable as dylib for platform '\(platform)'"
+        case .failedToReadArtifactBundleInfoJSON(let file):
+          return "Failed to read artifactbundle's info.json at '\(file.path)'"
+        case .failedToParsePackageDump:
+          return """
+            Failed to parse output of 'swift package dump-package', please file \
+            an issue at \(SwiftBundler.newIssueURL)
+            """
+        case .failedToResolveDependencies(let package):
+          let packagePath = package.path(relativeTo: .currentDirectory)
+          return """
+            Failed to resolve dependencies of Swift package at '\(packagePath)'
+            """
+        case .missingDependencyCheckout(let checkout):
+          return """
+            Expected package checkout at '\(checkout.path)' after resolving
+            dependencies, but it wasn't found.
+            """
+        case .packageNotFoundInGraph(let packageReference):
+          return """
+            Package with identity '\(packageReference.identity)' not found in \
+            package graph
+            """
+        case .targetNotFoundInPackage(let target, let packageReference):
+          return """
+            Target '\(target)' not found in package with identity \
+            '\(packageReference.identity)'
+            """
+        case .productNotFoundInPackage(let product, let packageReference):
+          return """
+            Product '\(product)' not found in package with identity \
+            '\(packageReference.identity)'
+            """
+        case .packageIntentionallyExcludedFromPackageGraph(let packageReference):
+          return """
+            Attempted to access package dependency with identity \
+            '\(packageReference.identity)', but it was intentionally excluded \
+            when loading the package graph as it was believed to be unused \
+            (for the purposes that Swift Bundler needs the package graph for)
             """
       }
     }

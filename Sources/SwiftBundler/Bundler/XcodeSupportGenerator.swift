@@ -11,7 +11,7 @@ enum XcodeSupportGenerator {
     in packageDirectory: URL
   ) throws(Error) {
     let schemesDirectory = try getSchemesDirectory(in: packageDirectory)
-    for (app, appConfiguration) in configuration.apps {
+    for (app, appConfiguration) in configuration.apps ?? [:] {
       try generateAppScheme(for: app, with: appConfiguration, in: schemesDirectory)
     }
   }

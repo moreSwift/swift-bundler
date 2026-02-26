@@ -3,7 +3,7 @@ import ErrorKit
 
 /// Essentially just a ``Codable`` TOML value used for arbitrary TOMl values
 /// in the Swift Bundler configuration format.
-enum MetadataValue: Codable, VariableEvaluatable {
+enum MetadataValue: Codable, VariableEvaluatable, Sendable {
   case string(String)
   case integer(Int)
   case double(Double)
