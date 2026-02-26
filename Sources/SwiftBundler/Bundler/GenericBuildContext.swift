@@ -16,4 +16,6 @@ struct GenericBuildContext {
   var platformVersion: String?
   /// Additional arguments to be passed to SwiftPM.
   var additionalArguments: [String]
+  /// The Swift toolchain used.
+  var swiftToolchain: URL?
 }

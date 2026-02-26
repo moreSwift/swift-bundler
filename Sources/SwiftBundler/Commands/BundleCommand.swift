@@ -917,6 +917,7 @@ struct BundleCommand: ErrorHandledCommand {
         packageDirectory: packageDirectory,
         productsDirectory: productsDirectory,
         outputDirectory: appOutputDirectory,
+        packageGraph: SwiftPackageManager.PackageGraph.dummy,
         architectures: buildContext.genericContext.architectures,
         platform: resolvedPlatform,
         device: resolvedDevice,
@@ -955,6 +956,7 @@ struct BundleCommand: ErrorHandledCommand {
           toolchain: resolvedToolchain
         )
       }
+      bundlerContext.packageGraph = packageGraph
 
       let dependenciesScratchDirectory = outputDirectory / "projects"
 

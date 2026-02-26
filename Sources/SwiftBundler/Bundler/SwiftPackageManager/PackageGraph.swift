@@ -1,3 +1,5 @@
+import Foundation
+
 extension SwiftPackageManager {
   /// A package graph containing a root package and all of its identities.
   struct PackageGraph: Codable, Sendable {
@@ -298,4 +300,22 @@ extension SwiftPackageManager {
       }
     }
   }
+}
+
+extension SwiftPackageManager.PackageGraph {
+  /// A dummy empty package graph supplied to bundlers during dry runs to obtain
+  /// their intended output location (which should not depend on the package graph).
+  static let dummy = Self(
+    rootPackage: SwiftPackageManager.Package<SwiftPackageManager.PackageReference>(
+      name: "dummy",
+      identity: "dummy",
+      source: .local(path: URL(fileURLWithPath: "/dummy")),
+      localCheckout: URL(fileURLWithPath: "/dummy"),
+      dependencies: [],
+      products: [:],
+      targets: [:]
+    ),
+    dependencyPackages: [:],
+    ignoredTransitiveDependencies: []
+  )
 }
