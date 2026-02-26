@@ -263,6 +263,15 @@ enum APKBundler: Bundler {
       }
     }
 
+    // Locate and copy Java/Kotlin sources
+    log.info("Locating and copying Java/Kotlin sources")
+    try copyJavaAndKotlinSources(
+      dependedOnByRootProduct: context.appConfiguration.product,
+      fromPackageGraph: context.packageGraph,
+      toJavaSources: project.javaSourceDirectory,
+      targetPlatform: context.platform
+    )
+
     // Run Gradle build
     let task = "assembleDebug"
     var gradleArguments = [task]
@@ -300,6 +309,131 @@ enum APKBundler: Bundler {
       bundle: outputAPK,
       executable: outputAPK
     )
+  }
+
+  /// Copies Java and Kotlin sources from the given package graph to a Gradle
+  /// project's Java sources directory.
+  ///
+  /// Java and Kotlin sources not in directories prescribed by corresponding
+  /// ``TargetConfiguration/Android/javaDirectory`` or
+  /// ``TargetConfiguration/Android/kotlinDirectory`` configuration values are
+  /// ignored.
+  /// - Parameters:
+  ///   - product: The root product to begin from when recursively searching for
+  ///     Java and Kotlin sources. The product is assumed to be in the package
+  ///     graph's root package.
+  ///   - packageGraph: The source package graph.
+  ///   - sourcesDirectory: The output sources directory.
+  private static func copyJavaAndKotlinSources(
+    dependedOnByRootProduct product: String,
+    fromPackageGraph packageGraph: SwiftPackageManager.PackageGraph,
+    toJavaSources sourcesDirectory: URL,
+    targetPlatform: Platform
+  ) throws(Error) {
+    let conditionalTargets = try Error.catch {
+      try packageGraph.transitiveTargets(
+        inProduct: product,
+        inPackage: packageGraph.rootPackage.reference
+      )
+    }
+
+    let targets = packageGraph.activeTargets(
+      inConditionalReferences: conditionalTargets,
+      withTargetPlatform: targetPlatform
+    )
+
+    var directories: [(
+      location: URL,
+      target: SwiftPackageManager.TargetReference,
+      fileExtension: String
+    )] = []
+
+    for target in targets {
+      guard let configuration = try Error.catch(do: {
+        try packageGraph.configuration(ofTarget: target)
+      }) else {
+        continue
+      }
+
+      let targetInfo = try Error.catch {
+        try packageGraph.target(referredToBy: target)
+      }
+
+      let javaDirectory = configuration.android.javaDirectory
+      let kotlinDirectory = configuration.android.kotlinDirectory ?? javaDirectory
+      if let javaDirectory {
+        log.info("Target '\(target.name)' has Java sources")
+        directories.append((targetInfo.directory / javaDirectory, target, "java"))
+      }
+      if let kotlinDirectory {
+        log.info("Target '\(target.name)' has Kotlin sources")
+        directories.append((targetInfo.directory / kotlinDirectory, target, "kt"))
+      }
+    }
+
+    for (directory, target, fileExtension) in directories {
+      guard let enumerator = FileManager.default.enumerator(
+        at: directory,
+        includingPropertiesForKeys: nil
+      ) else {
+        throw Error(.failedToEnumerateJVMSources(directory, target))
+      }
+
+
+      var files: [URL] = []
+      for item in enumerator {
+        guard
+          let file = item as? URL,
+          file.exists(withType: .file),
+          file.pathExtension == fileExtension
+        else {
+          continue
+        }
+        
+        files.append(file)
+      }
+
+      for file in files {
+        let destination = sourcesDirectory / file.path(relativeTo: directory)
+
+        let destinationDirectory = destination.deletingLastPathComponent()
+        if !destinationDirectory.exists() {
+          try Error.catch {
+            try FileManager.default.createDirectory(
+              at: destinationDirectory,
+              withIntermediateDirectories: true
+            )
+          }
+        }
+
+        if destination.exists() {
+          var clashes: [SwiftPackageManager.TargetReference] = []
+          for (otherDirectory, otherTarget, otherFileExtension) in directories {
+            guard otherFileExtension == fileExtension else { continue }
+
+            if (otherDirectory / file.relativePath).exists(withType: .file) {
+              clashes.append(otherTarget)
+            }
+          }
+          
+          log.warning(
+            """
+            Java/Kotlin source file at '\(file.relativePath)' will be overwritten \
+            by file of same name from target '\(target.name)' in package with \
+            identity '\(target.package.identity)'; clashing targets: \(
+              clashes.map { "\($0.name) in \($0.package)" }.joinedGrammatically()
+            )
+            """
+          )
+        }
+
+        try Error.catch(
+          withMessage: .failedToCopyJVMSource(source: file, destination: destination)
+        ) {
+          try FileManager.default.copyItem(at: file, to: destination)
+        }
+      }
+    }
   }
 
   struct SharedObject: Hashable {
@@ -440,6 +574,7 @@ enum APKBundler: Bundler {
     return """
       plugins {
           alias(libs.plugins.android.application)
+          alias(libs.plugins.kotlin.android)
       }
 
       android {
@@ -696,10 +831,14 @@ enum APKBundler: Bundler {
   }
 
   private static func generateGradleLibsVersions() -> String {
-    // TODO: Make all of this configurable
+    // A table of AGP <-> KGP compatibility can be found at
+    // https://kotlinlang.org/docs/gradle-configure-project.html#apply-the-plugin
+
+    // TODO(stackotter): Make all of this configurable
     return """
       [versions]
       agp = "8.13.0"
+      kgp = "2.3.10"
       junit = "4.13.2"
       junitVersion = "1.1.5"
       espressoCore = "3.5.1"
@@ -719,6 +858,7 @@ enum APKBundler: Bundler {
 
       [plugins]
       android-application = { id = "com.android.application", version.ref = "agp" }
+      kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kgp" }
 
       """
   }

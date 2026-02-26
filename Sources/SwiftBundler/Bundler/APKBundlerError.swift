@@ -25,6 +25,8 @@ extension APKBundler {
     )
     case failedToCopyDynamicDependency(URL)
     case failedToCopyAPK(_ source: URL, _ destination: URL)
+    case failedToEnumerateJVMSources(_ directory: URL, SwiftPackageManager.TargetReference)
+    case failedToCopyJVMSource(source: URL, destination: URL)
 
     var userFriendlyMessage: String {
       switch self {
@@ -77,6 +79,17 @@ extension APKBundler {
           let source = source.path(relativeTo: .currentDirectory)
           let destination = destination.path(relativeTo: .currentDirectory)
           return "Failed to copy APK from '\(source)' to '\(destination)'"
+        case .failedToEnumerateJVMSources(let directory, let target):
+          return """
+            Failed to enumerate Java/Kotlin sources in directory at \
+            '\(directory.path)' for target '\(target.name)' in package with \
+            identity '\(target.package.identity)'
+            """
+        case .failedToCopyJVMSource(let source, let destination):
+          return """
+            Failed to copy Java/Kotlin source from '\(source.path)' to \
+            '\(destination.path)'
+            """
       }
     }
   }
