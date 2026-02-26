@@ -16,6 +16,7 @@ enum SwiftBundlerError: Throwable {
   case failedToCopyOutBundle
   case missingConfigurationFile(URL)
   case codesigningNotSupported(HostPlatform)
+  case failedToEncodeJSONOutput
 
   var userFriendlyMessage: String {
     switch self {
@@ -79,6 +80,8 @@ enum SwiftBundlerError: Throwable {
         return """
           Code-signing isn't supported on \(platform.platform.displayName)
           """
+      case .failedToEncodeJSONOutput:
+        return "Failed to encode JSON output."
     }
   }
 }

@@ -23,12 +23,16 @@ public struct SwiftBundler: AsyncParsableCommand {
       TemplatesCommand.self,
       GenerateXcodeSupportCommand.self,
       ListIdentitiesCommand.self,
+      DebugCommand.self,
     ]
   )
 
   /// Swift Bundler's git URL. Used when generating Swift packages that depend
   /// on the Swift Bundler runtime or builder API.
   public static let gitURL = URL(string: "https://github.com/moreSwift/swift-bundler")!
+
+  /// Swift Bundler's GitHub URL for creating new issues. Used in diagnostics.
+  public static let newIssueURL = gitURL / "issues/new"
 
   public func validate() throws {
     // Work around to allow SwiftBundler to be called twice in a single process.
