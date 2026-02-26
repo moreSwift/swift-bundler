@@ -127,6 +127,7 @@ struct RunCommand: ErrorHandledCommand {
     }
 
     // TODO: Avoid loading manifest twice
+    // TODO(stackotter): Use resolved toolchain rather than verbatim toolchain argument
     let manifest = try await RichError<SwiftBundlerError>.catch {
       try await SwiftPackageManager.loadPackageManifest(
         from: packageDirectory,

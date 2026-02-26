@@ -31,8 +31,10 @@ extension APKBundler {
     var srcMain: URL
     /// The `AndroidManifest.xml` file.
     var androidManifest: URL
-    /// The directory containing Java source files for the app's main package.
+    /// The root directory of the Java source package struture.
     var javaSourceDirectory: URL
+    /// The directory containing Java source files for the app's main package.
+    var mainJavaPackageDirectory: URL
     /// The `MainActivity.java` source file.
     var mainActivitySource: URL
     /// The project's root `CMakeLists.txt` file.
@@ -72,7 +74,7 @@ extension APKBundler {
     /// on disk.
     private var directories: [URL] {
       [
-        root, javaSourceDirectory, shimDirectory, jniLibsDirectory,
+        root, mainJavaPackageDirectory, shimDirectory, jniLibsDirectory,
         resourcesDirectory, valuesDirectory, nightValuesDirectory,
         gradleWrapperDirectory, drawableDirectory, mipmapDirectory,
       ]
@@ -99,8 +101,9 @@ extension APKBundler {
 
       let identifierPath = appIdentifier.lowercased()
         .replacingOccurrences(of: ".", with: "/")
-      javaSourceDirectory = srcMain / "java" / identifierPath
-      mainActivitySource = javaSourceDirectory / "\(mainActivityName).java"
+      javaSourceDirectory = srcMain / "java"
+      mainJavaPackageDirectory = javaSourceDirectory / identifierPath
+      mainActivitySource = mainJavaPackageDirectory / "\(mainActivityName).java"
       cmakeLists = srcMain / "CMakeLists.txt"
       shimDirectory = srcMain / "shim"
       shimSource = shimDirectory / "shim.c"

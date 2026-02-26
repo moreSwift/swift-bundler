@@ -1,6 +1,7 @@
 import Foundation
 import ErrorKit
 
+/// A bundler that bundles built artefacts into distributable apps.
 protocol Bundler {
   associatedtype Context
   associatedtype Error: Throwable
@@ -65,87 +66,4 @@ extension Bundler where Context == Void {
     command: BundleCommand,
     manifest: PackageManifest
   ) throws(Error) {}
-}
-
-struct BundlerContext {
-  /// The name to give the bundled app.
-  var appName: String
-  /// The name of the package.
-  var packageName: String
-  /// The app's configuration.
-  var appConfiguration: AppConfiguration.Flat
-
-  /// The root directory of the package containing the app.
-  var packageDirectory: URL
-  /// The directory containing the products from the build step.
-  var productsDirectory: URL
-  /// The directory to output the app into.
-  var outputDirectory: URL
-
-  /// The architectures that the app has been built for.
-  var architectures: [BuildArchitecture]
-
-  /// The target platform.
-  var platform: Platform
-  /// The target device if any.
-  var device: Device?
-
-  /// Apple-specific code signing context used by bundlers that support Apple
-  /// platforms. Exists in the generic bundler context because Swift Bundler
-  /// loads codesigning context up-front to notify users of configuration
-  /// issues more quickly.
-  var darwinCodeSigningContext: DarwinCodeSigningContext?
-
-  /// The app's built dependencies.
-  var builtDependencies: [String: ProjectBuilder.BuiltProduct]
-
-  /// The app's main built executable file.
-  var executableArtifact: URL
-
-  /// Apple-specific code signing context used by bundlers that support Apple
-  /// platforms. Exists in the generic bundler context because Swift Bundler
-  /// loads codesigning context up-front to notify users of configuration
-  /// issues more quickly.
-  struct DarwinCodeSigningContext {
-    /// The identity to sign the app with.
-    var identity: CodeSigner.Identity
-    /// A file containing entitlements to give the app if code signing.
-    var entitlements: URL?
-    /// A provisioning profile provided by the user.
-    var manualProvisioningProfile: URL?
-  }
-}
-
-/// Describes the basic structure of a bundler's output. Shouldn't describe
-/// intermediate files, only the useful final outputs of the bundler.
-struct BundlerOutputStructure {
-  /// The bundle itself.
-  var bundle: URL
-  /// The actual executable file to run when the user instructs Swift Bundler
-  /// to run the app. If `nil`, it's assumed that the bundler doesn't support
-  /// running.
-  var executable: URL?
-  /// Any other files produced that might be useful wnen distributing the app,
-  /// e.g. a `.desktop` file on Linux.
-  var additionalOutputs: [URL] = []
-}
-
-/// A variation on ``BundlerOutputStructure`` validated as runnable, guarantees
-/// that the output contains an executable (or at least claims it does).
-struct RunnableBundlerOutputStructure {
-  /// The bundle itself.
-  var bundle: URL
-  /// The actual executable file to run when the user instructs Swift Bundler
-  /// to run the app.
-  var executable: URL
-
-  /// Validates a bundler's output for 'runnability' (i.e. it claims to have
-  /// produced an executable).
-  init?(_ output: BundlerOutputStructure) {
-    guard let executable = output.executable else {
-      return nil
-    }
-    bundle = output.bundle
-    self.executable = executable
-  }
 }

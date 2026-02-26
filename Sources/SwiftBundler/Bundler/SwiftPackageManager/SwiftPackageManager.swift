@@ -153,6 +153,7 @@ enum SwiftPackageManager {
         / "\(buildContext.genericContext.configuration).yaml"
       let buildPlan = try readBuildPlan(buildPlanFile)
 
+      log.info("Relinking main executable as a dynamic library")
       let triple: String
       switch buildContext.genericContext.platform {
         case .macOS:
