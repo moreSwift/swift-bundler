@@ -70,7 +70,7 @@ enum SwiftPackageManager {
   /// Gets the path of the Swift executable for the given toolchain (if any).
   /// Returns the literal string `"swift"` when no toolchain is specified, so
   /// that Process can perform its usual executable path resolution.
-  private static func swiftPath(toolchain: URL?) -> String {
+  static func swiftPath(toolchain: URL?) -> String {
     toolchain.map { toolchain in
       SwiftToolchain.swiftExecutable(forToolchainWithRoot: toolchain)
     }.map(\.path) ?? "swift"
@@ -459,6 +459,19 @@ enum SwiftPackageManager {
       return try swiftVersionParser.parse(output)
     } catch {
       throw Error(.invalidSwiftVersionOutput(output), cause: error)
+    }
+  }
+
+  /// Runs `swift package resolve`.
+  static func resolveDependencies(
+    packageDirectory: URL,
+    toolchain: URL?
+  ) async throws(Error) {
+    try await Error.catch(withMessage: .failedToResolveDependencies(packageDirectory)) {
+      try await Process.create(
+        swiftPath(toolchain: toolchain),
+        arguments: ["package", "resolve"]
+      ).runAndWait()
     }
   }
 

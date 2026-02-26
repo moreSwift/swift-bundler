@@ -27,9 +27,11 @@ enum ConfigurationFlattener {
     _ configuration: PackageConfiguration,
     with context: Context
   ) throws(Error) -> PackageConfiguration.Flat {
-    let flattenedApps = try configuration.apps.mapValues { (name, app) throws(Error) in
-      try flatten(
-        app,
+    // TODO(stackotter): Switch over to PackageConfiguration.flatten(with:)
+
+    let flattenedApps = try configuration.apps?.mapValues {
+        (name, app) throws(Error) -> AppConfiguration.Flat in
+      try app.flatten(
         with:
           context
           .appendingCodingKey(PackageConfiguration.CodingKeys.apps)
@@ -37,23 +39,33 @@ enum ConfigurationFlattener {
       )
     }
 
-    let flattenedProjects = try configuration.projects?.mapValues { (name, project) throws(Error) -> ProjectConfiguration.Flat in
+    let flattenedProjects = try configuration.projects?.mapValues {
+        (name, project) throws(Error) -> ProjectConfiguration.Flat in
       guard name != ProjectConfiguration.rootProjectName else {
         throw Error(.reservedProjectName(name))
       }
-      return try flatten(
-        project,
+      return try project.flatten(
         with:
           context
           .appendingCodingKey(PackageConfiguration.CodingKeys.projects)
           .appendingCodingKey(name)
       )
-    } ?? [:]
+    }
+
+    let flattenedTargets = try configuration.targets?.mapValues {
+        (name, target) throws(Error) -> TargetConfiguration.Flat in
+      try target.flatten(
+        with: context
+          .appendingCodingKey(PackageConfiguration.CodingKeys.targets)
+          .appendingCodingKey(name)
+      )
+    }
 
     return PackageConfiguration.Flat(
       formatVersion: configuration.formatVersion,
-      apps: flattenedApps,
-      projects: flattenedProjects
+      apps: flattenedApps ?? [:],
+      projects: flattenedProjects ?? [:],
+      targets: flattenedTargets ?? [:]
     )
   }
 
@@ -88,13 +100,6 @@ enum ConfigurationFlattener {
     }
   }
 
-  static func flatten(
-    _ configuration: AppConfiguration,
-    with context: Context
-  ) throws(Error) -> AppConfiguration.Flat {
-    try configuration.flatten(with: context)
-  }
-
   static func condition(
     _ condition: OverlayCondition,
     matches context: Context
@@ -105,13 +110,6 @@ enum ConfigurationFlattener {
       case .bundler(let identifier):
         identifier == context.bundler.rawValue
     }
-  }
-
-  static func flatten(
-    _ configuration: ProjectConfiguration,
-    with context: Context
-  ) throws(Error) -> ProjectConfiguration.Flat {
-    try configuration.flatten(with: context)
   }
 }
 

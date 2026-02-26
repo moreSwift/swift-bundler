@@ -4,7 +4,7 @@ import Version
 
 /// The configuration for an app.
 @Configuration(overlayable: true)
-struct AppConfiguration: Codable {
+struct AppConfiguration: Codable, Sendable {
   /// The app's identifier (e.g. `com.example.ExampleApp`).
   var identifier: String
 
@@ -73,7 +73,7 @@ struct AppConfiguration: Codable {
   @Available(.platform("macCatalyst"))
   var catalystInterfaceIdiom: MacCatalystInterfaceIdiom = .ipad
 
-  struct Dependency: Codable, Hashable, TriviallyFlattenable {
+  struct Dependency: Codable, Hashable, TriviallyFlattenable, Sendable {
     var project: String
     var product: String
 

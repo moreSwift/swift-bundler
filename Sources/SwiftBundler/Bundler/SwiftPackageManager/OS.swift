@@ -73,4 +73,10 @@ enum OS: String, Sendable, Hashable, CaseIterable {
       case .linux, .windows, .android: nil
     }
   }
+
+  /// The OS's name in encoded target dependency conditions in Swift
+  /// package manifests.
+  var manifestConditionName: String {
+    rawValue.lowercased()
+  }
 }
