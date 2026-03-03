@@ -39,6 +39,7 @@ let package = Package(
       url: "https://github.com/stackotter/swift-macro-toolkit",
       .upToNextMinor(from: "0.7.1")
     ),
+    .package(url: "https://github.com/swhitty/swift-mutex", .upToNextMinor(from: "0.0.6")),
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
@@ -68,6 +69,7 @@ let package = Package(
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "Overture", package: "swift-overture"),
         .product(name: "AsyncCollections", package: "async-collections"),
+        .product(name: "Mutex", package: "swift-mutex"),
         .product(
           name: "ProcessSpawnSync",
           package: "AsyncProcess",
