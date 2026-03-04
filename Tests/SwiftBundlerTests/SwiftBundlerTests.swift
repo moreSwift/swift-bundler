@@ -50,6 +50,14 @@ struct Tests {
     await SwiftBundler.main(["bundle", "HelloWorld", "-d", directory.path, "-o", directory.path])
   }
 
+  @Test(.bug("https://github.com/moreSwift/swift-bundler/issues/154"))
+  func testRunCommandSucceeds() async throws {
+    let fixture = Bundle.module.bundleURL / "Fixtures/HelloWorld"
+
+    // Ensure run command succeeds
+    await SwiftBundler.main(["run", "HelloWorld", "-d", fixture.path])
+  }
+
   @Test(.bug("https://github.com/moreSwift/swift-bundler/issues/120"))
   func testManifestParsingBug120() async throws {
       let fixture = Bundle.module.bundleURL / "Fixtures/ManifestParsingBug_Issue120"
