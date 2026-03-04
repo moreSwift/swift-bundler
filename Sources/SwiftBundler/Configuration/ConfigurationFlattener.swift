@@ -50,10 +50,23 @@ enum ConfigurationFlattener {
       )
     } ?? [:]
 
+    let flattenedBuilders = try configuration.builders?.mapValues {
+        (name, builder) throws(Error) -> BuilderConfiguration.Flat in
+      guard !name.contains(".") else {
+        throw Error(.builderNameContainsPeriod(name))
+      }
+      return try builder.flatten(
+        with: context
+          .appendingCodingKey(PackageConfiguration.CodingKeys.builders)
+          .appendingCodingKey(name)
+      )
+    } ?? [:]
+
     return PackageConfiguration.Flat(
       formatVersion: configuration.formatVersion,
       apps: flattenedApps,
-      projects: flattenedProjects
+      projects: flattenedProjects,
+      builders: flattenedBuilders
     )
   }
 

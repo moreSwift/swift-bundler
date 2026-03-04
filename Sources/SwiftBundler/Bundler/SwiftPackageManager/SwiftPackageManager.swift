@@ -405,7 +405,8 @@ enum SwiftPackageManager {
     let process = Process.create(
       "swift",
       arguments: ["package", "describe", "--type", "json"],
-      directory: packageDirectory
+      directory: packageDirectory,
+      runSilentlyWhenNotVerbose: false
     )
 
     let output = try await Error.catch {

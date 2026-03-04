@@ -15,8 +15,14 @@ struct ProjectConfiguration: Codable {
   var revision: String?
 
   @Validate({ (builder: Builder) throws(ConfigurationFlattener.Error) in
-    guard builder.name.hasSuffix(".swift") else {
-      throw RichError(cause: Error(.projectBuilderNotASwiftFile(builder.name)))
+    switch builder {
+      case .named:
+        break
+      case .inline(let inlineBuilder):
+        // Deprecated format; still need to validate it though
+        guard inlineBuilder.name.hasSuffix(".swift") else {
+          throw RichError(cause: Error(.projectBuilderNotASwiftFile(inlineBuilder.name)))
+        }
     }
   })
   var builder: Builder
@@ -34,28 +40,53 @@ struct ProjectConfiguration: Codable {
     )
   }
 
-  @Configuration(overlayable: false)
-  struct Builder: Codable {
-    var name: String
-    var type: BuilderType
-    @ExcludeFromFlat
-    var apiSource: Source?
-    @ExcludeFromFlat
-    var api: APIRequirement?
+  enum Builder: Codable, Flattenable {
+    /// The only non-deprecated way to reference builders. References a builder
+    /// from ``PackageConfiguration/builders`` by name.
+    case named(String)
+    /// Inline builder configuration is deprecated. Kept for compatibility.
+    case inline(InlineBuilder)
 
-    enum BuilderType: String, Codable, TriviallyFlattenable {
-      case wholeProject
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.singleValueContainer()
+      do {
+        let inlineBuilder = try container.decode(InlineBuilder.self)
+        self = .inline(inlineBuilder)
+      } catch {
+        let name = try container.decode(String.self)
+        self = .named(name)
+      }
     }
 
-    @Aggregate("api")
-    func flattenAPI(with context: ConfigurationFlattener.Context)
-      throws(ConfigurationFlattener.Error) -> ProjectConfiguration.Source.FlatWithDefaultRepository
-    {
-      try ConfigurationFlattener.Error.catch {
-        try apiSource.flatten(
-          withRequirement: self.api,
-          requirementField: context.codingPath.appendingKey(CodingKeys.api)
-        )
+    func encode(to encoder: any Encoder) throws {
+      var container = encoder.singleValueContainer()
+      switch self {
+        case .named(let name):
+          try container.encode(name)
+        case .inline(let inlineBuilder):
+          try container.encode(inlineBuilder)
+      }
+    }
+
+    enum Flat {
+      case named(String)
+      case inline(InlineBuilder.Flat)
+    }
+
+    func flatten(
+      with context: ConfigurationFlattener.Context
+    ) throws(ConfigurationFlattener.Error) -> Flat {
+      switch self {
+        case .named(let name):
+          return .named(name)
+        case .inline(let inlineBuilder):
+          log.warning(
+            """
+            Inline project builder definitions are deprecated. Define the \
+            '\(inlineBuilder.name)' at the top-level and refer to it by name instead.
+            """
+          )
+          return .inline(try inlineBuilder.flatten(with: context))
       }
     }
   }
