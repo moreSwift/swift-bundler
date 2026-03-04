@@ -1,0 +1,18 @@
+format_version = 2
+
+[apps.ProjectDemo]
+identifier = 'com.example.ProjectDemo'
+product = 'ProjectDemo'
+version = '0.1.0'
+dependencies = ["CLib.clib"]
+
+[projects.CLib]
+builder = "Makefile"
+source = "local(./CLib)"
+
+[projects.CLib.products.clib]
+type = "staticLibrary"
+
+[builders.Makefile]
+product = "MakefileBuilder"
+kind = "wholeProject"
