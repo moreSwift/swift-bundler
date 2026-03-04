@@ -280,7 +280,11 @@ func chainDescription(for error: any Error, verbose: Bool) -> String {
       if !(currentCause is RichErrorProtocol)
         || (currentCause as? RichErrorProtocol)?.erasedMessage != nil
       {
-        let message = ErrorKit.userFriendlyMessage(for: currentCause)
+        var message = ErrorKit.userFriendlyMessage(for: currentCause)
+        if message.isEmpty {
+          message = currentCause.localizedDescription
+        }
+
         let locationString: String
         if verbose, let location = location(of: currentCause) {
           locationString = " error at \(location)"
@@ -289,8 +293,18 @@ func chainDescription(for error: any Error, verbose: Bool) -> String {
         }
 
         let errorDescription: String
-        if verbose, let message = (currentCause as? RichErrorProtocol)?.erasedMessage {
-          errorDescription = " " + errorDebugDescription(message, type: type(of: message))
+        if verbose {
+          let message = if let currentCause = currentCause as? RichErrorProtocol {
+            currentCause.erasedMessage
+          } else {
+            currentCause
+          }
+
+          if let message {
+            errorDescription = " " + errorDebugDescription(message, type: type(of: message))
+          } else {
+            errorDescription = ""
+          }
         } else {
           errorDescription = ""
         }
