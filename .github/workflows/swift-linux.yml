@@ -16,12 +16,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Test
+        run: swift test --disable-experimental-prebuilts
+
       # The prebuilts cause linker errors. See https://github.com/moreSwift/swift-bundler/pull/95#issuecomment-3421089725 for a related discussion.
       - name: Build
         run: swift build --disable-experimental-prebuilts
 
       - name: Install runtime dependencies
         run: sudo apt install -y patchelf
-
-      - name: Test
-        run: swift test --disable-experimental-prebuilts
