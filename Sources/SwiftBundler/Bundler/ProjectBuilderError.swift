@@ -24,6 +24,7 @@ extension ProjectBuilder {
     )
     case invalidLocalSource(URL)
     case missingProductArtifact(URL, product: String)
+    case noSuchBuilder(String, [String])
 
     /// An internal error used in control flow.
     case mismatchedGitURL(_ actual: URL, expected: URL)
@@ -72,6 +73,11 @@ extension ProjectBuilder {
           return """
             Missing artifact at '\(location.path(relativeTo: .currentDirectory))' \
             required by product '\(product)'
+            """
+        case .noSuchBuilder(let name, let availableBuilders):
+          return """
+            No such builder '\(name)'; expected one of \
+            \(availableBuilders.joinedGrammatically())
             """
         case .mismatchedGitURL(let actualURL, let expectedURL):
           return """

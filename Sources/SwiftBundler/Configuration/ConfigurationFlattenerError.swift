@@ -14,6 +14,7 @@ extension ConfigurationFlattener {
     case localSourceMustNotSpecifyRevision(_ path: String)
     case defaultSourceMissingAPIRequirement
     case gitSourceMissingAPIRequirement(_ url: URL, field: CodingPath)
+    case builderNameContainsPeriod(_ name: String)
 
     var userFriendlyMessage: String {
       switch self {
@@ -38,6 +39,8 @@ extension ConfigurationFlattener {
             Builder API sourced from git missing API requirement (provide the \
             '\(field)' field)
             """
+        case .builderNameContainsPeriod(let name):
+          return "Builder names must not contain periods, got '\(name)'"
       }
     }
   }

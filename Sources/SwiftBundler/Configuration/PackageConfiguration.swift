@@ -18,17 +18,23 @@ struct PackageConfiguration: Codable {
   /// library configuration. Generally used when integrating libraries built
   /// with different build systems such as CMake.
   var projects: [String: ProjectConfiguration]?
+  /// The configuration for each project builder defined within this package.
+  /// Maps builder name to builder configuration.
+  var builders: [String: BuilderConfiguration]?
 
   /// Creates a new package configuration.
   /// - Parameter apps: The package's apps.
   /// - Parameter projects: The package's subprojects.
+  /// - Parameter builders: The package's project builders.
   init(
     apps: [String: AppConfiguration] = [:],
-    projects: [String: ProjectConfiguration]? = nil
+    projects: [String: ProjectConfiguration]? = nil,
+    builders: [String: BuilderConfiguration]? = nil
   ) {
     formatVersion = Self.currentFormatVersion
     self.apps = apps
     self.projects = projects
+    self.builders = builders
   }
 
   // MARK: Static methods

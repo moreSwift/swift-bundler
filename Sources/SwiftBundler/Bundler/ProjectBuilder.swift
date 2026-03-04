@@ -5,8 +5,6 @@ import Version
 import ErrorKit
 
 enum ProjectBuilder {
-  static let builderProductName = "Builder"
-
   struct BuiltProduct {
     var product: ProjectConfiguration.Product.Flat
     var artifacts: [Artifact]
@@ -112,6 +110,7 @@ enum ProjectBuilder {
         try await ProjectBuilder.buildProject(
           projectName,
           configuration: project,
+          builders: packageConfiguration.builders,
           packageDirectory: context.projectDirectory,
           scratchDirectory: projectScratchDirectory
         )
@@ -341,87 +340,87 @@ enum ProjectBuilder {
     }
   }
 
+  struct OnDiskBuilder {
+    var name: String
+    var product: String
+    var packageRoot: URL
+  }
+
+  static func prepareBuilder(
+    _ builder: ProjectConfiguration.Builder.Flat,
+    builders: [String: BuilderConfiguration.Flat],
+    packageDirectory: URL,
+    scratchDirectory: ScratchDirectoryStructure
+  ) async throws(Error) -> OnDiskBuilder {
+    switch builder {
+      case .inline(let inlineBuilder):
+        return try await prepareInlineBuilder(
+          forInlineBuilder: inlineBuilder,
+          packageDirectory: packageDirectory,
+          scratchDirectory: scratchDirectory
+        )
+      case .named(let name):
+        guard let builderConfiguration = builders[name] else {
+          throw Error(.noSuchBuilder(name, Array(builders.keys)))
+        }
+
+        // Just sitting here to raise alarms when more kinds are added
+        switch builderConfiguration.kind {
+          case .wholeProject:
+            break
+        }
+
+        return OnDiskBuilder(
+          name: name,
+          product: builderConfiguration.product,
+          packageRoot: packageDirectory
+        )
+    }
+  }
+
   /// Builds a project and returns the directory containing the built
   /// products on success.
   static func buildProject(
     _ name: String,
     configuration: ProjectConfiguration.Flat,
+    builders: [String: BuilderConfiguration.Flat],
     packageDirectory: URL,
     scratchDirectory: ScratchDirectoryStructure
   ) async throws(Error) {
-    // Just sitting here to raise alarms when more types are added
-    switch configuration.builder.type {
-      case .wholeProject:
-        break
-    }
-
     try await checkoutSource(
       configuration.source,
       at: scratchDirectory.sources,
       packageDirectory: packageDirectory
     )
 
-    try await createBuilderPackage(
-      for: configuration,
+    let builder = try await prepareBuilder(
+      configuration.builder,
+      builders: builders,
       packageDirectory: packageDirectory,
       scratchDirectory: scratchDirectory
     )
-    let builder = try await buildBuilder(
-      for: configuration,
-      scratchDirectory: scratchDirectory
-    )
-    try await runBuilder(
+
+    let builtBuilder = try await buildBuilder(
       builder,
+      scratchDirectory: scratchDirectory
+    )
+
+    try await runBuilder(
+      builtBuilder,
       for: configuration,
       scratchDirectory: scratchDirectory
     )
-  }
-
-  static func createBuilderPackage(
-    for configuration: ProjectConfiguration.Flat,
-    packageDirectory: URL,
-    scratchDirectory: ScratchDirectoryStructure
-  ) async throws(Error) {
-    // Create builder source file symlink
-    try Error.catch(withMessage: .failedToSymlinkBuilderSourceFile) {
-      let masterBuilderSourceFile = packageDirectory / configuration.builder.name
-      if FileManager.default.fileExists(atPath: scratchDirectory.builderSourceFile.path) {
-        try FileManager.default.removeItem(at: scratchDirectory.builderSourceFile)
-      }
-      try FileManager.default.createSymbolicLink(
-        at: scratchDirectory.builderSourceFile,
-        withDestinationURL: masterBuilderSourceFile
-      )
-    }
-
-    // Create/update the builder's Package.swift
-    let toolsVersion = try await Error.catch {
-      try await SwiftPackageManager.getToolsVersion(packageDirectory)
-    }
-
-    let manifestContents = generateBuilderPackageManifest(
-      toolsVersion,
-      builderAPI: configuration.builder.api.normalized(
-        usingDefault: SwiftBundler.gitURL
-      ),
-      rootPackageDirectory: packageDirectory,
-      builderPackageDirectory: scratchDirectory.builder
-    )
-
-    try Error.catch(withMessage: .failedToWriteBuilderManifest) {
-      try manifestContents.write(to: scratchDirectory.builderManifest)
-    }
   }
 
   static func buildBuilder(
-    for configuration: ProjectConfiguration.Flat,
+    _ builder: OnDiskBuilder,
     scratchDirectory: ScratchDirectoryStructure
   ) async throws(Error) -> URL {
     // Build the builder
     let buildContext = SwiftPackageManager.BuildContext(
       genericContext: GenericBuildContext(
-        projectDirectory: scratchDirectory.builder,
-        scratchDirectory: scratchDirectory.builder / ".build",
+        projectDirectory: builder.packageRoot,
+        scratchDirectory: builder.packageRoot / ".build",
         configuration: .debug,
         architectures: [.host],
         platform: HostPlatform.hostPlatform.platform,
@@ -433,17 +432,17 @@ enum ProjectBuilder {
     let productsDirectory: URL
     do {
       try await SwiftPackageManager.build(
-        product: builderProductName,
+        product: builder.product,
         buildContext: buildContext
       )
 
       productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext)
     } catch {
-      throw Error(.failedToBuildBuilder(name: configuration.builder.name), cause: error)
+      throw Error(.failedToBuildBuilder(name: builder.name), cause: error)
     }
 
     let builderFileName = HostPlatform.hostPlatform
-      .executableFileName(forBaseName: builderProductName)
+      .executableFileName(forBaseName: builder.product)
     let builder = productsDirectory / builderFileName
     return builder
   }
@@ -487,61 +486,5 @@ enum ProjectBuilder {
     } catch {
       throw Error(.builderFailed, cause: error)
     }
-  }
-
-  static func generateBuilderPackageManifest(
-    _ swiftVersion: Version,
-    builderAPI: ProjectConfiguration.Source.Flat,
-    rootPackageDirectory: URL,
-    builderPackageDirectory: URL
-  ) -> String {
-    let dependency: String
-    switch builderAPI {
-      case .local(let path):
-        let fullPath = rootPackageDirectory / path
-        let relativePath = fullPath.path(relativeTo: builderPackageDirectory)
-        dependency = """
-                  .package(
-                      name: "swift-bundler",
-                      path: "\(relativePath)"
-                  )
-          """
-      case .git(let url, let requirement):
-        let revision: String
-        switch requirement {
-          case .revision(let value):
-            revision = value
-        }
-        dependency = """
-                  .package(
-                      url: "\(url.absoluteString)",
-                      revision: "\(revision)"
-                  )
-          """
-    }
-
-    return """
-      // swift-tools-version:\(swiftVersion.major).\(swiftVersion.minor)
-      import PackageDescription
-
-      let package = Package(
-          name: "Builder",
-          platforms: [.macOS(.v10_15)],
-          products: [
-              .executable(name: "Builder", targets: ["Builder"])
-          ],
-          dependencies: [
-      \(dependency)
-          ],
-          targets: [
-              .executableTarget(
-                  name: "\(builderProductName)",
-                  dependencies: [
-                      .product(name: "SwiftBundlerBuilders", package: "swift-bundler")
-                  ]
-              )
-          ]
-      )
-      """
   }
 }
