@@ -1,0 +1,5 @@
+module CLibHeaders [system] {
+  header "CLib.h"
+  export *
+  link "clib"
+}

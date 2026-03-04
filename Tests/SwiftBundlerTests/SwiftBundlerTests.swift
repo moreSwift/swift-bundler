@@ -60,8 +60,9 @@ struct Tests {
 
   @Test(.bug("https://github.com/moreSwift/swift-bundler/issues/120"))
   func testManifestParsingBug120() async throws {
-      let fixture = Bundle.module.bundleURL / "Fixtures/ManifestParsingBug_Issue120"
+    try await withFixture("ManifestParsingBug_Issue120") { fixture in
       await SwiftBundler.main(["bundle", "-d", fixture.path])
+    }
   }
 
   @Test func testHexParsing() throws {
@@ -71,41 +72,61 @@ struct Tests {
     #expect(Array(fromHex: "ef917g") == nil)
   }
 
+  @Test("Ensures that a project with a basic Makefile subproject builds and runs")
+  func testMakefileSubproject() async throws {
+    try await withFixture("MakefileBuilder") { fixture in
+      await SwiftBundler.main(["run", "-d", fixture.path])
+    }
+  }
+
+  @Test(
+    """
+    Ensures that inline builders still work for backwards compatibility even \
+    though they've been deprecated
+    """
+  )
+  func testDeprecatedInlineBuilderMakefileSubproject() async throws {
+    try await withFixture("DeprecatedInlineMakefileBuilder") { fixture in
+      await SwiftBundler.main(["run", "-d", fixture.path])
+    }
+  }
+
   #if os(macOS)
     /// This test app depends on both a plain dynamic library and a framework.
     @Test func testDarwinDynamicDependencyCopying() async throws {
       let app = "DarwinDynamicDependencies"
-      let fixture = Bundle.module.bundleURL.appendingPathComponent("Fixtures/\(app)")
-      await SwiftBundler.main(["bundle", "-d", fixture.path])
-      let outputPath = fixture / ".build/bundler/apps/\(app)/\(app).app"
+      try await withFixture(app) { fixture in
+        await SwiftBundler.main(["bundle", "-d", fixture.path])
+        let outputPath = fixture / ".build/bundler/apps/\(app)/\(app).app"
 
-      let sparkle = outputPath / "Contents/Frameworks/Sparkle.framework"
-      #expect(sparkle.exists(), "didn't copy framework")
+        let sparkle = outputPath / "Contents/Frameworks/Sparkle.framework"
+        #expect(sparkle.exists(), "didn't copy framework")
 
-      let library = outputPath / "Contents/Libraries/libLibrary.dylib"
-      #expect(library.exists(), "didn't copy dynamic library")
+        let library = outputPath / "Contents/Libraries/libLibrary.dylib"
+        #expect(library.exists(), "didn't copy dynamic library")
 
-      // Move the app and remove the debug directory to ensure that the app
-      // is relocatable and independent of any compile-time artifacts. See
-      // issue #85.
-      let appCopy = fixture / "\(app).app"
-      try? FileManager.default.removeItem(at: appCopy)
-      try FileManager.default.copyItem(at: outputPath, to: appCopy)
-      try FileManager.default.removeItem(at: fixture / ".build")
+        // Move the app and remove the debug directory to ensure that the app
+        // is relocatable and independent of any compile-time artifacts. See
+        // issue #85.
+        let appCopy = fixture / "\(app).app"
+        try? FileManager.default.removeItem(at: appCopy)
+        try FileManager.default.copyItem(at: outputPath, to: appCopy)
+        try FileManager.default.removeItem(at: fixture / ".build")
 
-      // Ensure that the copied dynamic dependencies are usable by the app.
-      let executable = appCopy / "Contents/MacOS/\(app)"
-      let process = Process.create(executable.path)
-      let output = try await process.getOutput()
-      #expect(
-        output
-        ==
-        """
-        2 + 3 = 5
-        1.0.0 > 1.0.1 = false
+        // Ensure that the copied dynamic dependencies are usable by the app.
+        let executable = appCopy / "Contents/MacOS/\(app)"
+        let process = Process.create(executable.path)
+        let output = try await process.getOutput()
+        #expect(
+          output
+          ==
+          """
+          2 + 3 = 5
+          1.0.0 > 1.0.1 = false
 
-        """
-      )
+          """
+        )
+      }
     }
   #endif
 }

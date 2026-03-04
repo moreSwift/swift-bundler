@@ -1,0 +1,18 @@
+format_version = 2
+
+[apps.ProjectDemo]
+identifier = 'com.example.ProjectDemo'
+product = 'ProjectDemo'
+version = '0.1.0'
+dependencies = ["CLib.clib"]
+
+[projects.CLib]
+source = "local(./CLib)"
+
+[projects.CLib.builder]
+name = "Sources/MakefileBuilder/MakefileBuilder.swift"
+type = "wholeProject"
+api = "revision(main)"
+
+[projects.CLib.products.clib]
+type = "staticLibrary"
