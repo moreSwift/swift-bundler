@@ -25,6 +25,11 @@ public enum SwiftBundlerErrorMapper: ErrorMapper {
             \(pathsString)
             """
         }
+      case DecodingError.typeMismatch(_, let context):
+        return """
+          Decoding error at '\(CodingPath(context.codingPath))'; \
+          \(context.debugDescription)
+          """
       default:
         return nil
     }
