@@ -20,6 +20,16 @@ struct BundleCommand: ErrorHandledCommand {
   )
   var skipBuild = false
 
+  /// Prints the path of the output bundle and exits.
+  @Flag(
+    name: .long,
+    help: """
+      Print the path of the output bundle and exits. The bundle may not exist yet \
+      if you haven't already performed a build.
+      """
+  )
+  var showBundlePath = false
+
   #if os(macOS)
     /// If `true`, treat the products in the products directory as if they were built by Xcode (which is the same as universal builds by SwiftPM).
     ///
@@ -589,17 +599,6 @@ struct BundleCommand: ErrorHandledCommand {
       let outputDirectory = Self.outputDirectory(for: scratchDirectory)
       let appOutputDirectory = outputDirectory / "apps" / appName
 
-      // Load package manifest
-      log.info("Loading package manifest")
-      let manifest = try await RichError<SwiftBundlerError>.catch {
-        try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
-      }
-
-      let platformVersion =
-        resolvedPlatform.asApplePlatform.map { platform in
-          manifest.platformVersion(for: platform)
-        } ?? nil
-
       let metadataDirectory = appOutputDirectory / "metadata"
       if !metadataDirectory.exists() {
         try RichError<SwiftBundlerError>.catch {
@@ -614,10 +613,24 @@ struct BundleCommand: ErrorHandledCommand {
           in: metadataDirectory,
           for: MetadataInserter.metadata(for: appConfiguration),
           architectures: architectures,
-          platform: resolvedPlatform
+          platform: resolvedPlatform,
+          dryRun: dryRun || showBundlePath
         )
       }
 
+      // Load package manifest
+      if !showBundlePath {
+        log.info("Loading package manifest")
+      }
+      let manifest = try await RichError<SwiftBundlerError>.catch {
+        try await SwiftPackageManager.loadPackageManifest(from: packageDirectory)
+      }
+
+      let platformVersion =
+        resolvedPlatform.asApplePlatform.map { platform in
+          manifest.platformVersion(for: platform)
+        } ?? nil
+ 
       let buildContext = SwiftPackageManager.BuildContext(
         genericContext: GenericBuildContext(
           projectDirectory: packageDirectory,
@@ -692,6 +705,18 @@ struct BundleCommand: ErrorHandledCommand {
         builtDependencies: [:],
         executableArtifact: executableArtifact
       )
+
+      // If the user has requested the bundle path, print it and exit.
+      if showBundlePath {
+        let output = try Self.intendedOutput(
+          of: arguments.bundler.bundler,
+          context: bundlerContext,
+          command: self,
+          manifest: manifest
+        )
+        print(output.bundle.path)
+        Foundation.exit(0)
+      }
 
       // If this is a dry run, drop out just before we start actually do stuff.
       guard !dryRun else {

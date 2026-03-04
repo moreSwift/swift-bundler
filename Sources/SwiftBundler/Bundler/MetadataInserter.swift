@@ -37,12 +37,15 @@ enum MetadataInserter {
   /// Generates a state library containing the given metadata. The file name of
   /// the library is platform dependent and is set to ensure that `-lmetadata`
   /// is sufficient to link against the metadata library.
+  /// - Parameter dryRun: If true, the function doesn't actually compile the
+  ///   metadata, and instead just returns what it would've returned.
   /// - Returns: The path to the produced object file.
   static func compileMetadata(
     in directory: URL,
     for metadata: Metadata,
     architectures: [BuildArchitecture],
-    platform: Platform
+    platform: Platform,
+    dryRun: Bool = false
   ) async throws(Error) -> CompiledMetadata {
     let codeFile = directory / "metadata.swift"
     let data = try Error.catch(withMessage: .failedToEncodeMetadata) {
@@ -69,29 +72,35 @@ enum MetadataInserter {
       }
       """
 
-    try Error.catch(withMessage: .failedToWriteMetadataCodeFile) {
-      try code.write(to: codeFile)
+    if !dryRun {
+      try Error.catch(withMessage: .failedToWriteMetadataCodeFile) {
+        try code.write(to: codeFile)
+      }
     }
 
     if architectures.count > 1 || platform.isApplePlatform {
       let name = "metadata"
       let universalStaticLibrary = directory / "lib\(name).a"
-      try await compileMetadataCodeFile(
-        codeFile,
-        toUniversalStaticLibrary: universalStaticLibrary,
-        scratchDirectory: directory,
-        platform: platform,
-        architectures: architectures
-      )
+      if !dryRun {
+        try await compileMetadataCodeFile(
+          codeFile,
+          toUniversalStaticLibrary: universalStaticLibrary,
+          scratchDirectory: directory,
+          platform: platform,
+          architectures: architectures
+        )
+      }
       return .staticLibrary(universalStaticLibrary, name: name)
     } else {
       let objectFile = directory / "metadata.o"
-      try await compileMetadataCodeFile(
-        codeFile,
-        to: objectFile,
-        platform: platform,
-        architecture: architectures[0]
-      )
+      if !dryRun {
+        try await compileMetadataCodeFile(
+          codeFile,
+          to: objectFile,
+          platform: platform,
+          architecture: architectures[0]
+        )
+      }
       return .objectFile(objectFile)
     }
   }
