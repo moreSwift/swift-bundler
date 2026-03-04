@@ -20,6 +20,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Test
+        run: swift test
+
       # We build separately for arm64 and x86_64 instead of building a universal binary
       # directly because of swiftlang/swift-package-manager#8013. I've tried both Xcode
       # 15.0.1 (Swift 5.9) and Xcode 16.2 (Swift 6.0.3), both had the same issue.
@@ -41,11 +44,3 @@ jobs:
         with:
           name: swift-bundler
           path: ./swift-bundler
-
-      # Test after uploading the artifact so that we can download the artifact for
-      # diagnosis. I did consider the fact that this means people could accidentally
-      # download a faulty version, but people should be downloading from releases
-      # most of the time, and GitHub makes it pretty obvious when a workflow run has
-      # failed.
-      - name: Test
-        run: swift test
