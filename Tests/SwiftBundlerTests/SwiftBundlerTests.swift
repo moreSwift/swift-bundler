@@ -69,7 +69,7 @@ struct Tests {
       let app = "DarwinDynamicDependencies"
       let fixture = Bundle.module.bundleURL.appendingPathComponent("Fixtures/\(app)")
       await SwiftBundler.main(["bundle", "-d", fixture.path])
-      let outputPath = fixture / ".build/bundler/\(app).app"
+      let outputPath = fixture / ".build/bundler/apps/\(app)/\(app).app"
 
       let sparkle = outputPath / "Contents/Frameworks/Sparkle.framework"
       #expect(sparkle.exists(), "didn't copy framework")

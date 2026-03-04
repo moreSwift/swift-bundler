@@ -587,6 +587,7 @@ struct BundleCommand: ErrorHandledCommand {
       }
 
       let outputDirectory = Self.outputDirectory(for: scratchDirectory)
+      let appOutputDirectory = outputDirectory / "apps" / appName
 
       // Load package manifest
       log.info("Loading package manifest")
@@ -599,7 +600,7 @@ struct BundleCommand: ErrorHandledCommand {
           manifest.platformVersion(for: platform)
         } ?? nil
 
-      let metadataDirectory = outputDirectory / "metadata"
+      let metadataDirectory = appOutputDirectory / "metadata"
       if !metadataDirectory.exists() {
         try RichError<SwiftBundlerError>.catch {
           try FileManager.default.createDirectory(
@@ -684,7 +685,7 @@ struct BundleCommand: ErrorHandledCommand {
         appConfiguration: appConfiguration,
         packageDirectory: packageDirectory,
         productsDirectory: productsDirectory,
-        outputDirectory: outputDirectory,
+        outputDirectory: appOutputDirectory,
         platform: resolvedPlatform,
         device: resolvedDevice,
         darwinCodeSigningContext: resolvedCodesigningContext,
@@ -801,11 +802,8 @@ struct BundleCommand: ErrorHandledCommand {
       }
 
       try Self.removeExistingOutputs(
-        outputDirectory: outputDirectory,
-        skip: [
-          dependenciesScratchDirectory.lastPathComponent,
-          metadataDirectory.lastPathComponent
-        ]
+        outputDirectory: appOutputDirectory,
+        skip: [metadataDirectory.lastPathComponent]
       )
 
       return try await Self.bundle(
