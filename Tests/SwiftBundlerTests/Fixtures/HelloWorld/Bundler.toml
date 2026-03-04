@@ -1,0 +1,6 @@
+format_version = 2
+
+[apps.HelloWorld]
+identifier = 'com.example.HelloWorld'
+product = 'HelloWorld'
+version = '0.1.0'
