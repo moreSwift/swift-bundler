@@ -61,7 +61,7 @@ enum ResourceBundler {
     platformVersion: String,
     packageName: String,
     productName: String,
-    iconURL: URL?,
+    iconURL: URL?
   ) async throws(Error) {
     let mainBundleName = "\(packageName)_\(productName)"
 

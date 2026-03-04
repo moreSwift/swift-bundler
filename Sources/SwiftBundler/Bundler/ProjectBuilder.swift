@@ -33,7 +33,7 @@ enum ProjectBuilder {
         appName: appName,
         dryRun: dryRun,
         builtProjects: &builtProjects,
-        builtProducts: &builtProducts,
+        builtProducts: &builtProducts
       )
     }
     return builtProducts
@@ -451,7 +451,7 @@ enum ProjectBuilder {
   static func runBuilder(
     _ builder: URL,
     for configuration: ProjectConfiguration.Flat,
-    scratchDirectory: ScratchDirectoryStructure,
+    scratchDirectory: ScratchDirectoryStructure
   ) async throws(Error) {
     let context = _BuilderContextImpl(
       buildDirectory: scratchDirectory.build
