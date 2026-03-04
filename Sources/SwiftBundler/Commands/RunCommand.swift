@@ -103,6 +103,7 @@ struct RunCommand: ErrorHandledCommand {
     let bundleCommand = BundleCommand(
       arguments: _arguments,
       skipBuild: false,
+      showBundlePath: false,
       builtWithXcode: false,
       hotReloadingEnabled: hot
     )
