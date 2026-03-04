@@ -70,11 +70,13 @@ struct BundleCommand: ErrorHandledCommand {
   init(
     arguments: OptionGroup<BundleArguments>,
     skipBuild: Bool,
+    showBundlePath: Bool,
     builtWithXcode: Bool,
     hotReloadingEnabled: Bool
   ) {
     _arguments = arguments
     self.skipBuild = skipBuild
+    self.showBundlePath = showBundlePath
     self.builtWithXcode = builtWithXcode
     self.hotReloadingEnabled = hotReloadingEnabled
   }
