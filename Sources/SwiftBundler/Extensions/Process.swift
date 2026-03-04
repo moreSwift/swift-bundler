@@ -1,4 +1,5 @@
 import Foundation
+import Mutex
 
 #if os(Linux)
   import Glibc
@@ -90,7 +91,7 @@ extension Process {
 
     let dataStream = AsyncStream.makeStream(of: Data.self)
 
-    let handleDataTask = Task<Data, Never> {
+    let handleDataTask = Task<Data, any Swift.Error> {
       var output = Data()
 
       for await data in dataStream.stream {
@@ -98,7 +99,7 @@ extension Process {
       }
 
       if #available(macOS 10.15.4, *) {
-        if let data = try? pipe.fileHandleForReading.readToEnd() {
+        if let data = try pipe.fileHandleForReading.readToEnd() {
           output.append(contentsOf: data)
         }
       }
@@ -106,29 +107,61 @@ extension Process {
       return output
     }
 
-    pipe.fileHandleForReading.readabilityHandler = {
-      dataStream.continuation.yield($0.availableData)
+    let disableReadabilityHandler = Mutex(false)
+
+    // We assume that our readabilityHandler never gets called concurrently. If
+    // it does we'd likely have to record the number of in-flight handlers in an
+    // atomic instead.
+    pipe.fileHandleForReading.readabilityHandler = { fileHandle in
+      disableReadabilityHandler.withLock { disable in
+        // Sometimes on Linux, our readabilityHandler gets called after the
+        // termination handler, even once we've set pipe.fileHandlerForReading.readabilityHandler
+        // to nil... We guard against that with this flag. If we instead just let the handler run,
+        // then we end up reading `availableData` before or during `readToEnd` in `handleDataTask`
+        // which leads to `readToEnd` returning no data.
+        guard !disable else {
+          return
+        }
+
+        let data = fileHandle.availableData
+        dataStream.continuation.yield(data)
+      }
     }
 
     // Closes the output pipe and waits for the data stream to finish
     // processing.
-    let finalize: () async -> Data = {
+    let finalize: () async throws(Error) -> Data = {
       try? pipe.fileHandleForWriting.close()
+
       pipe.fileHandleForReading.readabilityHandler = nil
 
-      dataStream.continuation.finish()
+      // Sometimes on Linux, availableData blocks until after the termination
+      // handler gets called, which then causes us to yield the data into a
+      // finalised stream (and losing it to the void). This mutex helps fix this
+      // because it'll block us until any existing handler invocation completes.
+      // We then set the disabled flag to true so that any future invocations exit
+      // early before reading availableData.
+      disableReadabilityHandler.withLock { disable in
+        disable = true
+      }
 
-      return await handleDataTask.value
+      dataStream.continuation.finish()
+      return try await Error.catch {
+        try await handleDataTask.value
+      }
     }
 
     let output: Data
     do {
       try await action()
-      output = await finalize()
+      output = try await finalize()
     } catch {
       switch error.message {
         case .nonZeroExitStatus(let command, let status):
-          throw Error(.nonZeroExitStatusWithOutput(await finalize(), command, status))
+          // We try finalize again here because we know that finalize doesn't throw
+          // the nonZeroExitStatus error, so we mustn't have reached finalize in the do
+          // block before throwing.
+          throw Error(.nonZeroExitStatusWithOutput(try await finalize(), command, status))
         default:
           throw error
       }
