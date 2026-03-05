@@ -48,7 +48,11 @@ url_schemes = ["hello"]
 # package as helper executables (placed next to the main executable). Dependencies
 # with a dot are interpreted as either library or executable products to include
 # from a subproject. This allows pulling cmake dependencies into Swift Bundler
-# projects. This is often used to pull in libsentry.
+# projects. This is often used to pull in libsentry. Pulling in external library
+# products requires that your app imports a SwiftPM library target/product
+# containing a 'module.modulemap' instructing SwiftPM what to link against.
+# See https://github.com/moreSwift/swift-bundler/tree/main/Tests/SwiftBundlerTests/Fixtures/MakefileBuilder
+# for a working example.
 dependencies = ["Updater", "cmakeproj.hello"]
 
 # Extra entries for your app's Info.plist file. Currently has no effect on
@@ -91,18 +95,8 @@ interface_idiom = "mac"
 # `git(...)` (a git url). When using a `git` source, you must specify a
 # revision via the separate `revision` config property.
 source = "local(./cmakeproj)"
-
-# All projects must define their own builders.
-[projects.cmakeproj.builder]
-# The name of the builder. This field is oddly named, but for now it's just the
-# path to the builder's source file. Remote builder sources will eventually be
-# supported (so that projects can vend builders for others to use).
-name = "CMakeBuilder.swift"
-# The type of builder. Currently `wholeProject` is the only option. That is,
-# when invoked the builder must just build all required products.
-type = "wholeProject"
-# The revision of the Swift Bundler builder API to use when building the builder.
-api = "revision(2cbe252923017306998297ee8bea817079a0eda4)"
+# Builder to use when building products of the project
+builder = "CMakeBuilder"
 
 # Projects can define as many products as they want. Library products are built
 # and inserted into SwiftPM's build directory so that they can be found when
@@ -120,13 +114,22 @@ type = "dynamicLibrary"
 # to build into, but sometimes the products may exist within some sort of nested
 # directory structure. Defaults to `.`
 output_directory = "."
+
+# Builders are used to build subprojects.
+[builders.CMakeBuilder]
+# The name of the SwiftPM executable product containing the builder implementation.
+product = "CMakeBuilder"
+# The type of builder. Currently `wholeProject` is the only option. That is,
+# when invoked the builder must just build all required products.
+kind = "wholeProject"
 ```
 *Bundler.toml*
 
 > Note: Only the `product`, `version` and `identifier` fields are required.
 
-For the sake of completeness, here's the source code for the `CMakeBuilder.swift`
-referred to by the example configuration.
+For the sake of completeness, here's the source code for the
+`Sources/CMakeBuilder/CMakeBuilder.swift` builder product referred to by the
+example configuration.
 
 ```swift
 import SwiftBundlerBuilders
@@ -146,7 +149,7 @@ struct CMakeBuilder: Builder {
     }
 }
 ```
-*CMakeBuilder.swift*
+*Sources/CMakeBuilder/CMakeBuilder.swift*
 
 ## Schema
 
