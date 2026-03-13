@@ -79,7 +79,7 @@ struct BundlerContext {
   var darwinCodeSigningContext: DarwinCodeSigningContext?
 
   /// The app's built dependencies.
-  var builtDependencies: [String: ProjectBuilder.BuiltProduct]
+  var builtDependencies: [ProjectBuilder.ProductReference: ProjectBuilder.BuiltProduct]
 
   /// The app's main built executable file.
   var executableArtifact: URL

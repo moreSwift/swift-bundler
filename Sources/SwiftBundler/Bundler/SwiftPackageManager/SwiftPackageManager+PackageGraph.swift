@@ -6,12 +6,15 @@ extension SwiftPackageManager {
   /// It's best to call this on a root package (rather than a package checkout)
   /// because it will populate `<packageDirectory>/.build/checkouts` if not
   /// already present.
-  /// - Parameter packageDirectory: The root directory of the package to load.
-  /// - Parameter toolchain: The Swift toolchain to use.
+  /// - Parameters:
+  ///   - packageDirectory: The root directory of the package to load.
+  ///   - toolchain: The Swift toolchain to use.
+  ///   - configurationContext: The context to use when flattening package configurations.
   /// - Returns: A package graph containing the root package and all of its
   ///   dependencies.
   static func loadPackageGraph(
     packageDirectory: URL,
+    configurationContext: ConfigurationFlattener.Context,
     toolchain: URL?
   ) async throws(Error) -> PackageGraph {
     try await SwiftPackageManager.resolveDependencies(
@@ -24,6 +27,7 @@ extension SwiftPackageManager {
       packageDirectory: packageDirectory,
       source: .local(path: packageDirectory),
       isRootPackage: true,
+      configurationContext: configurationContext,
       toolchain: toolchain
     )
 
@@ -50,6 +54,7 @@ extension SwiftPackageManager {
         source: source,
         identityOverride: dependency.identity,
         isRootPackage: false,
+        configurationContext: configurationContext,
         toolchain: toolchain
       )
       let reference = PackageReference(identity: package.identity)
@@ -134,6 +139,7 @@ extension SwiftPackageManager {
   ///   - identityOverride: The package's identity according to whichever package
   ///     is depending on this package (if any). If `nil` then the package's name
   ///     field is lowercased to obtain its identity according to itself.
+  ///   - configurationContext: The context to use when flattening package configurations.
   ///   - toolchain: The Swift toolchain to use.
   /// - Returns: The loaded package.
   private static func loadPackage( // swiftlint:disable:this cyclomatic_complexity
@@ -141,6 +147,7 @@ extension SwiftPackageManager {
     source: PackageSource,
     identityOverride: String? = nil,
     isRootPackage: Bool,
+    configurationContext: ConfigurationFlattener.Context,
     toolchain: URL?
   ) async throws(Error) -> Package<PackageManifest.PackageDependency> {
     let manifest = try await loadPackageManifest(from: packageDirectory, toolchain: toolchain)
@@ -396,14 +403,24 @@ extension SwiftPackageManager {
     }
 
     // Load the package's bundler config file if present.
-    let configuration: PackageConfiguration?
+    let fullConfiguration: PackageConfiguration?
+    let configuration: PackageConfiguration.Flat?
     if PackageConfiguration.standardConfigurationFileLocation(for: packageDirectory).exists() {
-      configuration = try await Error.catch {
+      let loadedConfiguration = try await Error.catch {
         try await PackageConfiguration.load(fromDirectory: packageDirectory)
       }
+      fullConfiguration = loadedConfiguration
+      configuration = try Error.catch {
+        try ConfigurationFlattener.flatten(
+          loadedConfiguration,
+          with: configurationContext
+        )
+      }
     } else {
+      fullConfiguration = nil
       configuration = nil
     }
+
 
     return Package(
       name: packageName,
@@ -413,6 +430,7 @@ extension SwiftPackageManager {
       dependencies: manifest.dependencies,
       products: products,
       targets: targets,
+      fullConfiguration: fullConfiguration,
       configuration: configuration
     )
   }
@@ -478,7 +496,7 @@ extension SwiftPackageManager {
     /// - Returns: The package's configuration if it has any, otherwise `nil`.
     func configuration(
       ofPackage packageReference: PackageReference
-    ) throws(Error) -> PackageConfiguration? {
+    ) throws(Error) -> PackageConfiguration.Flat? {
       let package = try package(referredToBy: packageReference)
       return package.configuration
     }
@@ -489,9 +507,70 @@ extension SwiftPackageManager {
     /// - Returns: The target's configuration if it has any, otherwise `nil`.
     func configuration(
       ofTarget targetReference: TargetReference
-    ) throws(Error) -> TargetConfiguration? {
+    ) throws(Error) -> TargetConfiguration.Flat? {
       let packageConfiguration = try configuration(ofPackage: targetReference.package)
-      return packageConfiguration?.targets?[targetReference.name]
+      return packageConfiguration?.targets[targetReference.name]
+    }
+
+    /// Gets all products within the package graph. Uses the assumption that
+    /// each product name appears at most once.
+    ///
+    /// This relies on potentially undocumented SwiftPM behaviour so it should
+    /// remain internal even if we make the rest of this API public. That is,
+    /// we assume that each product name appears at most once. We make that
+    /// assumption because if we don't make that assumption then there's still
+    /// nothing that we can do differently in our product handling due to SwiftPM
+    /// not allowing you to disambiguate products when building them from the
+    /// command line.
+    internal func allProducts() -> [String: Product] {
+      // blame is used when producing duplicate product name warnings
+      var blame: [String: PackageReference] = [:]
+
+      var allProducts = rootPackage.products
+      for name in rootPackage.products.keys {
+        blame[name] = rootPackage.reference
+      }
+
+      for package in dependencyPackages.values {
+        for (name, product) in package.products {
+          if allProducts.keys.contains(name) {
+            log.warning(
+              """
+              Both '\(blame[name]?.identity ?? "<unknown>")' and '\(package.reference)' \
+              contain a product named '\(name)'. Leaving this unresolved may cause \
+              issues with SwiftPM if both products are executable products and \
+              you include one of them as a helper executable. More specifically, \
+              SwiftPM cannot build executable products within the root package \
+              if there's an identically-named product present in a dependency package
+              """
+            )
+            log.warning(
+              """
+              """
+            )
+          }
+          allProducts[name] = product
+          blame[name] = package.reference
+        }
+      }
+
+      return allProducts
+    }
+
+    /// Gets the product with the given name from the package graph.
+    ///
+    /// This relies on potentially undocumented SwiftPM behaviour so it should
+    /// remain internal even if we make the rest of this API public. That is,
+    /// we assume that each product name appears at most once. We make that
+    /// assumption because if we don't make that assumption then there's still
+    /// nothing that we can do differently in our product handling due to SwiftPM
+    /// not allowing you to disambiguate products when building them from the
+    /// command line.
+    internal func product(named name: String) throws(Error) -> Product {
+      guard let product = allProducts()[name] else {
+        throw Error(.productNotFoundInGraph(name))
+      }
+      return product
     }
 
     /// Gets the targets directly contained within a product.
@@ -685,15 +764,22 @@ extension SwiftPackageManager {
   }
 
   /// A reference to a target in a package graph.
-  struct TargetReference: Sendable, Hashable {
+  struct TargetReference: Sendable, Hashable, CustomStringConvertible {
     /// The name of the target.
     var name: String
     /// A reference to the target's enclosing package.
     var package: PackageReference
+
+    var description: String {
+      "\(package.identity).\(name)"
+    }
   }
 
   /// A package's metadata and structure.
-  struct Package<Dependency: Codable & Sendable>: Codable, Sendable {
+  struct Package<Dependency: Codable & Sendable>: Sendable {
+    // IMPORTANT: Update Package.withReferences when new members are added to
+    //   this struct (easy to miss if the members are optional).
+
     /// The package's name.
     var name: String
     /// The package's identity (either according to the package itself if
@@ -717,8 +803,13 @@ extension SwiftPackageManager {
     var products: [String: Product]
     /// The package's targets.
     var targets: [String: Target]
-    /// The package's Swift Bundler configuration, if present.
-    var configuration: PackageConfiguration?
+    /// The package's full (i.e. not flattened) Swift Bundler configuration, if present.
+    var fullConfiguration: PackageConfiguration?
+    /// The package's Swift Bundler configuration flattened, if present.
+    ///
+    /// Excluded from Package's Codable implementation because it's not codable and the
+    /// Codable implementation only exists for debugging purposes at the moment.
+    var configuration: PackageConfiguration.Flat?
 
     /// A reference to the package in the context of its enclosing package graph.
     ///
@@ -738,7 +829,7 @@ extension SwiftPackageManager {
   }
 
   /// A reference to a unique package.
-  struct PackageReference: Codable, Sendable, Hashable {
+  struct PackageReference: Codable, Sendable, Hashable, CustomStringConvertible {
     /// The package's identity.
     var identity: String
 
@@ -762,6 +853,10 @@ extension SwiftPackageManager {
     func encode(to encoder: any Encoder) throws {
       var container = encoder.singleValueContainer()
       try container.encode(identity)
+    }
+
+    var description: String {
+      identity
     }
   }
 
@@ -1071,7 +1166,49 @@ extension SwiftPackageManager.Package<PackageManifest.PackageDependency> {
         .map(SwiftPackageManager.PackageReference.init(identity:)),
       products: products,
       targets: targets,
+      fullConfiguration: fullConfiguration,
       configuration: configuration
     )
+  }
+}
+
+extension SwiftPackageManager.Package: Codable {
+  private enum CodingKeys: CodingKey {
+    case name
+    case identity
+    case source
+    case localCheckout
+    case dependencies
+    case products
+    case targets
+    case fullConfiguration
+  }
+
+  init(from decoder: any Decoder) throws {
+    // Excludes `configuration` because it isn't codable (we only use this
+    // codable implementation to display things for debugging)
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    name = try container.decode(String.self, forKey: .name)
+    identity = try container.decode(String.self, forKey: .identity)
+    source = try container.decode(SwiftPackageManager.PackageSource.self, forKey: .source)
+    localCheckout = try container.decode(URL.self, forKey: .localCheckout)
+    dependencies = try container.decode([Dependency].self, forKey: .dependencies)
+    products = try container.decode([String: SwiftPackageManager.Product].self, forKey: .products)
+    targets = try container.decode([String: SwiftPackageManager.Target].self, forKey: .targets)
+    fullConfiguration = try container.decode(PackageConfiguration?.self, forKey: .fullConfiguration)
+  }
+
+  func encode(to encoder: any Encoder) throws {
+    // Excludes `configuration` because it isn't codable (we only use this
+    // codable implementation to display things for debugging)
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(name, forKey: .name)
+    try container.encode(identity, forKey: .identity)
+    try container.encode(source, forKey: .source)
+    try container.encode(localCheckout, forKey: .localCheckout)
+    try container.encode(dependencies, forKey: .dependencies)
+    try container.encode(products, forKey: .products)
+    try container.encode(targets, forKey: .targets)
+    try container.encode(fullConfiguration, forKey: .fullConfiguration)
   }
 }

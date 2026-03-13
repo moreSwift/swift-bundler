@@ -128,7 +128,7 @@ enum GenericWindowsBundler: Bundler {
   ) async throws(Error) {
     // Copy all executable dependencies into the bundle next to the main
     // executable
-    for (name, dependency) in context.builtDependencies {
+    for (reference, dependency) in context.builtDependencies {
       guard dependency.product.type == .executable else {
         continue
       }
@@ -142,7 +142,7 @@ enum GenericWindowsBundler: Bundler {
             to: destination
           )
         } catch {
-          throw Error(.failedToCopyExecutableDependency(name: name), cause: error)
+          throw Error(.failedToCopyExecutableDependency(reference), cause: error)
         }
       }
     }

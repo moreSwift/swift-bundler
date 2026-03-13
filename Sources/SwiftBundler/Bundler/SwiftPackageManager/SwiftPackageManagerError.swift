@@ -32,6 +32,7 @@ extension SwiftPackageManager {
     case targetNotFoundInPackage(_ target: String, PackageReference)
     case productNotFoundInPackage(_ product: String, PackageReference)
     case packageIntentionallyExcludedFromPackageGraph(PackageReference)
+    case productNotFoundInGraph(String)
 
     var userFriendlyMessage: String {
       switch self {
@@ -123,6 +124,8 @@ extension SwiftPackageManager {
             when loading the package graph as it was believed to be unused \
             (for the purposes that Swift Bundler needs the package graph for)
             """
+        case .productNotFoundInGraph(let name):
+          return "Product named '\(name)' not found in package graph"
       }
     }
   }
