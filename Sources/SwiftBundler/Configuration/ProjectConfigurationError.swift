@@ -7,11 +7,14 @@ extension ProjectConfiguration {
   /// An error message related to ``ProjectConfiguration``.
   enum ErrorMessage: Throwable {
     case invalidGitURL(String)
+    case invalidURL(String)
     case projectBuilderNotASwiftFile(String)
 
     var userFriendlyMessage: String {
       switch self {
         case .invalidGitURL(let url):
+          return "'\(url)' is not a valid URL"
+        case .invalidURL(let url):
           return "'\(url)' is not a valid URL"
         case .projectBuilderNotASwiftFile(let builder):
           return """

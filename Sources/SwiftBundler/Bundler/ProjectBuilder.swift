@@ -239,9 +239,6 @@ enum ProjectBuilder {
     let productsDirectoryExists =
       projectScratchDirectory.products.exists(withType: .directory)
 
-    let requiresBuilding = !builtProjects.contains(dependency.project)
-    builtProjects.insert(dependency.project)
-
     let productPath = product.artifactPath(
       whenNamed: dependency.product.name,
       platform: context.platform
@@ -251,7 +248,22 @@ enum ProjectBuilder {
       platform: context.platform
     )
 
-    if requiresBuilding && !dryRun {
+    let requiresBuilding = !builtProjects.contains(dependency.project)
+    if dryRun {
+    } else if let prebuilt = product.prebuilt {
+      try projectScratchDirectory.createRequiredDirectories()
+
+      try await downloadPrebuilt(
+        prebuilt,
+        to: projectScratchDirectory.build / productPath,
+        configuration: project,
+        dependency: dependency,
+        packageDirectory: context.projectDirectory,
+        projectScratchDirectory: projectScratchDirectory
+      )
+    } else if requiresBuilding {
+      builtProjects.insert(dependency.project)
+
       // Set up required directories and build whole project
       log.info("Building project '\(projectName)'")
       if productsDirectoryExists {
@@ -262,10 +274,20 @@ enum ProjectBuilder {
 
       try projectScratchDirectory.createRequiredDirectories()
 
+      guard let source = project.source else {
+        throw Error(.projectMissingSource(dependency))
+      }
+
+      guard let builderConfiguration = project.builder else {
+        throw Error(.projectMissingBuilder(dependency))
+      }
+
       do {
         try await ProjectBuilder.buildProject(
           projectName,
           configuration: project,
+          source: source,
+          builderConfiguration: builderConfiguration,
           builders: packageConfiguration.builders,
           packageDirectory: context.projectDirectory,
           scratchDirectory: projectScratchDirectory,
@@ -319,6 +341,14 @@ enum ProjectBuilder {
     // it exists.
     let destination = directory / builtArtifact.lastPathComponent
     if !dryRun && builtArtifact.exists() {
+      if destination.exists() {
+        try Error.catch {
+          // Windows needs this because it doesn't want to overwrite existing files
+          // with copies; other platforms may need it too but haven't checked
+          try FileManager.default.removeItem(at: destination)
+        }
+      }
+
       try FileManager.default.copyItem(
         at: builtArtifact,
         to: destination,
@@ -404,7 +434,9 @@ enum ProjectBuilder {
     // Produce built product description
     let productConfiguration = ProjectConfiguration.Product.Flat(
       type: .executable,
-      outputDirectory: nil
+      outputDirectory: nil,
+      filename: nil,
+      prebuilt: nil
     )
     let artifactPath = productConfiguration.artifactPath(
       whenNamed: productName,
@@ -551,24 +583,25 @@ enum ProjectBuilder {
     }
   }
 
-  /// Builds a project and returns the directory containing the built
-  /// products on success.
+  /// Builds a project.
   static func buildProject(
     _ name: String,
     configuration: ProjectConfiguration.Flat,
+    source: ProjectConfiguration.Source.Flat,
+    builderConfiguration: ProjectConfiguration.Builder.Flat,
     builders: [String: BuilderConfiguration.Flat],
     packageDirectory: URL,
     scratchDirectory: ScratchDirectoryStructure,
     swiftToolchain: URL?
   ) async throws(Error) {
     try await checkoutSource(
-      configuration.source,
+      source,
       at: scratchDirectory.sources,
       packageDirectory: packageDirectory
     )
 
     let builder = try await prepareBuilder(
-      configuration.builder,
+      builderConfiguration,
       builders: builders,
       packageDirectory: packageDirectory,
       scratchDirectory: scratchDirectory,
@@ -663,6 +696,76 @@ enum ProjectBuilder {
       }
     } catch {
       throw Error(.builderFailed, cause: error)
+    }
+  }
+
+  static func downloadPrebuilt(
+    _ prebuilt: ProjectConfiguration.Product.PrebuiltLocation,
+    to destination: URL,
+    configuration: ProjectConfiguration.Flat,
+    dependency: DependencyReference,
+    packageDirectory: URL,
+    projectScratchDirectory: ScratchDirectoryStructure
+  ) async throws(Error) {
+    let url: URL
+    switch prebuilt {
+      case .path(let path):
+        guard let source = configuration.source else {
+          throw Error(.projectMissingSourceForPathBasedPrebuilt(dependency, path))
+        }
+
+        try await checkoutSource(
+          source,
+          at: projectScratchDirectory.sources,
+          packageDirectory: packageDirectory
+        )
+
+        try Error.catch {
+          try FileManager.default.copyItem(
+            at: projectScratchDirectory.sources / path,
+            to: destination
+          )
+        }
+
+        return
+      case .url(let prebuiltURL):
+        url = prebuiltURL
+    }
+
+    // If there's an existing download, check whether its source matches the
+    // current source.
+    var canUseExistingDownload = false
+    let sourceMarkerFile = destination.appendingPathExtension("source")
+    if let markerModifiedAt = sourceMarkerFile.lastModified,
+       let downloadModifiedAt = destination.lastModified,
+       markerModifiedAt >= downloadModifiedAt
+    {
+      do {
+        let content = try String(contentsOf: sourceMarkerFile)
+        if content == url.absoluteString {
+          canUseExistingDownload = true
+        }
+      } catch {
+        log.warning(
+          """
+          Prebuilt product marker file at '\(sourceMarkerFile.path)' was corrupted; \
+          redownloading prebuilt artifact
+          """
+        )
+      }
+    }
+
+    // Exit early if existing download has matching source
+    if canUseExistingDownload {
+      log.debug("Reusing existing download for product \(dependency); source matches")
+      return
+    }
+
+    log.info("Downloading prebuilt artifact for \(dependency) from '\(url)'")
+    try Error.catch {
+      let data = try Data(contentsOf: url)
+      try data.write(to: destination)
+      try url.absoluteString.write(to: sourceMarkerFile)
     }
   }
 }

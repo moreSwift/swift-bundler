@@ -19,6 +19,12 @@ struct DebugCommand: AsyncParsableCommand {
       abstract: "Dumps the package graph of the root package and all of its dependencies"
     )
 
+    /// An alternative Swift toolchain to use.
+    @Option(
+      help: "An alternative Swift toolchain to use",
+      transform: URL.init(fileURLWithPath:))
+    var toolchain: URL?
+
     @Flag(
       name: .shortAndLong,
       help: "Print verbose error messages.")
@@ -30,9 +36,10 @@ struct DebugCommand: AsyncParsableCommand {
           packageDirectory: .currentDirectory,
           configurationContext: ConfigurationFlattener.Context(
             platform: HostPlatform.hostPlatform.platform,
-            bundler: BundlerChoice.defaultForHostPlatform
+            bundler: BundlerChoice.defaultForHostPlatform,
+            architectures: [BuildArchitecture.host]
           ),
-          toolchain: nil
+          toolchain: toolchain
         )
       }
 
