@@ -545,13 +545,19 @@ struct BundleCommand: ErrorHandledCommand {
       let scratchDirectory =
         arguments.scratchDirectory ?? (packageDirectory / ".build")
 
+      // Get relevant configuration
+      let architectures = getArchitectures(platform: resolvedPlatform)
+
+      let configurationFlattenerContext = ConfigurationFlattener.Context(
+        platform: resolvedPlatform,
+        bundler: arguments.bundler,
+        architectures: architectures
+      )
+
       let (appName, appConfiguration, configuration) = try await Self.getConfiguration(
         arguments.appName,
         packageDirectory: packageDirectory,
-        context: ConfigurationFlattener.Context(
-          platform: resolvedPlatform,
-          bundler: arguments.bundler
-        ),
+        context: configurationFlattenerContext,
         customFile: arguments.configurationFileOverride
       )
 
@@ -565,9 +571,6 @@ struct BundleCommand: ErrorHandledCommand {
       else {
         Foundation.exit(1)
       }
-
-      // Get relevant configuration
-      let architectures = getArchitectures(platform: resolvedPlatform)
 
       // Whether or not we are building with xcodebuild instead of swiftpm.
       let isUsingXcodebuild = Xcodebuild.isUsingXcodebuild(
@@ -737,10 +740,7 @@ struct BundleCommand: ErrorHandledCommand {
       let packageGraph = try await RichError<SwiftBundlerError>.catch {
         try await SwiftPackageManager.loadPackageGraph(
           packageDirectory: packageDirectory,
-          configurationContext: ConfigurationFlattener.Context(
-            platform: resolvedPlatform,
-            bundler: arguments.bundler
-          ),
+          configurationContext: configurationFlattenerContext,
           toolchain: arguments.toolchain
         )
       }
