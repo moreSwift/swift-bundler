@@ -28,6 +28,10 @@ struct DebugCommand: AsyncParsableCommand {
       let graph = try await RichError<SwiftBundlerError>.catch {
         try await SwiftPackageManager.loadPackageGraph(
           packageDirectory: .currentDirectory,
+          configurationContext: ConfigurationFlattener.Context(
+            platform: HostPlatform.hostPlatform.platform,
+            bundler: BundlerChoice.defaultForHostPlatform
+          ),
           toolchain: nil
         )
       }

@@ -1,0 +1,6 @@
+format_version = 2
+
+[apps.App]
+product = "App"
+identifier = "com.example.App"
+version = "0.1.0"

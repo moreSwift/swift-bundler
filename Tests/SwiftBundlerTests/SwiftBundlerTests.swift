@@ -103,6 +103,12 @@ struct Tests {
     }
   }
 
+  @Test func testLibraryWithHelperExecutable() async throws {
+    try await withFixture("LibraryProjectDependencies") { fixture in
+      await SwiftBundler.main(["run", "-d", fixture.path])
+    }
+  }
+
   #if os(macOS)
     /// This test app depends on both a plain dynamic library and a framework.
     @Test func testDarwinDynamicDependencyCopying() async throws {
