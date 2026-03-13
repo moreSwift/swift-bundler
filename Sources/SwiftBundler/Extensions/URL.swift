@@ -46,6 +46,15 @@ extension URL {
     return relComponents.joined(separator: "/")
   }
 
+  /// The date at which the underlying file or directory was last modified, if
+  /// the file exists and the date can be retrieved.
+  var lastModified: Date? {
+    guard let attributes = try? FileManager.default.attributesOfItem(atPath: path) else {
+      return nil
+    }
+    return attributes[FileAttributeKey.modificationDate] as? Date
+  }
+
   /// The current directory.
   static var currentDirectory: URL {
     URL(fileURLWithPath: ".")

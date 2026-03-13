@@ -30,7 +30,8 @@ struct DebugCommand: AsyncParsableCommand {
           packageDirectory: .currentDirectory,
           configurationContext: ConfigurationFlattener.Context(
             platform: HostPlatform.hostPlatform.platform,
-            bundler: BundlerChoice.defaultForHostPlatform
+            bundler: BundlerChoice.defaultForHostPlatform,
+            architectures: [BuildArchitecture.host]
           ),
           toolchain: nil
         )

@@ -6,6 +6,7 @@ enum ConfigurationFlattener {
   struct Context {
     var platform: Platform
     var bundler: BundlerChoice
+    var architectures: [BuildArchitecture]
     var codingPath = CodingPath()
 
     func appendingCodingKey(_ key: any CodingKey) -> Self {
@@ -122,6 +123,9 @@ enum ConfigurationFlattener {
         identifier == context.platform.rawValue
       case .bundler(let identifier):
         identifier == context.bundler.rawValue
+      case .arch(let identifier):
+        // TODO(stackotter): Do people find this condition interpretation intuitive?
+        context.architectures.map(\.rawValue).contains(identifier)
     }
   }
 }
