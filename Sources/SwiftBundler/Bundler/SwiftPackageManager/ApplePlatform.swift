@@ -136,7 +136,7 @@ enum ApplePlatform: String, CaseIterable {
       case .iOS, .iOSSimulator:
         return "7.0"
       case .visionOS, .visionOSSimulator:
-        return "0.0"
+        return "1.0"
       case .tvOS, .tvOSSimulator:
         return "9.0"
     }
