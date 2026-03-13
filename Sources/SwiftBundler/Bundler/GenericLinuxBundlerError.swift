@@ -9,7 +9,7 @@ extension GenericLinuxBundler {
     case failedToCreateBundleStructure(root: URL)
     case failedToCopyExecutable(source: URL, destination: URL)
     case failedToCopyExecutableDependency(
-      name: String,
+      ProjectBuilder.ProductReference,
       source: URL,
       destination: URL
     )
@@ -32,10 +32,10 @@ extension GenericLinuxBundler {
             Failed to copy executable from '\(source.relativePath)' to \
             '\(destination.relativePath)'
             """
-        case .failedToCopyExecutableDependency(let dependencyName, let source, let destination):
+        case .failedToCopyExecutableDependency(let product, let source, let destination):
           return
             """
-            Failed to copy executable dependency '\(dependencyName)' from \
+            Failed to copy executable dependency '\(product)' from \
             '\(source.relativePath)' to '\(destination.relativePath)'
             """
         case .failedToCopyIcon(let source, let destination):

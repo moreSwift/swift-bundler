@@ -197,7 +197,7 @@ enum DarwinBundler: Bundler {
   ) async throws(Error) {
     // Copy all executable dependencies into the bundle next to the main executable
     let executableDirectory = bundleStructure.mainExecutable.deletingLastPathComponent()
-    for (name, dependency) in context.builtDependencies {
+    for (reference, dependency) in context.builtDependencies {
       guard dependency.product.type == .executable else {
         continue
       }
@@ -210,7 +210,7 @@ enum DarwinBundler: Bundler {
             to: executableDirectory / source.lastPathComponent
           )
         } catch {
-          throw Error(.failedToCopyExecutableDependency(name: name), cause: error)
+          throw Error(.failedToCopyExecutableDependency(reference), cause: error)
         }
       }
     }
