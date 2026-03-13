@@ -106,6 +106,7 @@ struct PropertySet<Overlay: ConfigurationOverlay> {
 enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
   case platform(String)
   case bundler(String)
+  case arch(String)
 
   var description: String {
     switch self {
@@ -113,6 +114,8 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
         return "platform(\(identifier))"
       case .bundler(let identifier):
         return "bundler(\(identifier))"
+      case .arch(let arch):
+        return "arch(\(arch))"
     }
   }
 
@@ -152,6 +155,20 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
       }.map { bundler in
         OverlayCondition.bundler(bundler.rawValue)
       }
+
+      Parse {
+        "arch("
+        OneOf {
+          for arch in BuildArchitecture.allCases {
+            arch.rawValue.map {
+              arch
+            }
+          }
+        }
+        ")"
+      }.map { arch in
+        OverlayCondition.arch(arch.rawValue)
+      }
     }
 
     self = try parser.parse(value)
@@ -166,6 +183,8 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
         value = "platform(\(identifier))"
       case .bundler(let identifier):
         value = "bundler(\(identifier))"
+      case .arch(let identifier):
+        value = "arch(\(identifier))"
     }
 
     try container.encode(value)

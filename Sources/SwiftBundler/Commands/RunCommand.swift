@@ -90,22 +90,23 @@ struct RunCommand: ErrorHandledCommand {
       simulatorSpecifier: arguments.simulatorSpecifier
     )
 
-    let (_, appConfiguration, _) = try await BundleCommand.getConfiguration(
-      arguments.appName,
-      packageDirectory: packageDirectory,
-      context: ConfigurationFlattener.Context(
-        platform: device.platform,
-        bundler: arguments.bundler
-      ),
-      customFile: arguments.configurationFileOverride
-    )
-
     let bundleCommand = BundleCommand(
       arguments: _arguments,
       skipBuild: false,
       showBundlePath: false,
       builtWithXcode: false,
       hotReloadingEnabled: hot
+    )
+
+    let (_, appConfiguration, _) = try await BundleCommand.getConfiguration(
+      arguments.appName,
+      packageDirectory: packageDirectory,
+      context: ConfigurationFlattener.Context(
+        platform: device.platform,
+        bundler: arguments.bundler,
+        architectures: bundleCommand.getArchitectures(platform: device.platform)
+      ),
+      customFile: arguments.configurationFileOverride
     )
 
     // Perform bundling, or do a dry run if instructed to skip building (so

@@ -25,6 +25,9 @@ extension ProjectBuilder {
     case noSuchProject(ProjectReference)
     case noSuchProduct(DependencyReference)
     case noSuchRootProjectProduct(package: SwiftPackageManager.PackageReference, product: String)
+    case projectMissingSource(DependencyReference)
+    case projectMissingBuilder(DependencyReference)
+    case projectMissingSourceForPathBasedPrebuilt(DependencyReference, _ path: String)
 
     /// An internal error used in control flow.
     case mismatchedGitURL(_ actual: URL, expected: URL)
@@ -87,6 +90,22 @@ extension ProjectBuilder {
           return "Missing product \(dependency)"
         case .noSuchRootProjectProduct(let package, let product):
           return "Product '\(product)' not found in package '\(package)'"
+        case .projectMissingSource(let dependency):
+          return """
+            The product \(dependency) doesn't provide a prebuilt, and its containing \
+            project is missing source
+            """
+        case .projectMissingBuilder(let dependency):
+          return """
+            The product \(dependency) doesn't provide a prebuilt, and its containing \
+            project is missing a builder
+            """
+        case .projectMissingSourceForPathBasedPrebuilt(let dependency, let prebuiltPath):
+          return """
+            The product \(dependency) supplies a path-based prebuilt \
+            ('path(\(prebuiltPath))'), but its containing project doesn't provide \
+            a source directory/repository
+            """
       }
     }
   }
