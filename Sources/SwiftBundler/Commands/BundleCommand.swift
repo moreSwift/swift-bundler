@@ -832,14 +832,26 @@ struct BundleCommand: ErrorHandledCommand {
         )
       }
 
+      let packageGraph = try await RichError<SwiftBundlerError>.catch {
+        try await SwiftPackageManager.loadPackageGraph(
+          packageDirectory: packageDirectory,
+          configurationContext: ConfigurationFlattener.Context(
+            platform: resolvedPlatform,
+            bundler: arguments.bundler
+          ),
+          toolchain: arguments.toolchain
+        )
+      }
+
       let dependenciesScratchDirectory = outputDirectory / "projects"
 
       var dependencyContext = buildContext.genericContext
       dependencyContext.scratchDirectory = dependenciesScratchDirectory
       let dependencies = try await RichError<SwiftBundlerError>.catch {
         try await ProjectBuilder.buildDependencies(
-          appConfiguration.dependencies,
+          appConfiguration: appConfiguration,
           packageConfiguration: configuration,
+          packageGraph: packageGraph,
           context: dependencyContext,
           swiftToolchain: arguments.toolchain,
           appName: appName,

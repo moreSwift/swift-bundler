@@ -6,7 +6,7 @@ extension GenericWindowsBundler {
 
   enum ErrorMessage: Throwable {
     case failedToCreateDirectory(URL)
-    case failedToCopyExecutableDependency(name: String)
+    case failedToCopyExecutableDependency(ProjectBuilder.ProductReference)
     case failedToInsertMetadata
     case failedToEnumerateResourceBundles(URL)
     case failedToCopyResourceBundle(source: URL, destination: URL)
@@ -29,8 +29,8 @@ extension GenericWindowsBundler {
             Failed to create directory at \
             '\(directory.path(relativeTo: .currentDirectory))'
             """
-        case .failedToCopyExecutableDependency(let name):
-          return "Failed to copy dependency '\(name)' to output bundle"
+        case .failedToCopyExecutableDependency(let product):
+          return "Failed to copy dependency '\(product)' to output bundle"
         case .failedToInsertMetadata:
           return "Failed to insert metadata into main executable"
         case .failedToEnumerateResourceBundles(let directory):

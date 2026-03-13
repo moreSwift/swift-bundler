@@ -12,7 +12,7 @@ extension DarwinBundler {
     case failedToCreatePkgInfo(file: URL)
     case failedToCreateInfoPlist
     case failedToCopyExecutable(source: URL, destination: URL)
-    case failedToCopyExecutableDependency(name: String)
+    case failedToCopyExecutableDependency(ProjectBuilder.ProductReference)
     case failedToCreateIcon
     case failedToCopyICNS(source: URL, destination: URL)
     case failedToCopyResourceBundles
@@ -44,8 +44,8 @@ extension DarwinBundler {
             Failed to copy executable from '\(source.relativePath)' to \
             '\(destination.relativePath)'
             """
-        case .failedToCopyExecutableDependency(let dependencyName):
-          return "Failed to copy executable dependency '\(dependencyName)'"
+        case .failedToCopyExecutableDependency(let product):
+          return "Failed to copy executable dependency '\(product)'"
         case .failedToCreateIcon:
           return "Failed to create app icon"
         case .failedToCopyICNS(let source, let destination):

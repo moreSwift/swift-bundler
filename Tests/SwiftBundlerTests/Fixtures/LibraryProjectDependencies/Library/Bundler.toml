@@ -1,0 +1,4 @@
+format_version = 2
+
+[targets.Library]
+dependencies = ["LibraryHelper"]
