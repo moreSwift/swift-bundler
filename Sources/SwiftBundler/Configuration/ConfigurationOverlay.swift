@@ -124,7 +124,11 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
       Parse {
         "platform("
         OneOf {
-          for platform in Platform.allCases {
+          // We go through in reverse, because we need to try parsing
+          // simulator platforms before their underlying platforms, otherwise
+          // iOSSimulator matches iOS and then Swift Parsing expects the second
+          // capital S to be a closing parenthesis
+          for platform in Platform.allCases.reversed() {
             platform.rawValue.map {
               platform
             }
