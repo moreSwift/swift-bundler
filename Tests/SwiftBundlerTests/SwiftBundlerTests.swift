@@ -25,6 +25,18 @@ struct Tests {
     )
   }
 
+  @Test func testConditionParsingRoundTripping() async throws {
+    let conditions =
+      Platform.allCases.map(\.rawValue).map(OverlayCondition.platform)
+        + BundlerChoice.allCases.map(\.rawValue).map(OverlayCondition.bundler)
+
+    for condition in conditions {
+      let encoded = try JSONEncoder().encode(condition)
+      let decoded = try JSONDecoder().decode(OverlayCondition.self, from: encoded)
+      #expect(condition == decoded)
+    }
+  }
+
   @Test func testCreationWorkflow() async throws {
     let directory = FileManager.default.temporaryDirectory
       .appendingPathComponent("HelloWorld")
