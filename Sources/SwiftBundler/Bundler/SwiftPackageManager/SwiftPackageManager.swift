@@ -386,7 +386,7 @@ enum SwiftPackageManager {
     )
 
     do {
-      let output = try await process.getOutput()
+      let output = try await process.getOutput(excludeStdError: true)
       return URL(fileURLWithPath: output.trimmingCharacters(in: .newlines))
     } catch {
       throw Error(
