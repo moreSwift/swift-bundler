@@ -98,6 +98,7 @@ enum DynamicLibraryBundler {
           // Due to concurrency back deployment, the concurrency runtime install name
           // is relative to the rpath, so we need a special case to exclude it.
           && installName != "@rpath/libswift_Concurrency.dylib"
+          && installName != "@rpath/libswiftCompatibilitySpan.dylib"
         ) || includeSystemWideDependencies
       }
 
