@@ -40,6 +40,15 @@ let package = Package(
       .upToNextMinor(from: "0.7.1")
     ),
     .package(url: "https://github.com/swhitty/swift-mutex", .upToNextMinor(from: "0.0.6")),
+    .package(url: "https://github.com/stackotter/swift-ico", .upToNextMinor(from: "0.1.0")),
+    .package(
+      url: "https://github.com/stackotter/swift-image-formats",
+      .upToNextMinor(from: "0.4.0")
+    ),
+    .package(
+      url: "https://github.com/gregcotten/ZIPFoundationModern",
+      .upToNextMinor(from: "0.0.5")
+    ),
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
@@ -59,6 +68,9 @@ let package = Package(
         "Version",
         "XMLCoder",
         "Yams",
+        .product(name: "ZIPFoundation", package: "ZIPFoundationModern"),
+        .product(name: "Ico", package: "swift-ico"),
+        .product(name: "ImageFormats", package: "swift-image-formats"),
         .product(name: "Crypto", package: "swift-crypto"),
         .product(name: "SwiftASN1", package: "swift-asn1"),
         .product(name: "X509", package: "swift-certificates"),

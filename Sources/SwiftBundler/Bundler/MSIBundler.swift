@@ -21,6 +21,20 @@ enum MSIBundler: Bundler {
     )
   }
 
+  static func prepareAdditionalSPMBuildArguments(
+    _ context: BundlerContext,
+    _ additionalContext: Context,
+    dryRun: Bool
+  ) async throws(Error) -> [String] {
+    try await Error.catch {
+      try await GenericWindowsBundler.prepareAdditionalSPMBuildArguments(
+        context,
+        GenericWindowsBundler.Context(),
+        dryRun: dryRun
+      )
+    }
+  }
+
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Void

@@ -1,4 +1,7 @@
 import Foundation
+import Ico
+import ImageFormats
+import ZIPFoundation
 
 /// A bundler targeting generic Windows systems. Arranges executables, resources,
 /// and dynamic libraries into a standard directory layout.
@@ -15,6 +18,9 @@ enum GenericWindowsBundler: Bundler {
   static let outputIsRunnable = true
 
   struct Context {}
+
+  private static let resourceHackerDownloadURL =
+    URL(string: "https://www.angusj.com/resourcehacker/resource_hacker.zip")!
 
   private static let dllBundlingAllowList: [String] = [
     "swiftCore",
@@ -78,6 +84,76 @@ enum GenericWindowsBundler: Bundler {
     return structure.asOutputStructure
   }
 
+  static func prepareAdditionalSPMBuildArguments(
+    _ context: BundlerContext,
+    _ additionalContext: Context,
+    dryRun: Bool
+  ) async throws(Error) -> [String] {
+    guard let iconPath = context.appConfiguration.icon else {
+      return []
+    }
+
+    if !dryRun {
+      log.info("Compiling icon")
+
+      let icon = context.packageDirectory / iconPath
+
+      // Convert to ico
+      let image = try Error.catch(withMessage: .failedToLoadIcon(icon)) {
+        let imageData = try Data(contentsOf: icon)
+        return try Image<RGBA>.load(from: Array(imageData))
+      }.convert(to: ARGB.self)
+
+      let ico = Ico(images: [image])
+      let icoData = try Error.catch(withMessage: .failedToEncodeIco) {
+        try ico.encode()
+      }
+
+      let icoFile = context.outputDirectory / "icon.ico"
+      try Error.catch {
+        try Data(icoData).write(to: icoFile)
+      }
+
+      // Create rc file
+      let rcFile = context.outputDirectory / "icon.rc"
+
+      // Approach inspired by https://github.com/mxre/winres/pull/12
+      // I haven't escaped non-printable ASCII characters as hex escapes because I
+      // figured they shouldn't be in Windows paths, but if they are, we should e.g.
+      // escape the byte 0x81 as '\x81'.
+      let escapedPath = icoFile.path
+        .replacingOccurrences(of: "\\", with: "\\\\")
+        .replacingOccurrences(of: "\"", with: "\"\"")
+        .replacingOccurrences(of: "\t", with: "\\t")
+        .replacingOccurrences(of: "\n", with: "\\n")
+        .replacingOccurrences(of: "\r", with: "\\r")
+        .replacingOccurrences(of: "\'", with: "\\'")
+      let rcFileContent = """
+        MAINICON ICON "\(escapedPath)"
+        """
+
+      try Error.catch {
+        try rcFileContent.write(to: rcFile)
+      }
+
+      // Compile rc file
+      let process = Process.create(
+        "rc",
+        arguments: ["-nologo", rcFile.path],
+        directory: rcFile.deletingLastPathComponent()
+      )
+
+      try await Error.catch {
+        try await process.runAndWait()
+      }
+    }
+
+    let resourceFile = context.outputDirectory / "icon.res"
+    return [
+      "-Xlinker", resourceFile.path
+    ]
+  }
+
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
@@ -120,6 +196,101 @@ enum GenericWindowsBundler: Bundler {
   }
 
   // MARK: Private methods
+
+  /// Sets the icon of an executable file to the given icon (supports PNG, JPEG, WebP).
+  ///
+  /// > Important: Currently unused, but figured it was useful code to have around
+  /// >   in case future SwiftPM versions fix the linker behaviour (i.e. trailing DWARF
+  /// >   data) that stopped us from using this approach.
+  private static func setExecutableIcon(
+    of executable: URL,
+    to icon: URL
+  ) async throws(Error) {
+    let image = try Error.catch(withMessage: .failedToLoadIcon(icon)) {
+      let imageData = try Data(contentsOf: icon)
+      return try Image<RGBA>.load(from: Array(imageData))
+    }.convert(to: ARGB.self)
+
+    let ico = Ico(images: [image])
+    let icoData = try Error.catch(withMessage: .failedToEncodeIco) {
+      try ico.encode()
+    }
+
+    let icoFile = FileManager.default.temporaryDirectory / "\(UUID().uuidString).ico"
+    try Error.catch {
+      try Data(icoData).write(to: icoFile)
+    }
+
+    defer {
+      try? FileManager.default.removeItem(at: icoFile)
+    }
+
+    let resourceHacker = try ensureResourceHacker()
+    let process = Process.create(
+      resourceHacker.path,
+      arguments: [
+        "-open", executable.path, "-save", executable.path,
+        "-action", "addoverwrite",
+        "-res", icoFile.path,
+        "-mask", "ICONGROUP,APP"
+      ]
+    )
+
+    try await Error.catch(withMessage: .failedToRunResourceHacker) {
+      try await process.runAndWait()
+    }
+  }
+
+  /// Ensures that Resource Hacker is present, by downloading it if it isn't,
+  /// and returns the location of the Resource Hacker tool on success.
+  ///
+  /// > Important: Currently unused, but figured it was useful code to have around
+  /// >   in case future SwiftPM versions fix the linker behaviour (i.e. trailing DWARF
+  /// >   data) that stopped us from using this approach.
+  private static func ensureResourceHacker() throws(Error) -> URL {
+    let toolsDirectory = try Error.catch {
+      try System.getToolsDirectory()
+    }
+
+    let resourceHacker = toolsDirectory / "ResourceHacker.exe"
+    if resourceHacker.exists() {
+      return resourceHacker
+    }
+
+    log.info("Downloading Resource Hacker")
+    log.debug("Downloading Resource Hacker from \(resourceHackerDownloadURL.absoluteString)")
+    let uuid = UUID().uuidString
+    let temp = FileManager.default.temporaryDirectory
+    let resourceHackerZip = temp / "ResourceHacker-\(uuid).zip"
+    let resourceHackerDirectory = temp / "ResourceHacker-\(uuid)"
+    try Error.catch(withMessage: .failedToDownloadResourceHacker) {
+      let content = try Data(contentsOf: resourceHackerDownloadURL)
+      try content.write(to: resourceHackerZip)
+      try FileManager.default.unzipItem(at: resourceHackerZip, to: resourceHackerDirectory)
+    }
+
+    defer {
+      try? FileManager.default.removeItem(at: resourceHackerZip)
+    }
+
+    let executable = resourceHackerDirectory / "ResourceHacker.exe"
+    let message = ErrorMessage.failedToLocateResourceHackerExecutable(
+      expectedLocation: executable
+    )
+
+    try Error.catch(withMessage: message) {
+      try FileManager.default.copyItem(
+        at: executable,
+        to: resourceHacker
+      )
+    }
+
+    // Only remove the directory if we successfully locate the executable, to make
+    // debugging a little easier
+    try? FileManager.default.removeItem(at: resourceHackerDirectory)
+
+    return resourceHacker
+  }
 
   private static func copyDependencies(
     structure: BundleStructure,

@@ -792,6 +792,32 @@ struct BundleCommand: ErrorHandledCommand {
               destination: resolvedDevice
             )
           } else {
+            // This function exists to unwrap the existential 'any Bundler.Type'
+            func prepareArgumentsFromBundler<T: Bundler>(_ bundler: T.Type)
+              async throws(RichError<SwiftBundlerError>) -> [String]
+            {
+              try await RichError<SwiftBundlerError>.catch {
+                try await bundler.prepareAdditionalSPMBuildArguments(
+                  bundlerContext,
+                  try bundler.computeContext(
+                    context: bundlerContext,
+                    command: self,
+                    manifest: manifest
+                  ),
+                  dryRun: dryRun
+                )
+              }
+            }
+
+            let bundler = arguments.bundler.bundler
+            let additionalArgumentsFromBundler = try await prepareArgumentsFromBundler(bundler)
+
+            // These arguments only apply to the main executable, so we're safe to
+            // add them to the build context this late in the build process (after
+            // dependencies etc)
+            var buildContext = buildContext
+            buildContext.genericContext.additionalArguments += additionalArgumentsFromBundler
+
             try await SwiftPackageManager.build(
               product: appConfiguration.product,
               buildContext: buildContext
