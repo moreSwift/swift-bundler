@@ -6,6 +6,9 @@ struct BuilderConfiguration: Codable {
   /// The executable product corresponding to this builder.
   var product: String
   /// The kind of builder.
+  ///
+  /// We use the word `kind` rather than the usual `type` here as to not confuse
+  /// this property with the Swift type holding the builder implementation.
   var kind: BuilderKind
 
   /// A kind of builder.

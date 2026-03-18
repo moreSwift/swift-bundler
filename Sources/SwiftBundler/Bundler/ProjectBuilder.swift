@@ -14,66 +14,222 @@ enum ProjectBuilder {
     var location: URL
   }
 
+  /// A reference to a dependency, along with the depender who caused the dependency.
+  struct DependencyReference: Hashable, Sendable, CustomStringConvertible {
+    /// The entity that caused the dependency. Multiple entities can depend on the
+    /// one product, but a dependency reference is a particular instance of that
+    /// product.
+    var depender: Depender
+    /// The product being depended upon.
+    var product: ProductReference
+
+    /// A reference to the project containing the product.
+    var project: ProjectReference {
+      product.project
+    }
+
+    /// A reference to the package containing the project.
+    var package: SwiftPackageManager.PackageReference {
+      project.package
+    }
+
+    var description: String {
+      let base = product.description
+      switch depender {
+        case .app:
+          return base
+        case .target(let depender):
+          return "\(base) required by target \(depender)"
+      }
+    }
+  }
+
+  /// The entity that directly depends upon a given dependency.
+  enum Depender: Hashable, Sendable {
+    /// The root app being built
+    case app
+    /// A target being built as part of the app
+    case target(SwiftPackageManager.TargetReference)
+  }
+
+  /// A reference to a Swift Bundler sub-project.
+  struct ProjectReference: Codable, Hashable, Sendable {
+    /// The name of the project.
+    var name: String
+    /// The package containing the project.
+    var package: SwiftPackageManager.PackageReference
+  }
+
+  /// A reference to a project product (either a SwiftPM product or a subproject
+  /// product).
+  struct ProductReference: Hashable, Sendable, CustomStringConvertible {
+    /// The project containing the product.
+    var project: ProjectReference
+    /// The product's name.
+    var name: String
+
+    /// The package containing the project.
+    var package: SwiftPackageManager.PackageReference {
+      project.package
+    }
+
+    var description: String {
+      "\(package).\(project.name).\(name)"
+    }
+  }
+
   static func buildDependencies(
-    _ dependencies: [AppConfiguration.Dependency],
+    appConfiguration: AppConfiguration.Flat,
     packageConfiguration: PackageConfiguration.Flat,
+    packageGraph: SwiftPackageManager.PackageGraph,
     context: GenericBuildContext,
+    swiftToolchain: URL?,
     appName: String,
     dryRun: Bool
-  ) async throws(Error) -> [String: BuiltProduct] {
-    var builtProjects: Set<String> = []
-    var builtProducts: [String: BuiltProduct] = [:]
+  ) async throws(Error) -> [ProductReference: BuiltProduct] {
+    let dependencies = try enumerateDependencies(
+      appConfiguration: appConfiguration,
+      packageGraph: packageGraph,
+      targetPlatform: context.platform
+    )
+
+    var builtProjects: Set<ProjectReference> = []
+    var builtProducts: [ProductReference: BuiltProduct] = [:]
     for dependency in dependencies {
       try await buildDependency(
         dependency,
-        context: context,
         packageConfiguration: packageConfiguration,
+        packageGraph: packageGraph,
+        context: context,
+        swiftToolchain: swiftToolchain,
         appName: appName,
         dryRun: dryRun,
         builtProjects: &builtProjects,
         builtProducts: &builtProducts
       )
     }
+
     return builtProducts
   }
 
+  private static func enumerateDependencies(
+    appConfiguration: AppConfiguration.Flat,
+    packageGraph: SwiftPackageManager.PackageGraph,
+    targetPlatform: Platform
+  ) throws(Error) -> [DependencyReference] {
+    var dependencies: [DependencyReference] = []
+
+    func processDependencies(
+      _ dependencyConfigs: [AppConfiguration.Dependency],
+      depender: Depender
+    ) {
+      let package = switch depender {
+        case .app: packageGraph.rootPackage.reference
+        case .target(let target): target.package
+      }
+      for dependency in dependencyConfigs {
+        dependencies.append(
+          DependencyReference(
+            depender: depender,
+            product: ProductReference(
+              project: ProjectReference(
+                name: dependency.project,
+                package: package
+              ),
+              name: dependency.product
+            )
+          )
+        )
+      }
+    }
+
+    processDependencies(appConfiguration.dependencies, depender: .app)
+
+    let targets = try Error.catch {
+      let targets = try packageGraph.transitiveTargets(
+        inProduct: appConfiguration.product,
+        inPackage: packageGraph.rootPackage.reference
+      )
+      return packageGraph.activeTargets(
+        inConditionalReferences: targets,
+        withTargetPlatform: targetPlatform
+      )
+    }
+
+    for target in targets {
+      let configuration = try Error.catch {
+        try packageGraph.configuration(ofTarget: target)
+      }
+      guard let configuration else { continue }
+
+      processDependencies(configuration.dependencies, depender: .target(target))
+    }
+
+    return dependencies
+  }
+
+  private static func project(
+    referredToBy projectReference: ProjectReference,
+    packageGraph: SwiftPackageManager.PackageGraph
+  ) throws(Error) -> ProjectConfiguration.Flat {
+    let configuration = try Error.catch {
+      try packageGraph.configuration(ofPackage: projectReference.package)
+    }
+
+    guard let configuration else {
+      throw Error(.noSuchProject(projectReference))
+    }
+
+    guard let project = configuration.projects[projectReference.name] else {
+      throw Error(.noSuchProject(projectReference))
+    }
+
+    return project
+  }
+
   private static func buildDependency(
-    _ dependency: AppConfiguration.Dependency,
-    context: GenericBuildContext,
+    _ dependency: DependencyReference,
     packageConfiguration: PackageConfiguration.Flat,
+    packageGraph: SwiftPackageManager.PackageGraph,
+    context: GenericBuildContext,
+    swiftToolchain: URL?,
     appName: String,
     dryRun: Bool,
-    builtProjects: inout Set<String>,
-    builtProducts: inout [String: BuiltProduct]
+    builtProjects: inout Set<ProjectReference>,
+    builtProducts: inout [ProductReference: BuiltProduct]
   ) async throws(Error) {
-    let projectName = dependency.project
+    let projectName = dependency.project.name
 
     // Special case the root project (just use SwiftPM)
-    if projectName == ProjectConfiguration.rootProjectName {
+    if dependency.project.name == ProjectConfiguration.rootProjectName {
       if !dryRun {
-        log.info("Building product '\(dependency.product)'")
+        log.info(
+          """
+          Building product '\(dependency.product.name)' from package \
+          '\(dependency.package)'
+          """
+        )
       }
 
-      let (productName, builtProduct) = try await buildRootProjectProduct(
-        dependency.product,
+      let builtProduct = try await buildRootProjectProduct(
+        dependency.product.name,
+        package: dependency.package,
+        packageGraph: packageGraph,
         context: context,
+        swiftToolchain: swiftToolchain,
         dryRun: dryRun
       )
-      builtProducts[productName] = builtProduct
+      builtProducts[dependency.product] = builtProduct
       return
     }
 
-    guard let project = packageConfiguration.projects[projectName] else {
-      throw Error(.missingProject(name: projectName, appName: appName))
-    }
+    let project = try project(
+      referredToBy: dependency.project,
+      packageGraph: packageGraph
+    )
 
-    guard let product = project.products[dependency.product] else {
-      let message = ErrorMessage.missingProduct(
-        project: projectName,
-        product: dependency.product,
-        appName: appName
-      )
-      throw Error(message)
+    guard let product = project.products[dependency.product.name] else {
+      throw Error(.noSuchProduct(dependency))
     }
 
     let projectScratchDirectory = ScratchDirectoryStructure(
@@ -83,19 +239,31 @@ enum ProjectBuilder {
     let productsDirectoryExists =
       projectScratchDirectory.products.exists(withType: .directory)
 
-    let requiresBuilding = !builtProjects.contains(dependency.project)
-    builtProjects.insert(dependency.project)
-
     let productPath = product.artifactPath(
-      whenNamed: dependency.product,
+      whenNamed: dependency.product.name,
       platform: context.platform
     )
     let auxiliaryArtifactPaths = product.auxiliaryArtifactPaths(
-      whenNamed: dependency.product,
+      whenNamed: dependency.product.name,
       platform: context.platform
     )
 
-    if requiresBuilding && !dryRun {
+    let requiresBuilding = !builtProjects.contains(dependency.project)
+    if dryRun {
+    } else if let prebuilt = product.prebuilt {
+      try projectScratchDirectory.createRequiredDirectories()
+
+      try await downloadPrebuilt(
+        prebuilt,
+        to: projectScratchDirectory.build / productPath,
+        configuration: project,
+        dependency: dependency,
+        packageDirectory: context.projectDirectory,
+        projectScratchDirectory: projectScratchDirectory
+      )
+    } else if requiresBuilding {
+      builtProjects.insert(dependency.project)
+
       // Set up required directories and build whole project
       log.info("Building project '\(projectName)'")
       if productsDirectoryExists {
@@ -106,13 +274,24 @@ enum ProjectBuilder {
 
       try projectScratchDirectory.createRequiredDirectories()
 
+      guard let source = project.source else {
+        throw Error(.projectMissingSource(dependency))
+      }
+
+      guard let builderConfiguration = project.builder else {
+        throw Error(.projectMissingBuilder(dependency))
+      }
+
       do {
         try await ProjectBuilder.buildProject(
           projectName,
           configuration: project,
+          source: source,
+          builderConfiguration: builderConfiguration,
           builders: packageConfiguration.builders,
           packageDirectory: context.projectDirectory,
-          scratchDirectory: projectScratchDirectory
+          scratchDirectory: projectScratchDirectory,
+          swiftToolchain: swiftToolchain
         )
       } catch {
         throw Error(.failedToBuildProject(name: projectName), cause: error)
@@ -120,7 +299,7 @@ enum ProjectBuilder {
     }
 
     if !dryRun {
-      log.info("Copying product '\(dependency.identifier)'")
+      log.info("Copying product '\(dependency)'")
     }
 
     let artifactPaths = [productPath] + auxiliaryArtifactPaths
@@ -130,7 +309,7 @@ enum ProjectBuilder {
         builtProduct,
         to: projectScratchDirectory.products,
         isRequired: path == productPath,
-        product: dependency.product,
+        product: dependency.product.name,
         dryRun: dryRun
       )
     }
@@ -162,6 +341,14 @@ enum ProjectBuilder {
     // it exists.
     let destination = directory / builtArtifact.lastPathComponent
     if !dryRun && builtArtifact.exists() {
+      if destination.exists() {
+        try Error.catch {
+          // Windows needs this because it doesn't want to overwrite existing files
+          // with copies; other platforms may need it too but haven't checked
+          try FileManager.default.removeItem(at: destination)
+        }
+      }
+
       try FileManager.default.copyItem(
         at: builtArtifact,
         to: destination,
@@ -176,33 +363,46 @@ enum ProjectBuilder {
     }
   }
 
+  /// Builds the specified product from the root project (a.k.a. the root SwiftPM
+  /// package). This is used to build products directly contained within the root
+  /// package, and also products of dependencies of the root package. This works
+  /// because SwiftPM generally expects products to have unique names (it runs
+  /// into errors when they don't, so we're safe to assume people won't let product
+  /// names clash).
+  ///
+  /// We could do this better by specifically targeting the directory of the
+  /// package checkout directly containing the product, but that would come with
+  /// the downside of requiring a separate `.build` directory for each project we
+  /// build a product from (leading to increased disk space usage). It also wouldn't
+  /// change our behaviour, because when there are duplicate product names the product
+  /// in the external package is the one that gets used (from my testing), meaning that
+  /// we'd still be unable to build non-uniquely named products directly contained
+  /// within the root package.
+  ///
+  /// Note that when building products from dependency packages (rather than the
+  /// root package) we can only build explicit products (not implicit executable
+  /// products).
   static func buildRootProjectProduct(
-    _ product: String,
+    _ productName: String,
+    package: SwiftPackageManager.PackageReference,
+    packageGraph: SwiftPackageManager.PackageGraph,
     context: GenericBuildContext,
+    swiftToolchain: URL?,
     dryRun: Bool
-  ) async throws(Error) -> (String, BuiltProduct) {
-    let manifest: PackageManifest
-    do {
-      manifest = try await SwiftPackageManager.loadPackageManifest(
-        from: context.projectDirectory
-      )
-    } catch {
-      throw Error(.failedToBuildRootProjectProduct(name: product), cause: error)
-    }
-
+  ) async throws(Error) -> BuiltProduct {
     // Locate product in manifest
-    guard
-      let manifestProduct = manifest.products.first(where: { $0.name == product })
-    else {
-      let project = ProjectConfiguration.rootProjectName
-      throw Error(.noSuchProduct(project: project, product: product))
+    let product: SwiftPackageManager.Product
+    do {
+      product = try packageGraph.product(named: productName)
+    } catch {
+      throw Error(.noSuchRootProjectProduct(package: package, product: productName))
     }
 
     // We only support 'helper executable'-style dependencies for SwiftPM products at the moment
-    guard manifestProduct.type == .executable else {
+    guard product.productType == .executable else {
       let message = ErrorMessage.unsupportedRootProjectProductType(
-        manifestProduct.type,
-        product: product
+        product.productType,
+        product: productName
       )
       throw Error(message)
     }
@@ -210,6 +410,7 @@ enum ProjectBuilder {
     // Build product
     let buildContext = SwiftPackageManager.BuildContext(
       genericContext: context,
+      toolchain: swiftToolchain,
       hotReloadingEnabled: false,
       isGUIExecutable: false
     )
@@ -218,7 +419,7 @@ enum ProjectBuilder {
     do {
       if !dryRun {
         try await SwiftPackageManager.build(
-          product: product,
+          product: productName,
           buildContext: buildContext
         )
       }
@@ -227,16 +428,18 @@ enum ProjectBuilder {
         buildContext
       )
     } catch {
-      throw Error(.failedToBuildRootProjectProduct(name: product), cause: error)
+      throw Error(.failedToBuildRootProjectProduct(name: productName), cause: error)
     }
 
     // Produce built product description
     let productConfiguration = ProjectConfiguration.Product.Flat(
       type: .executable,
-      outputDirectory: nil
+      outputDirectory: nil,
+      filename: nil,
+      prebuilt: nil
     )
     let artifactPath = productConfiguration.artifactPath(
-      whenNamed: product,
+      whenNamed: productName,
       platform: context.platform
     )
     let artifacts = [
@@ -244,7 +447,7 @@ enum ProjectBuilder {
     ]
     let builtProduct = BuiltProduct(product: productConfiguration, artifacts: artifacts)
 
-    return (product, builtProduct)
+    return builtProduct
   }
 
   static func checkoutSource(
@@ -350,14 +553,16 @@ enum ProjectBuilder {
     _ builder: ProjectConfiguration.Builder.Flat,
     builders: [String: BuilderConfiguration.Flat],
     packageDirectory: URL,
-    scratchDirectory: ScratchDirectoryStructure
+    scratchDirectory: ScratchDirectoryStructure,
+    swiftToolchain: URL?
   ) async throws(Error) -> OnDiskBuilder {
     switch builder {
       case .inline(let inlineBuilder):
         return try await prepareInlineBuilder(
           forInlineBuilder: inlineBuilder,
           packageDirectory: packageDirectory,
-          scratchDirectory: scratchDirectory
+          scratchDirectory: scratchDirectory,
+          swiftToolchain: swiftToolchain
         )
       case .named(let name):
         guard let builderConfiguration = builders[name] else {
@@ -378,31 +583,35 @@ enum ProjectBuilder {
     }
   }
 
-  /// Builds a project and returns the directory containing the built
-  /// products on success.
+  /// Builds a project.
   static func buildProject(
     _ name: String,
     configuration: ProjectConfiguration.Flat,
+    source: ProjectConfiguration.Source.Flat,
+    builderConfiguration: ProjectConfiguration.Builder.Flat,
     builders: [String: BuilderConfiguration.Flat],
     packageDirectory: URL,
-    scratchDirectory: ScratchDirectoryStructure
+    scratchDirectory: ScratchDirectoryStructure,
+    swiftToolchain: URL?
   ) async throws(Error) {
     try await checkoutSource(
-      configuration.source,
+      source,
       at: scratchDirectory.sources,
       packageDirectory: packageDirectory
     )
 
     let builder = try await prepareBuilder(
-      configuration.builder,
+      builderConfiguration,
       builders: builders,
       packageDirectory: packageDirectory,
-      scratchDirectory: scratchDirectory
+      scratchDirectory: scratchDirectory,
+      swiftToolchain: swiftToolchain
     )
 
     let builtBuilder = try await buildBuilder(
       builder,
-      scratchDirectory: scratchDirectory
+      scratchDirectory: scratchDirectory,
+      swiftToolchain: swiftToolchain
     )
 
     try await runBuilder(
@@ -414,7 +623,8 @@ enum ProjectBuilder {
 
   static func buildBuilder(
     _ builder: OnDiskBuilder,
-    scratchDirectory: ScratchDirectoryStructure
+    scratchDirectory: ScratchDirectoryStructure,
+    swiftToolchain: URL?
   ) async throws(Error) -> URL {
     // Build the builder
     let buildContext = SwiftPackageManager.BuildContext(
@@ -426,6 +636,7 @@ enum ProjectBuilder {
         platform: HostPlatform.hostPlatform.platform,
         additionalArguments: []
       ),
+      toolchain: swiftToolchain,
       isGUIExecutable: false
     )
 
@@ -485,6 +696,76 @@ enum ProjectBuilder {
       }
     } catch {
       throw Error(.builderFailed, cause: error)
+    }
+  }
+
+  static func downloadPrebuilt(
+    _ prebuilt: ProjectConfiguration.Product.PrebuiltLocation,
+    to destination: URL,
+    configuration: ProjectConfiguration.Flat,
+    dependency: DependencyReference,
+    packageDirectory: URL,
+    projectScratchDirectory: ScratchDirectoryStructure
+  ) async throws(Error) {
+    let url: URL
+    switch prebuilt {
+      case .path(let path):
+        guard let source = configuration.source else {
+          throw Error(.projectMissingSourceForPathBasedPrebuilt(dependency, path))
+        }
+
+        try await checkoutSource(
+          source,
+          at: projectScratchDirectory.sources,
+          packageDirectory: packageDirectory
+        )
+
+        try Error.catch {
+          try FileManager.default.copyItem(
+            at: projectScratchDirectory.sources / path,
+            to: destination
+          )
+        }
+
+        return
+      case .url(let prebuiltURL):
+        url = prebuiltURL
+    }
+
+    // If there's an existing download, check whether its source matches the
+    // current source.
+    var canUseExistingDownload = false
+    let sourceMarkerFile = destination.appendingPathExtension("source")
+    if let markerModifiedAt = sourceMarkerFile.lastModified,
+       let downloadModifiedAt = destination.lastModified,
+       markerModifiedAt >= downloadModifiedAt
+    {
+      do {
+        let content = try String(contentsOf: sourceMarkerFile)
+        if content == url.absoluteString {
+          canUseExistingDownload = true
+        }
+      } catch {
+        log.warning(
+          """
+          Prebuilt product marker file at '\(sourceMarkerFile.path)' was corrupted; \
+          redownloading prebuilt artifact
+          """
+        )
+      }
+    }
+
+    // Exit early if existing download has matching source
+    if canUseExistingDownload {
+      log.debug("Reusing existing download for product \(dependency); source matches")
+      return
+    }
+
+    log.info("Downloading prebuilt artifact for \(dependency) from '\(url)'")
+    try Error.catch {
+      let data = try Data(contentsOf: url)
+      try data.write(to: destination)
+      try url.absoluteString.write(to: sourceMarkerFile)
     }
   }
 }

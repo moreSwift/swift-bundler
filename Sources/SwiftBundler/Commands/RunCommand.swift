@@ -90,22 +90,23 @@ struct RunCommand: ErrorHandledCommand {
       simulatorSpecifier: arguments.simulatorSpecifier
     )
 
-    let (_, appConfiguration, _) = try await BundleCommand.getConfiguration(
-      arguments.appName,
-      packageDirectory: packageDirectory,
-      context: ConfigurationFlattener.Context(
-        platform: device.platform,
-        bundler: arguments.bundler
-      ),
-      customFile: arguments.configurationFileOverride
-    )
-
     let bundleCommand = BundleCommand(
       arguments: _arguments,
       skipBuild: false,
       showBundlePath: false,
       builtWithXcode: false,
       hotReloadingEnabled: hot
+    )
+
+    let (_, appConfiguration, _) = try await BundleCommand.getConfiguration(
+      arguments.appName,
+      packageDirectory: packageDirectory,
+      context: ConfigurationFlattener.Context(
+        platform: device.platform,
+        bundler: arguments.bundler,
+        architectures: bundleCommand.getArchitectures(platform: device.platform)
+      ),
+      customFile: arguments.configurationFileOverride
     )
 
     // Perform bundling, or do a dry run if instructed to skip building (so
@@ -125,7 +126,8 @@ struct RunCommand: ErrorHandledCommand {
     // TODO: Avoid loading manifest twice
     let manifest = try await RichError<SwiftBundlerError>.catch {
       try await SwiftPackageManager.loadPackageManifest(
-        from: packageDirectory
+        from: packageDirectory,
+        toolchain: arguments.toolchain
       )
     }
 
@@ -160,6 +162,7 @@ struct RunCommand: ErrorHandledCommand {
             try await server.start(
               product: appConfiguration.product,
               buildContext: buildContext,
+              swiftToolchain: arguments.toolchain,
               appConfiguration: appConfiguration
             )
           } catch {

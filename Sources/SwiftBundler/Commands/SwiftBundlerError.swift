@@ -15,6 +15,7 @@ enum SwiftBundlerError: Throwable {
   case failedToResolveCodesigningConfiguration(reason: String)
   case failedToCopyOutBundle
   case missingConfigurationFile(URL)
+  case failedToEncodeJSONOutput
 
   var userFriendlyMessage: String {
     switch self {
@@ -74,6 +75,8 @@ enum SwiftBundlerError: Throwable {
           Could not find \(file.lastPathComponent) at standard location. Are you \
           sure that you're in the root of a Swift Bundler project?
           """
+      case .failedToEncodeJSONOutput:
+        return "Failed to encode JSON output."
     }
   }
 }
