@@ -5,7 +5,11 @@ import TOMLKit
 @Configuration(overlayable: false)
 struct PackageConfiguration: Codable, Sendable {
   /// The current configuration format version.
-  static let currentFormatVersion = 2
+  static let currentFormatVersion = 3
+
+  /// Configuration format versions that are trivial to migrate to from the
+  /// previous format version.
+  static let trivialMigrations: [Int] = [3]
 
   /// The file name for Swift Bundler configuration files.
   static let configurationFileName = "Bundler.toml"
@@ -119,7 +123,12 @@ struct PackageConfiguration: Codable, Sendable {
       )
     }
 
-    guard configuration.formatVersion == PackageConfiguration.currentFormatVersion else {
+    var formatVersion = configuration.formatVersion
+    while trivialMigrations.contains(formatVersion + 1) {
+      formatVersion += 1
+    }
+
+    guard formatVersion == PackageConfiguration.currentFormatVersion else {
       throw Error(.unsupportedFormatVersion(configuration.formatVersion))
     }
 
