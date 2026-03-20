@@ -1,6 +1,10 @@
 import XMLCoder
 
 extension MSIBundler {
+  /// A representation for WXS files with the parts that Swift Bundler needs.
+  /// This isn't intended to be used to parse or produce arbitrary WXS files.
+  /// Notably we have a lot of non-nullable properties that in reality are
+  /// nullable from WiX's point of view.
   struct WXSFile: Codable {
     @Attribute var xmlns: String
     @Element var package: Package
@@ -31,6 +35,10 @@ extension MSIBundler {
       @Element var standardDirectories: [StandardDirectory]
       @Element var componentGroups: [ComponentGroup]
 
+      @Element var customActions: [CustomAction]
+      @Element var installUISequences: [InstallUISequence]
+      @Element var installExecuteSequences: [InstallExecuteSequence]
+
       enum CodingKeys: String, CodingKey {
         case language = "Language"
         case manufacturer = "Manufacturer"
@@ -43,6 +51,9 @@ extension MSIBundler {
         case properties = "Property"
         case standardDirectories = "StandardDirectory"
         case componentGroups = "ComponentGroup"
+        case customActions = "CustomAction"
+        case installUISequences = "InstallUISequence"
+        case installExecuteSequences = "InstallExecuteSequence"
       }
 
       enum Language: String, Codable {
@@ -60,7 +71,10 @@ extension MSIBundler {
         icons: [Icon] = [],
         properties: [Property] = [],
         standardDirectories: [StandardDirectory] = [],
-        componentGroups: [ComponentGroup] = []
+        componentGroups: [ComponentGroup] = [],
+        customActions: [CustomAction] = [],
+        installUISequences: [InstallUISequence] = [],
+        installExecuteSequences: [InstallExecuteSequence] = []
       ) {
         self._language = Attribute(language)
         self._manufacturer = Attribute(manufacturer)
@@ -73,6 +87,9 @@ extension MSIBundler {
         self._properties = Element(properties)
         self._standardDirectories = Element(standardDirectories)
         self._componentGroups = Element(componentGroups)
+        self._customActions = Element(customActions)
+        self._installUISequences = Element(installUISequences)
+        self._installExecuteSequences = Element(installExecuteSequences)
       }
     }
 
@@ -337,6 +354,69 @@ extension MSIBundler {
     enum YesOrNo: String, Codable {
       case yes
       case no
+    }
+
+    struct CustomAction: Codable {
+      @Attribute var id: String
+      @Attribute var property: String
+      @Attribute var value: String
+      @Attribute var execute: Scheduling
+
+      init(id: String, property: String, value: String, execute: Scheduling) {
+        self._id = Attribute(id)
+        self._property = Attribute(property)
+        self._value = Attribute(value)
+        self._execute = Attribute(execute)
+      }
+
+      enum Scheduling: String, Codable {
+        case commit
+        case deferred
+        case firstSequence
+        case immediate
+        case oncePerProcess
+        case rollback
+        case secondSequence
+      }
+
+      enum CodingKeys: String, CodingKey {
+        case id = "Id"
+        case property = "Property"
+        case value = "Value"
+        case execute = "Execute"
+      }
+    }
+
+    typealias InstallUISequence = InstallSequence
+    typealias InstallExecuteSequence = InstallSequence
+
+    /// Used for both InstallExecuteSequence and InstallUISequence because for
+    /// our current purposes they are identical.
+    struct InstallSequence: Codable {
+      @Element var custom: Custom
+
+      init(custom: Custom) {
+        self._custom = Element(custom)
+      }
+
+      enum CodingKeys: String, CodingKey {
+        case custom = "Custom"
+      }
+
+      struct Custom: Codable {
+        @Attribute var action: String
+        @Attribute var after: String
+
+        enum CodingKeys: String, CodingKey {
+          case action = "Action"
+          case after = "After"
+        }
+
+        init(action: String, after: String) {
+          self._action = Attribute(action)
+          self._after = Attribute(after)
+        }
+      }
     }
   }
 }
