@@ -66,6 +66,7 @@ enum MSIBundler: Bundler {
         "build",
         "-b", genericBundlerOutput.root.path,
         "-o", outputStructure.bundle.path,
+        "-arch", "x64",
         wxsFile.path,
       ],
       runSilentlyWhenNotVerbose: false
@@ -141,7 +142,7 @@ enum MSIBundler: Bundler {
       mediaTemplate: WXSFile.MediaTemplate(embedCab: .yes),
       standardDirectories: [
         WXSFile.StandardDirectory(
-          id: "ProgramFilesFolder",
+          id: "ProgramFiles64Folder",
           directories: [installFolder.renamed(to: appName)]
         ),
         WXSFile.StandardDirectory(
