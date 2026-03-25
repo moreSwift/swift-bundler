@@ -94,13 +94,19 @@ extension MSIBundler {
     }
 
     struct MajorUpgrade: Codable {
+      @Attribute var allowSameVersionUpgrades: YesOrNo
       @Attribute var downgradeErrorMessage: String
 
       enum CodingKeys: String, CodingKey {
+        case allowSameVersionUpgrades = "AllowSameVersionUpgrades"
         case downgradeErrorMessage = "DowngradeErrorMessage"
       }
 
-      init(downgradeErrorMessage: String) {
+      init(
+        allowSameVersionUpgrades: YesOrNo,
+        downgradeErrorMessage: String
+      ) {
+        self._allowSameVersionUpgrades = Attribute(allowSameVersionUpgrades)
         self._downgradeErrorMessage = Attribute(downgradeErrorMessage)
       }
     }
