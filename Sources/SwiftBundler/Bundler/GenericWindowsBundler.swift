@@ -159,8 +159,12 @@ enum GenericWindowsBundler: Bundler {
       return try Image<RGBA>.load(from: Array(imageData))
     }.convert(to: ARGB.self)
 
+    // NB: If we put the images in order of decreasing size instead of
+    //   increasing size then the Apps & features screen doesn't show
+    //   MSI icons correctly (it shows them blank).
     let scaledImages = [16, 24, 32, 48, 256].map { dimension in
-      image.lanczosResample(toWidth: dimension, height: dimension)
+      // TODO(stackotter): Support upscaling?
+      image.linearlyDownscale(toWidth: dimension, height: dimension)
     }
 
     let ico = Ico(images: scaledImages)
