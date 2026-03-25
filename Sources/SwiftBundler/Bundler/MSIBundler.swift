@@ -106,7 +106,7 @@ enum MSIBundler: Bundler {
     genericBundle: GenericWindowsBundler.BundleStructure,
     appName: String,
     appConfiguration: AppConfiguration.Flat
-  ) throws(Error) -> WXSFile{
+  ) throws(Error) -> WXSFile {
     // TODO: Allow manufacturer to be configured
     // For now drop the last segment of the app's bundle identifier.
     let manufacturer = appConfiguration.identifier.split(separator: ".")
@@ -115,7 +115,7 @@ enum MSIBundler: Bundler {
     // Assume that the bundle identifier will stay the same for any given app.
     // This feels like a reasonable requirement for app to get stable upgrade
     // codes.
-    let upgradeCode = GUID.random(
+    let upgradeCode = appConfiguration.upgradeCode ?? GUID.random(
       withSeed: appConfiguration.identifier
     ).description
 
@@ -136,10 +136,17 @@ enum MSIBundler: Bundler {
       upgradeCode: upgradeCode,
       version: appConfiguration.version,
       majorUpgrade: WXSFile.MajorUpgrade(
+        allowSameVersionUpgrades: .yes,
         downgradeErrorMessage:
           "A later version of [ProductName] is already installed. Setup will now exit"
       ),
       mediaTemplate: WXSFile.MediaTemplate(embedCab: .yes),
+      properties: [
+        // Was running into issues where the installer would remove an old version
+        // of a file but wouldn't install the new version, found this solution
+        // at https://stackoverflow.com/a/32607186
+        WXSFile.Property(id: "REINSTALLMODE", value: "amus"),
+      ],
       standardDirectories: [
         WXSFile.StandardDirectory(
           id: "ProgramFiles64Folder",
