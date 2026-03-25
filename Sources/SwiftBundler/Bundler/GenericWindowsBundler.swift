@@ -96,23 +96,7 @@ enum GenericWindowsBundler: Bundler {
     if !dryRun {
       log.info("Compiling icon")
 
-      let icon = context.packageDirectory / iconPath
-
-      // Convert to ico
-      let image = try Error.catch(withMessage: .failedToLoadIcon(icon)) {
-        let imageData = try Data(contentsOf: icon)
-        return try Image<RGBA>.load(from: Array(imageData))
-      }.convert(to: ARGB.self)
-
-      let ico = Ico(images: [image])
-      let icoData = try Error.catch(withMessage: .failedToEncodeIco) {
-        try ico.encode()
-      }
-
-      let icoFile = context.outputDirectory / "icon.ico"
-      try Error.catch {
-        try Data(icoData).write(to: icoFile)
-      }
+      let icoFile = try prepareIcon(iconPath: iconPath, context: context)
 
       // Create rc file
       let rcFile = context.outputDirectory / "icon.rc"
@@ -152,6 +136,43 @@ enum GenericWindowsBundler: Bundler {
     return [
       "-Xlinker", resourceFile.path
     ]
+  }
+
+  /// Prepares an 'ico' version of the app's icon.
+  /// - Parameter iconPath: The icon's path as given in the configuration file,
+  ///   i.e. relative to the package directory.
+  static func prepareIcon(
+    iconPath: String,
+    context: BundlerContext,
+    skipIfPresent: Bool = false
+  ) throws(Error) -> URL {
+    let icon = context.packageDirectory / iconPath
+
+    let icoFile = context.outputDirectory / "icon.ico"
+    if skipIfPresent && icoFile.exists() {
+      return icoFile
+    }
+
+    // Convert to ico
+    let image = try Error.catch(withMessage: .failedToLoadIcon(icon)) {
+      let imageData = try Data(contentsOf: icon)
+      return try Image<RGBA>.load(from: Array(imageData))
+    }.convert(to: ARGB.self)
+
+    let scaledImages = [16, 24, 32, 48, 256].map { dimension in
+      image.lanczosResample(toWidth: dimension, height: dimension)
+    }
+
+    let ico = Ico(images: scaledImages)
+    let icoData = try Error.catch(withMessage: .failedToEncodeIco) {
+      try ico.encode()
+    }
+
+    try Error.catch {
+      try Data(icoData).write(to: icoFile)
+    }
+
+    return icoFile
   }
 
   static func bundle(
