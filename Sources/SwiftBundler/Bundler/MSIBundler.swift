@@ -52,7 +52,8 @@ enum MSIBundler: Bundler {
     let contents = try generateWXSFileContents(
       genericBundle: genericBundlerOutput,
       appName: context.appName,
-      appConfiguration: context.appConfiguration
+      appConfiguration: context.appConfiguration,
+      context: context
     )
 
     try Error.catch(withMessage: .failedToWriteWXSFile) {
@@ -82,12 +83,14 @@ enum MSIBundler: Bundler {
   static func generateWXSFileContents(
     genericBundle: GenericWindowsBundler.BundleStructure,
     appName: String,
-    appConfiguration: AppConfiguration.Flat
+    appConfiguration: AppConfiguration.Flat,
+    context: BundlerContext
   ) throws(Error) -> Data {
     let file = try generateWXSFile(
       genericBundle: genericBundle,
       appName: appName,
-      appConfiguration: appConfiguration
+      appConfiguration: appConfiguration,
+      context: context
     )
 
     let encoder = XMLEncoder()
@@ -105,7 +108,8 @@ enum MSIBundler: Bundler {
   static func generateWXSFile(
     genericBundle: GenericWindowsBundler.BundleStructure,
     appName: String,
-    appConfiguration: AppConfiguration.Flat
+    appConfiguration: AppConfiguration.Flat,
+    context: BundlerContext
   ) throws(Error) -> WXSFile {
     // TODO: Allow manufacturer to be configured
     // For now drop the last segment of the app's bundle identifier.
@@ -129,6 +133,28 @@ enum MSIBundler: Bundler {
       relativeTo: genericBundle.root
     )
 
+    let icons: [WXSFile.Icon]
+    let iconProperties: [WXSFile.Property]
+    if let iconPath = appConfiguration.icon {
+      let id = "icon.ico"
+      let icoFile = try Error.catch {
+        try GenericWindowsBundler.prepareIcon(
+          iconPath: iconPath,
+          context: context,
+          // The output directory gets cleared between builds, and the icon
+          // is prepared by the prepareAdditionalSPMBuildArguments phase. We
+          // only have to prepare the icon here if that phase didn't already
+          // produce an ico file.
+          skipIfPresent: true
+        )
+      }
+      icons = [WXSFile.Icon(id: id, sourceFile: icoFile.path)]
+      iconProperties = [WXSFile.Property(id: "ARPPRODUCTICON", value: id)]
+    } else {
+      icons = []
+      iconProperties = []
+    }
+
     let package = WXSFile.Package(
       language: .english,
       manufacturer: manufacturer,
@@ -141,12 +167,13 @@ enum MSIBundler: Bundler {
           "A later version of [ProductName] is already installed. Setup will now exit"
       ),
       mediaTemplate: WXSFile.MediaTemplate(embedCab: .yes),
+      icons: icons,
       properties: [
         // Was running into issues where the installer would remove an old version
         // of a file but wouldn't install the new version, found this solution
         // at https://stackoverflow.com/a/32607186
         WXSFile.Property(id: "REINSTALLMODE", value: "amus"),
-      ],
+      ] + iconProperties,
       standardDirectories: [
         WXSFile.StandardDirectory(
           id: "ProgramFiles64Folder",

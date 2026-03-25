@@ -40,10 +40,10 @@ let package = Package(
       .upToNextMinor(from: "0.7.1")
     ),
     .package(url: "https://github.com/swhitty/swift-mutex", .upToNextMinor(from: "0.0.6")),
-    .package(url: "https://github.com/stackotter/swift-ico", .upToNextMinor(from: "0.1.0")),
+    .package(url: "https://github.com/stackotter/swift-ico", .upToNextMinor(from: "0.2.0")),
     .package(
       url: "https://github.com/stackotter/swift-image-formats",
-      .upToNextMinor(from: "0.4.0")
+      .upToNextMinor(from: "0.5.0")
     ),
     .package(
       url: "https://github.com/gregcotten/ZIPFoundationModern",
