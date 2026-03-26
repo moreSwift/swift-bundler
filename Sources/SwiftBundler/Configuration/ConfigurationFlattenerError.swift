@@ -15,6 +15,8 @@ extension ConfigurationFlattener {
     case defaultSourceMissingAPIRequirement
     case gitSourceMissingAPIRequirement(_ url: URL, field: CodingPath)
     case builderNameContainsPeriod(_ name: String)
+    case filenameContainsPathSeparator(String)
+    case sourceAndBuilderMustHaveSameNilness
 
     var userFriendlyMessage: String {
       switch self {
@@ -41,6 +43,17 @@ extension ConfigurationFlattener {
             """
         case .builderNameContainsPeriod(let name):
           return "Builder names must not contain periods, got '\(name)'"
+        case .filenameContainsPathSeparator(let filename):
+          return """
+            Filename '\(filename)' contains a path separator. Use \
+            outputDirectory to specify alternative search location within \
+            project build directory
+            """
+        case .sourceAndBuilderMustHaveSameNilness:
+          return """
+            The 'source' and 'builder' fields of a project must either be both \
+            present, or both not present
+            """
       }
     }
   }

@@ -6,6 +6,7 @@ enum ConfigurationFlattener {
   struct Context {
     var platform: Platform
     var bundler: BundlerChoice
+    var architectures: [BuildArchitecture]
     var codingPath = CodingPath()
 
     func appendingCodingKey(_ key: any CodingKey) -> Self {
@@ -27,22 +28,24 @@ enum ConfigurationFlattener {
     _ configuration: PackageConfiguration,
     with context: Context
   ) throws(Error) -> PackageConfiguration.Flat {
-    let flattenedApps = try configuration.apps.mapValues { (name, app) throws(Error) in
-      try flatten(
-        app,
+    // TODO(stackotter): Switch over to PackageConfiguration.flatten(with:)
+
+    let flattenedApps = try configuration.apps?.mapValues {
+        (name, app) throws(Error) -> AppConfiguration.Flat in
+      try app.flatten(
         with:
           context
           .appendingCodingKey(PackageConfiguration.CodingKeys.apps)
           .appendingCodingKey(name)
       )
-    }
+    } ?? [:]
 
-    let flattenedProjects = try configuration.projects?.mapValues { (name, project) throws(Error) -> ProjectConfiguration.Flat in
+    let flattenedProjects = try configuration.projects?.mapValues {
+        (name, project) throws(Error) -> ProjectConfiguration.Flat in
       guard name != ProjectConfiguration.rootProjectName else {
         throw Error(.reservedProjectName(name))
       }
-      return try flatten(
-        project,
+      return try project.flatten(
         with:
           context
           .appendingCodingKey(PackageConfiguration.CodingKeys.projects)
@@ -62,11 +65,21 @@ enum ConfigurationFlattener {
       )
     } ?? [:]
 
+    let flattenedTargets = try configuration.targets?.mapValues {
+        (name, target) throws(Error) -> TargetConfiguration.Flat in
+      try target.flatten(
+        with: context
+          .appendingCodingKey(PackageConfiguration.CodingKeys.targets)
+          .appendingCodingKey(name)
+      )
+    } ?? [:]
+
     return PackageConfiguration.Flat(
       formatVersion: configuration.formatVersion,
       apps: flattenedApps,
       projects: flattenedProjects,
-      builders: flattenedBuilders
+      builders: flattenedBuilders,
+      targets: flattenedTargets
     )
   }
 
@@ -101,13 +114,6 @@ enum ConfigurationFlattener {
     }
   }
 
-  static func flatten(
-    _ configuration: AppConfiguration,
-    with context: Context
-  ) throws(Error) -> AppConfiguration.Flat {
-    try configuration.flatten(with: context)
-  }
-
   static func condition(
     _ condition: OverlayCondition,
     matches context: Context
@@ -117,14 +123,10 @@ enum ConfigurationFlattener {
         identifier == context.platform.rawValue
       case .bundler(let identifier):
         identifier == context.bundler.rawValue
+      case .arch(let identifier):
+        // TODO(stackotter): Do people find this condition interpretation intuitive?
+        context.architectures.map(\.rawValue).contains(identifier)
     }
-  }
-
-  static func flatten(
-    _ configuration: ProjectConfiguration,
-    with context: Context
-  ) throws(Error) -> ProjectConfiguration.Flat {
-    try configuration.flatten(with: context)
   }
 }
 

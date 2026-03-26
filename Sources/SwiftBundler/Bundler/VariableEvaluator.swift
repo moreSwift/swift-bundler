@@ -378,14 +378,21 @@ enum VariableEvaluator {
     in configuration: PackageConfiguration,
     packageDirectory: URL
   ) async throws(Error) -> PackageConfiguration {
-    var evaluatedConfiguration = configuration
-    for (name, app) in configuration.apps {
-      evaluatedConfiguration.apps[name] = try await evaluateVariables(
+    guard let apps = configuration.apps else {
+      return configuration
+    }
+
+    var evaluatedApps: [String: AppConfiguration] = [:]
+    for (name, app) in apps {
+      evaluatedApps[name] = try await evaluateVariables(
         in: app,
         named: name,
         packageDirectory: packageDirectory
       )
     }
+
+    var evaluatedConfiguration = configuration
+    evaluatedConfiguration.apps = evaluatedApps
     return evaluatedConfiguration
   }
 }

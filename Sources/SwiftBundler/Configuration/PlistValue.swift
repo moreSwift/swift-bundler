@@ -15,7 +15,7 @@ import TOMLKit
 ///   "value": "2022-05-18T00:54:55Z"
 /// }
 /// ```
-enum PlistValue: Codable, Equatable, VariableEvaluatable {
+enum PlistValue: Codable, Equatable, VariableEvaluatable, Sendable {
   /// The JSON schema for a plist value.
   private static var schema = """
     {

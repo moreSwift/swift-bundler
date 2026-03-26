@@ -159,8 +159,12 @@ enum GenericWindowsBundler: Bundler {
       return try Image<RGBA>.load(from: Array(imageData))
     }.convert(to: ARGB.self)
 
+    // NB: If we put the images in order of decreasing size instead of
+    //   increasing size then the Apps & features screen doesn't show
+    //   MSI icons correctly (it shows them blank).
     let scaledImages = [16, 24, 32, 48, 256].map { dimension in
-      image.lanczosResample(toWidth: dimension, height: dimension)
+      // TODO(stackotter): Support upscaling?
+      image.linearlyDownscale(toWidth: dimension, height: dimension)
     }
 
     let ico = Ico(images: scaledImages)
@@ -320,7 +324,7 @@ enum GenericWindowsBundler: Bundler {
   ) async throws(Error) {
     // Copy all executable dependencies into the bundle next to the main
     // executable
-    for (name, dependency) in context.builtDependencies {
+    for (reference, dependency) in context.builtDependencies {
       guard dependency.product.type == .executable else {
         continue
       }
@@ -334,7 +338,7 @@ enum GenericWindowsBundler: Bundler {
             to: destination
           )
         } catch {
-          throw Error(.failedToCopyExecutableDependency(name: name), cause: error)
+          throw Error(.failedToCopyExecutableDependency(reference), cause: error)
         }
       }
     }

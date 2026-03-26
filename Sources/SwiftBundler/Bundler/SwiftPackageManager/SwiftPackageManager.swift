@@ -11,6 +11,8 @@ enum SwiftPackageManager {
   struct BuildContext {
     /// Generic build context properties shared between most build systems.
     var genericContext: GenericBuildContext
+    /// An alternative Swift toolchain to use.
+    var toolchain: URL?
     /// Controls whether the hot reloading environment variables are added to
     /// the build command or not.
     var hotReloadingEnabled: Bool = false
@@ -28,10 +30,12 @@ enum SwiftPackageManager {
   /// - Parameters:
   ///   - directory: The package's root directory (will be created if it doesn't exist).
   ///   - name: The name for the package.
+  ///   - toolchain: An alternative Swift toolchain to use.
   /// - Returns: If an error occurs, a failure is returned.
   static func createPackage(
     in directory: URL,
-    name: String
+    name: String,
+    toolchain: URL?
   ) async throws(Error) {
     // Create the package directory if it doesn't exist
     if !directory.exists(withType: .directory) {
@@ -49,7 +53,7 @@ enum SwiftPackageManager {
     ]
 
     let process = Process.create(
-      "swift",
+      swiftPath(toolchain: toolchain),
       arguments: arguments,
       directory: directory
     )
@@ -58,6 +62,13 @@ enum SwiftPackageManager {
     try await Error.catch {
       try await process.runAndWait()
     }
+  }
+
+  /// Gets the path of the Swift executable for the given toolchain (if any).
+  /// Returns the literal string `"swift"` when no toolchain is specified, so
+  /// that Process can perform its usual executable path resolution.
+  static func swiftPath(toolchain: URL?) -> String {
+    toolchain.map { $0 / "usr/bin/swift" }.map(\.path) ?? "swift"
   }
 
   /// Builds the specified product of a Swift package.
@@ -75,7 +86,7 @@ enum SwiftPackageManager {
     )
 
     let process = Process.create(
-      "swift",
+      swiftPath(toolchain: buildContext.toolchain),
       arguments: arguments,
       directory: buildContext.genericContext.projectDirectory,
       runSilentlyWhenNotVerbose: false
@@ -128,7 +139,7 @@ enum SwiftPackageManager {
         / "\(buildContext.genericContext.configuration).yaml"
       let buildPlan = try readBuildPlan(buildPlanFile)
 
-      let targetInfo = try await getHostTargetInfo()
+      let targetInfo = try await getHostTargetInfo(toolchain: buildContext.toolchain)
 
       // Swift versions before 6.0 or so named commands differently in the build plan.
       // We check for the newer format (with triple) then the older format (no triple).
@@ -353,11 +364,12 @@ enum SwiftPackageManager {
   }
 
   /// Gets the version of the current Swift installation.
+  /// - Parameter toolchain: An alternative Swift toolchain to use.
   /// - Returns: The swift version.
-  static func getSwiftVersion() async throws(Error) -> Version {
+  static func getSwiftVersion(toolchain: URL?) async throws(Error) -> Version {
     let output = try await Error.catch(withMessage: .failedToGetSwiftVersion) {
       try await Process.create(
-        "swift",
+        swiftPath(toolchain: toolchain),
         arguments: ["--version"]
       ).getOutput()
     }
@@ -366,6 +378,19 @@ enum SwiftPackageManager {
       return try swiftVersionParser.parse(output)
     } catch {
       throw Error(.invalidSwiftVersionOutput(output), cause: error)
+    }
+  }
+
+  /// Runs `swift package resolve`.
+  static func resolveDependencies(
+    packageDirectory: URL,
+    toolchain: URL?
+  ) async throws(Error) {
+    try await Error.catch(withMessage: .failedToResolveDependencies(packageDirectory)) {
+      try await Process.create(
+        swiftPath(toolchain: toolchain),
+        arguments: ["package", "resolve"]
+      ).runAndWait()
     }
   }
 
@@ -380,7 +405,7 @@ enum SwiftPackageManager {
     )
 
     let process = Process.create(
-      "swift",
+      swiftPath(toolchain: buildContext.toolchain),
       arguments: arguments + ["--show-bin-path"],
       directory: buildContext.genericContext.projectDirectory
     )
@@ -397,13 +422,16 @@ enum SwiftPackageManager {
   }
 
   /// Loads a root package manifest from a package's root directory.
-  /// - Parameter packageDirectory: The package's root directory.
+  /// - Parameters:
+  ///   - packageDirectory: The package's root directory.
+  ///   - toolchain: An alternative Swift toolchain to use.
   /// - Returns: The loaded manifest.
   static func loadPackageManifest(
-    from packageDirectory: URL
+    from packageDirectory: URL,
+    toolchain: URL?
   ) async throws(Error) -> PackageManifest {
     let process = Process.create(
-      "swift",
+      swiftPath(toolchain: toolchain),
       arguments: ["package", "describe", "--type", "json"],
       directory: packageDirectory,
       runSilentlyWhenNotVerbose: false
@@ -430,10 +458,12 @@ enum SwiftPackageManager {
     }
   }
 
-  static func getHostTargetInfo() async throws(Error) -> SwiftTargetInfo {
+  /// Gets build target info about the host machine.
+  /// - Parameter toolchain: An alternative Swift toolchain to use.
+  static func getHostTargetInfo(toolchain: URL?) async throws(Error) -> SwiftTargetInfo {
     // TODO: This could be a nice easy one to unit test
     let process = Process.create(
-      "swift",
+      swiftPath(toolchain: toolchain),
       arguments: ["-print-target-info"]
     )
 
@@ -449,10 +479,15 @@ enum SwiftPackageManager {
     }
   }
 
-  static func getToolsVersion(_ packageDirectory: URL) async throws(Error) -> Version {
+  /// Gets the Swift tools version.
+  /// - Parameter toolchain: An alternative Swift toolchain version to use.
+  static func getToolsVersion(
+    _ packageDirectory: URL,
+    toolchain: URL?
+  ) async throws(Error) -> Version {
     let version = try await Error.catch(withMessage: .failedToGetToolsVersion) {
       try await Process.create(
-        "swift",
+        swiftPath(toolchain: toolchain),
         arguments: ["package", "tools-version"],
         directory: packageDirectory
       ).getOutput()
