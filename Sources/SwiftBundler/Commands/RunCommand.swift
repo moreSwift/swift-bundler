@@ -125,7 +125,8 @@ struct RunCommand: ErrorHandledCommand {
     // TODO: Avoid loading manifest twice
     let manifest = try await RichError<SwiftBundlerError>.catch {
       try await SwiftPackageManager.loadPackageManifest(
-        from: packageDirectory
+        from: packageDirectory,
+        toolchain: arguments.toolchain
       )
     }
 
@@ -160,6 +161,7 @@ struct RunCommand: ErrorHandledCommand {
             try await server.start(
               product: appConfiguration.product,
               buildContext: buildContext,
+              swiftToolchain: arguments.toolchain,
               appConfiguration: appConfiguration
             )
           } catch {

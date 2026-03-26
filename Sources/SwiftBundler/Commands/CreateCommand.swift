@@ -66,6 +66,12 @@ struct CreateCommand: ErrorHandledCommand {
     transform: URL.init(fileURLWithPath:))
   var templateRepository: URL?
 
+  /// An alternative Swift toolchain to use.
+  @Option(
+    help: "An alternative Swift toolchain to use",
+    transform: URL.init(fileURLWithPath:))
+  var toolchain: URL?
+
   /// The indentation style to create the package with.
   @Option(
     name: .long,
@@ -136,7 +142,8 @@ struct CreateCommand: ErrorHandledCommand {
             configuration: configuration,
             forceCreation: force,
             indentationStyle: indentation,
-            addVSCodeOverlay: addVSCodeOverlay
+            addVSCodeOverlay: addVSCodeOverlay,
+            swiftToolchain: toolchain
           )
         }
       } else {
@@ -148,7 +155,8 @@ struct CreateCommand: ErrorHandledCommand {
             configuration: configuration,
             forceCreation: force,
             indentationStyle: indentation,
-            addVSCodeOverlay: addVSCodeOverlay
+            addVSCodeOverlay: addVSCodeOverlay,
+            swiftToolchain: toolchain
           )
         }
       }

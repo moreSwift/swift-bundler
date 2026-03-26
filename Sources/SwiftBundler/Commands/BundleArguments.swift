@@ -16,6 +16,11 @@ struct BundleArguments: ParsableArguments {
       return choice
     })
   var bundler = BundlerChoice.defaultForHostPlatform
+  /// An alternative Swift toolchain to use.
+  @Option(
+    help: "An alternative Swift toolchain to use",
+    transform: URL.init(fileURLWithPath:))
+  var toolchain: URL?
 
   /// The directory containing the package to build.
   @Option(
