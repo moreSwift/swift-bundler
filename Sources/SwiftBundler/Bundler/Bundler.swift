@@ -26,6 +26,20 @@ protocol Bundler {
     manifest: PackageManifest
   ) throws(Error) -> Context
 
+  /// Prepares additional build inputs/arguments to pass to the Swift Package
+  /// Manager build command when building the application's main executable.
+  /// - Parameters:
+  ///   - context: The general context passed to all bundlers.
+  ///   - additionalContext: The bundler-specific context for this bundler.
+  ///   - dryRun: If true, the bundler should avoid as much destructive/expensive
+  ///     work as possible.
+  /// - Returns: Additional arguments to pass to Swift Package Manager.
+  static func prepareAdditionalSPMBuildArguments(
+    _ context: BundlerContext,
+    _ additionalContext: Context,
+    dryRun: Bool
+  ) async throws(Error) -> [String]
+
   /// Bundles an app from a package's built products directory.
   /// - Parameters:
   ///   - context: The general context passed to all bundlers.
@@ -42,6 +56,16 @@ protocol Bundler {
     in context: BundlerContext,
     _ additionalContext: Context
   ) -> BundlerOutputStructure
+}
+
+extension Bundler {
+  static func prepareAdditionalSPMBuildArguments(
+    _ context: BundlerContext,
+    _ additionalContext: Context,
+    dryRun: Bool
+  ) async throws(Error) -> [String] {
+    []
+  }
 }
 
 extension Bundler where Context == Void {

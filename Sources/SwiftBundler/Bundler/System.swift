@@ -25,4 +25,19 @@ enum System {
 
     return directory
   }
+
+  /// Gets the tools directory for Swift Bundler. Used to store downloaded
+  /// third-party tools, such as rcedit on Windows.
+  static func getToolsDirectory() throws(Error) -> URL {
+    let applicationSupport = try getApplicationSupportDirectory()
+    let toolsDirectory = applicationSupport / "tools"
+
+    do {
+      try FileManager.default.createDirectory(at: toolsDirectory)
+    } catch {
+      throw Error(.failedToCreateToolsDirectory, cause: error)
+    }
+
+    return toolsDirectory
+  }
 }

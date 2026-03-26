@@ -16,6 +16,11 @@ extension GenericWindowsBundler {
     case failedToEnumerateDynamicDependencies
     case failedToCopyDLL(source: URL, destination: URL)
     case failedToCopyPDB(source: URL, destination: URL)
+    case failedToLoadIcon(URL)
+    case failedToEncodeIco
+    case failedToDownloadResourceHacker
+    case failedToRunResourceHacker
+    case failedToLocateResourceHackerExecutable(expectedLocation: URL)
 
     var userFriendlyMessage: String {
       switch self {
@@ -62,6 +67,19 @@ extension GenericWindowsBundler {
             Failed to copy PDB from \
             '\(source.path(relativeTo: .currentDirectory))' to \
             '\(destination.path(relativeTo: .currentDirectory))'
+            """
+        case .failedToLoadIcon(let icon):
+          return "Failed to load icon at '\(icon.path(relativeTo: .currentDirectory))'"
+        case .failedToEncodeIco:
+          return "Failed to encode ico file"
+        case .failedToDownloadResourceHacker:
+          return "Failed to download Resource Hacker"
+        case .failedToRunResourceHacker:
+          return "Failed to run Resource Hacker"
+        case .failedToLocateResourceHackerExecutable(let expectedLocation):
+          return """
+            Failed to locate Resource Hacker executable in downloaded zip archive. \
+            Expected to find it at '\(expectedLocation.path)'
             """
       }
     }
