@@ -29,7 +29,9 @@ resulting executable to a directory in your path.
 git clone https://github.com/moreSwift/swift-bundler
 cd swift-bundler
 
-swift build -c release
+# SBUN_NO_SCHEMA_GEN speeds up release builds by working around a Swift Syntax
+# prebuilts issue (which may get resolved in future Swift versions)
+SBUN_NO_SCHEMA_GEN=1 swift build -c release
 cp .build/release/swift-bundler /path/to/bin/
 
 # Verify installation

@@ -1,7 +1,30 @@
 // swift-tools-version:6.0
 
 import CompilerPluginSupport
+import Foundation
 import PackageDescription
+
+// ## Compile-time environment options
+//
+// - SBUN_NO_SCHEMA_GEN : Disables the schema-gen target which depends on
+//     swift-syntax and effectively ruins swift-syntax prebuilts even when
+//     we're building unrelated targets. Used to speed up CI release builds.
+
+let env = ProcessInfo.processInfo.environment
+let schemaGenTargets: [Target]
+if env["SBUN_NO_SCHEMA_GEN"] == "1" {
+  schemaGenTargets = [
+    .executableTarget(
+      name: "schema-gen",
+      dependencies: [
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftParser", package: "swift-syntax"),
+      ]
+    )
+  ]
+} else {
+  schemaGenTargets = []
+}
 
 let package = Package(
   name: "swift-bundler",
@@ -16,7 +39,9 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
-    .package(url: "https://github.com/pointfreeco/swift-parsing", .upToNextMinor(from: "0.14.0")),
+    // This fork removes the dependency on swift-syntax (which was used for
+    // features we don't use) to speed up Swift Bundler release builds
+    .package(url: "https://github.com/stackotter/swift-parsing", .upToNextMinor(from: "0.15.0")),
     .package(url: "https://github.com/stackotter/TOMLKit", from: "0.6.1"),
     .package(url: "https://github.com/onevcat/Rainbow", from: "4.0.0"),
     .package(url: "https://github.com/mxcl/Version", from: "2.0.0"),
@@ -68,6 +93,7 @@ let package = Package(
         "Version",
         "XMLCoder",
         "Yams",
+        "SwiftSyntaxUtils",
         .product(name: "ZIPFoundation", package: "ZIPFoundationModern"),
         .product(name: "Ico", package: "swift-ico"),
         .product(name: "ImageFormats", package: "swift-image-formats"),
@@ -77,8 +103,6 @@ let package = Package(
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "Logging", package: "swift-log"),
         .product(name: "Parsing", package: "swift-parsing"),
-        .product(name: "SwiftSyntax", package: "swift-syntax"),
-        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "Overture", package: "swift-overture"),
         .product(name: "AsyncCollections", package: "async-collections"),
         .product(name: "Mutex", package: "swift-mutex"),
@@ -133,6 +157,14 @@ let package = Package(
       ]
     ),
 
+    // Code taken from SwiftSyntax to avoid needing to build the entirety of
+    // Swift Syntax when building Swift Bundler. Licensed under Apache 2.0;
+    // see Sources/SwiftSyntaxUtils/LICENSE.txt
+    .target(
+      name: "SwiftSyntaxUtils",
+      exclude: ["LICENSE.txt"]
+    ),
+
     .macro(
       name: "SwiftBundlerMacrosPlugin",
       dependencies: [
@@ -140,14 +172,6 @@ let package = Package(
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
         .product(name: "MacroToolkit", package: "swift-macro-toolkit"),
-      ]
-    ),
-
-    .executableTarget(
-      name: "schema-gen",
-      dependencies: [
-        .product(name: "SwiftSyntax", package: "swift-syntax"),
-        .product(name: "SwiftParser", package: "swift-syntax"),
       ]
     ),
 
@@ -224,5 +248,5 @@ let package = Package(
         .target(name: "swift-bundler")
       ]
     ),
-  ]
+  ] + schemaGenTargets
 )

@@ -1,6 +1,5 @@
 import Foundation
-import SwiftSyntax
-import SwiftSyntaxBuilder
+import SwiftSyntaxUtils
 import TOMLKit
 import Version
 
@@ -439,7 +438,11 @@ enum XcodeprojConverter {
       }
 
       func stringLiteral(_ value: String) -> String {
-        ExprSyntax("\(literal: value)").description
+        let escaped = value.escapingForStringLiteral(
+          usingDelimiter: "",
+          isMultiline: false
+        )
+        return "\"\(escaped)\""
       }
 
       let indentSpaces = 4

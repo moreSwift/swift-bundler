@@ -28,12 +28,12 @@ jobs:
       # 15.0.1 (Swift 5.9) and Xcode 16.2 (Swift 6.0.3), both had the same issue.
       - name: Build for arm64
         run: |
-          swift build -c release --arch arm64 && \
+          SBUN_NO_SCHEMA_GEN=1 swift build --enable-experimental-prebuilts -c release --arch arm64 && \
           cp .build/release/swift-bundler swift-bundler-arm64
 
       - name: Build for x86_64
         run: |
-          swift build -c release --arch x86_64 && \
+          SBUN_NO_SCHEMA_GEN=1 swift build --enable-experimental-prebuilts -c release --arch x86_64 && \
           cp .build/release/swift-bundler swift-bundler-x86_64
 
       - name: Combine into universal binary
