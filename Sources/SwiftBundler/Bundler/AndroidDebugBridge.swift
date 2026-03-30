@@ -51,17 +51,26 @@ enum AndroidDebugBridge {
       }
 
       let parts = line.split(separator: "\t")
-      guard parts.count == 2, parts[1] == "device" || parts[1] == "offline" else {
+      let statuses = ["device", "offline", "unauthorized"]
+      guard parts.count == 2, statuses.contains(String(parts[1])) else {
         log.warning("Failed to parse line of 'adb devices' output: '\(line)'")
         continue
       }
 
+      let identifier = parts[0]
       if parts[1] == "offline" {
-        log.debug("Skipping offline device '\(parts[0])'")
+        // TODO(stackotter): List these as 'unavailable' devices
+        log.debug("Skipping offline device '\(identifier)'")
         continue
       }
 
-      devices.append(ConnectedDevice(identifier: String(parts[0])))
+      if parts[2] == "unauthorized" {
+        // TODO(stackotter): List these as 'unavailable' devices
+        log.info("Skipping unauthorized device '\(identifier)'")
+        continue
+      }
+
+      devices.append(ConnectedDevice(identifier: String(identifier)))
     }
 
     return devices
