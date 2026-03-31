@@ -14,7 +14,9 @@ extension SwiftSDKManager {
       targetTriple: LLVMTargetTriple
     )
     case cannotGetCompilerVersionStringFromNonAndroidSDK(SwiftSDK)
+    case cannotGetLinkedNDKFromNonAndroidSDK(SwiftSDK)
     case couldNotLocateCompilerVersionString(SwiftSDK, _ interface: URL)
+    case failedToGetLinkedNDK(SwiftSDK, _ reason: String)
 
     var userFriendlyMessage: String {
       switch self {
@@ -32,11 +34,21 @@ extension SwiftSDKManager {
             Swift Bundler doesn't support fetching compiler version strings \
             from non-Android SDKs; sdk=\(sdk.generallyUniqueIdentifier)
             """
+        case .cannotGetLinkedNDKFromNonAndroidSDK(let sdk):
+          return """
+            Swift Bundler cannot get the NDK installation linked to by a \
+            non-Android SDK; sdk=\(sdk.generallyUniqueIdentifier)
+            """
         case .couldNotLocateCompilerVersionString(let sdk, let interface):
           return """
             Could not detect Swift compiler version used to generate Swift \
             interface at '\(interface.path)' (in \
             '\(sdk.generallyUniqueIdentifier)' sdk)
+            """
+        case .failedToGetLinkedNDK(let sdk, let reason):
+          return """
+            Failed to get linked NDK of Swift Android SDK \
+            (\(sdk.generallyUniqueIdentifier)): \(reason)
             """
       }
     }

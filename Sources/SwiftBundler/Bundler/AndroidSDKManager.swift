@@ -1,5 +1,6 @@
 import Foundation
 import Version
+import ErrorKit
 
 enum AndroidSDKManager {
   static let buildToolsRelativePath = "build-tools"
@@ -91,7 +92,9 @@ enum AndroidSDKManager {
   }
 
   /// Enumerates all available NDK versions in the given SDK.
-  static func enumerateNDKVersions(availableIn sdk: URL) throws(Error) -> [Version] {
+  static func enumerateNDKVersions(
+    availableIn sdk: URL
+  ) throws(Error) -> [(location: URL, version: Version)] {
     let ndkDirectory = ndkDirectory(forSDK: sdk)
     guard ndkDirectory.exists() else {
       return []
@@ -101,27 +104,118 @@ enum AndroidSDKManager {
       try FileManager.default.contentsOfDirectory(at: ndkDirectory)
     }
 
-    var versions: [Version] = []
+    var versions: [(URL, Version)] = []
     for directory in contents where directory.exists(withType: .directory) {
-      guard let version = Version(tolerant: directory.lastPathComponent) else {
-        log.warning("Failed to parse NDK version of NDK at '\(directory.path)'")
-        continue
+      do {
+        let version = try getVersion(ofNDKAt: directory)
+        versions.append((directory, version))
+      } catch {
+        // If someone places a malformed NDK in their SDK's ndk directory
+        // then we shouldn't let that break the rest of our NDK discovery,
+        // so we just warn instead of propagating the error.
+        log.warning("\(ErrorKit.userFriendlyMessage(for: error))")
       }
-      versions.append(version)
     }
 
-    return versions
+    let sdks = try Error.catch {
+      try SwiftSDKManager.enumerateInstalledSwiftSDKs()
+    }
+    for sdk in sdks {
+      do {
+        guard
+          sdk.triple.contains("-unknown-linux-android"),
+          let ndk = try SwiftSDKManager.getLinkedNDK(fromAndroidSDK: sdk)
+        else {
+          continue
+        }
+
+        let version = try getVersion(ofNDKAt: ndk)
+        versions.append((ndk, version))
+        log.debug("Found NDK at '\(ndk.path)' via SDK at '\(sdk.root.path)'")
+      } catch {
+        log.warning("\(ErrorKit.userFriendlyMessage(for: error))")
+      }
+    }
+
+    // If a Swift Android SDK is linked to an NDK that lives inside the user's
+    // Android SDK then we may discover the same NDK twice. Users may also just
+    // have multiple installations of the exact same NDK version in some cases.
+    var uniqueVersions: [(URL, Version)] = []
+    var seen: Set<Version> = []
+    for (url, version) in versions {
+      if seen.insert(version).inserted {
+        uniqueVersions.append((url, version))
+      }
+    }
+
+    return uniqueVersions
+  }
+
+  /// Parses the content of a `*.properties` file (such as the
+  /// source.properties file at the root of each NDK). Performs very
+  /// relaxed parsing and only understands the features that we
+  /// need to parse for our purposes (getting the versions of NDKs).
+  private static func parsePropertiesFileContent(
+    _ content: String) throws(Error) -> [String: String] {
+    let lines = content.split(separator: "\n")
+    var values: [String: String] = [:]
+    for line in lines {
+      let line = line.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !line.isEmpty else {
+        continue
+      }
+
+      let parts = line.split(separator: "=", maxSplits: 1)
+      guard parts.count == 2 else {
+        // Properties files can contain comments and other various constructs
+        // besides key value pairs. Its best for us to ignore things we don't
+        // understand here. c.f. https://en.wikipedia.org/wiki/.properties
+        log.debug("Skipping property line with content '\(line)'")
+        continue
+      }
+
+      let key = parts[0].trimmingCharacters(in: .whitespaces)
+      let value = parts[1].trimmingCharacters(in: .whitespaces)
+      values[String(key)] = String(value)
+    }
+
+    return values
+  }
+
+  /// Gets the version of the NDK at the given URL.
+  static func getVersion(ofNDKAt ndk: URL) throws(Error) -> Version {
+    let propertiesFile = ndk / "source.properties"
+    guard propertiesFile.exists() else {
+      throw Error(.ndkMissingSourceProperties(ndk))
+    }
+
+    let content = try Error.catch {
+      try String(contentsOf: propertiesFile)
+    }
+
+    let values = try parsePropertiesFileContent(content)
+    guard let version = values["Pkg.Revision"] else {
+      throw Error(.ndkMissingRevision(ndk, values))
+    }
+
+    guard let parsedVersion = Version(tolerant: version) else {
+      throw Error(.invalidNDKRevision(ndk, version))
+    }
+
+    return parsedVersion
   }
 
   /// Gets the path of the latest NDK version available in the given SDK.
   static func getLatestNDK(availableIn sdk: URL) throws(Error) -> URL {
     let ndkVersions = try enumerateNDKVersions(availableIn: sdk)
     let ndkDirectory = ndkDirectory(forSDK: sdk)
-    guard let ndkVersion = ndkVersions.sorted().last else {
+    guard
+      let ndkVersion = ndkVersions.sorted(by: { $0.version <= $1.version }).last
+    else {
       throw Error(.ndkNotInstalled(ndkDirectory))
     }
 
-    return ndkDirectory / "\(ndkVersion)"
+    return ndkVersion.location
   }
 
   static func llvmPrebuiltDirectory(
@@ -144,7 +238,7 @@ enum AndroidSDKManager {
     guard prebuiltDirectory.exists(withType: .directory) else {
       throw Error(.ndkMissingNDKPrebuilts(prebuiltDirectory))
     }
-    
+
     return prebuiltDirectory
   }
 

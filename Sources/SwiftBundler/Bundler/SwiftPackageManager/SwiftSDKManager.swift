@@ -222,7 +222,8 @@ enum SwiftSDKManager {
     // in two concurrent Swift Bundler build invocations.
     let pathHash = UInt32(truncatingIfNeeded: sdk.bundle.path.stableHash)
     let pathHashString = String(format: "%08x", pathHash)
-    let link = silo / "\(sdk.bundle.lastPathComponent)-\(pathHashString)"
+    let base = sdk.bundle.deletingPathExtension().lastPathComponent
+    let link = silo / "\(base)-\(pathHashString).\(sdk.bundle.pathExtension)"
 
     let destination = sdk.bundle
     if !link.exists() || link.actuallyResolvingSymlinksInPath() != destination {
@@ -293,5 +294,51 @@ enum SwiftSDKManager {
       .trimmingCharacters(in: .whitespacesAndNewlines)
 
     return compilerVersion
+  }
+
+  /// Attempts to get the Android NDK associated with the given Swift Android SDK.
+  ///
+  /// Only works if the SDK was linked by symlinking the required NDK components
+  /// rather than copying them. Symlinking is the default approach of the SWift
+  /// Android SDK's `scripts/setup-android-sdk.sh` script.
+  static func getLinkedNDK(fromAndroidSDK sdk: SwiftSDK) throws(Error) -> URL? {
+    guard sdk.triple.contains("-unknown-linux-android") else {
+      throw Error(.cannotGetLinkedNDKFromNonAndroidSDK(sdk))
+    }
+
+    let include = sdk.root / "usr/include"
+    
+    guard let values = try? include.resourceValues(forKeys: [.isSymbolicLinkKey]) else {
+      throw Error(.failedToGetLinkedNDK(sdk, "missing symlink at '\(include.path)'"))
+    }
+
+    guard values.isSymbolicLink == true else {
+      throw Error(.failedToGetLinkedNDK(
+        sdk,
+        """
+        '\(include.path)' isn't a symlink; it's possible that the NDK was copied \
+        instead of linked; re-run '\(sdk.root.path)/scripts/setup-android-sdk.sh' \
+        with 'SWIFT_ANDROID_NDK_LINK' set to '1' (the default value)
+        """
+      ))
+    }
+
+    let destination = include.actuallyResolvingSymlinksInPath()
+    var ndkRoot = destination
+    while !(ndkRoot / "source.properties").exists() {
+      ndkRoot = ndkRoot.deletingLastPathComponent()
+
+      if ndkRoot.pathComponents.count == 1 {
+        throw Error(.failedToGetLinkedNDK(
+          sdk,
+          """
+          failed to locate ndk root associated with '\(include.path)', no parent \
+          directory contains a source.properties file
+          """
+        ))
+      }
+    }
+
+    return ndkRoot
   }
 }
