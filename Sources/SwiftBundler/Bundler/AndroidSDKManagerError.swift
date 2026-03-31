@@ -15,6 +15,9 @@ extension AndroidSDKManager {
     case ndkLLVMPrebuiltsOnlyDistributedForX86_64(HostPlatform, BuildArchitecture)
     case ndkMissingNDKPrebuilts(_ prebuiltDirectory: URL)
     case ndkMissingReadelfTool(_ readelfTool: URL)
+    case ndkMissingSourceProperties(_ ndk: URL)
+    case ndkMissingRevision(_ ndk: URL, _ sourceProperties: [String: String])
+    case invalidNDKRevision(_ ndk: URL, _ revision: String)
 
     var userFriendlyMessage: String {
       switch self {
@@ -60,6 +63,21 @@ extension AndroidSDKManager {
           return """
             Expected llvm-readelf to be located at '\(readelfTool.path)', but \
             the file does not exist
+            """
+        case .ndkMissingSourceProperties(let ndk):
+          return """
+            NDK at \(ndk.path) doesn't have a source.properties file at its \
+            root (which Swift Bundler needs in order to get the NDK's version)
+            """
+        case .ndkMissingRevision(let ndk, let values):
+          return """
+            Could not determine revision of NDK at \(ndk.path); parsed \
+            source.properties and got \(values)
+            """
+        case .invalidNDKRevision(let ndk, let revision):
+          return """
+            NDK at \(ndk.path) has a revision that Swift Bundler could not parse; \
+            revision=\(revision)
             """
       }
     }

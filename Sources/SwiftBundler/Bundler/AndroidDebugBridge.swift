@@ -57,14 +57,15 @@ enum AndroidDebugBridge {
         continue
       }
 
+      let status = parts[1]
       let identifier = parts[0]
-      if parts[1] == "offline" {
+      if status == "offline" {
         // TODO(stackotter): List these as 'unavailable' devices
         log.debug("Skipping offline device '\(identifier)'")
         continue
       }
 
-      if parts[2] == "unauthorized" {
+      if status == "unauthorized" {
         // TODO(stackotter): List these as 'unavailable' devices
         log.info("Skipping unauthorized device '\(identifier)'")
         continue

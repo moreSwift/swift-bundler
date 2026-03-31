@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import Version
 
 /// The subcommand containing debug commands to use when debugging Swift
 /// Bundler issues or working on Swift Bundler features.
@@ -12,6 +13,7 @@ struct DebugCommand: AsyncParsableCommand {
       DumpPackageGraph.self,
       ListSDKs.self,
       ListToolchains.self,
+      ListAndroidNDKs.self,
     ]
   )
 
@@ -98,6 +100,39 @@ struct DebugCommand: AsyncParsableCommand {
 
       try DebugCommand.displayOutput(toolchains, json: json) { toolchain in
         KeyedList.Entry(toolchain.displayName.bold, toolchain.root.path)
+      }
+    }
+  }
+
+  struct ListAndroidNDKs: ErrorHandledCommand {
+    static var configuration = CommandConfiguration(
+      commandName: "list-android-ndks",
+      abstract: "List all non-duplicate Android NDKs that Swift Bundler knows about"
+    )
+
+    @Flag(
+      name: .shortAndLong,
+      help: "Print verbose error messages.")
+    var verbose = false
+
+    @Flag(help: "Display the output as JSON (includes more information)")
+    var json = false
+
+    func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+      struct NDKVersion: Encodable {
+        var ndk: URL
+        var version: Version
+      }
+
+      let ndkVersions = try RichError<SwiftBundlerError>.catch {
+        let androidSDK = try AndroidSDKManager.locateAndroidSDK()
+        return try AndroidSDKManager.enumerateNDKVersions(availableIn: androidSDK)
+      }.map { (ndk, version) in
+        NDKVersion(ndk: ndk, version: version)
+      }
+
+      try DebugCommand.displayOutput(ndkVersions, json: json) { ndkVersion in
+        KeyedList.Entry(ndkVersion.version.description.bold, ndkVersion.ndk.path)
       }
     }
   }
