@@ -243,7 +243,8 @@ enum MSIBundler: Bundler {
             ),
           ]
         )
-      ]
+      ],
+      additionalChildren: appConfiguration.msi?.wxsExtras ?? []
     )
 
     return WXSFile(
