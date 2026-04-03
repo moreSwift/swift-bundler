@@ -48,6 +48,9 @@ struct AppConfiguration: Codable {
   /// their build process.
   var dependencies: [Dependency]?
 
+  /// MSI bundler related configuration properties.
+  var msi: MSIBundlerConfiguration?
+
   /// Only available in overlays with `platform(linux)` or stronger. Sets whether
   /// Swift Bundler generates a D-Bus service file for the application or not.
   @Available(.platform("linux"))

@@ -5,7 +5,7 @@ extension MSIBundler {
   /// This isn't intended to be used to parse or produce arbitrary WXS files.
   /// Notably we have a lot of non-nullable properties that in reality are
   /// nullable from WiX's point of view.
-  struct WXSFile: Codable {
+  struct WXSFile: Encodable {
     @Attribute var xmlns: String
     @Element var package: Package
 
@@ -39,21 +39,35 @@ extension MSIBundler {
       @Element var installUISequences: [InstallUISequence]
       @Element var installExecuteSequences: [InstallExecuteSequence]
 
-      enum CodingKeys: String, CodingKey {
-        case language = "Language"
-        case manufacturer = "Manufacturer"
-        case name = "Name"
-        case upgradeCode = "UpgradeCode"
-        case version = "Version"
-        case majorUpgrade = "MajorUpgrade"
-        case mediaTemplate = "MediaTemplate"
-        case icons = "Icon"
-        case properties = "Property"
-        case standardDirectories = "StandardDirectory"
-        case componentGroups = "ComponentGroup"
-        case customActions = "CustomAction"
-        case installUISequences = "InstallUISequence"
-        case installExecuteSequences = "InstallExecuteSequence"
+      var additionalAttributes: [String: String]
+      var additionalChildren: [WXSValue]
+
+      struct CodingKeys: OpenCodingKey {
+        static let language = Self("Language")
+        static let manufacturer = Self("Manufacturer")
+        static let name = Self("Name")
+        static let upgradeCode = Self("UpgradeCode")
+        static let version = Self("Version")
+        static let majorUpgrade = Self("MajorUpgrade")
+        static let mediaTemplate = Self("MediaTemplate")
+        static let icons = Self("Icon")
+        static let properties = Self("Property")
+        static let standardDirectories = Self("StandardDirectory")
+        static let componentGroups = Self("ComponentGroup")
+        static let customActions = Self("CustomAction")
+        static let installUISequences = Self("InstallUISequence")
+        static let installExecuteSequences = Self("InstallExecuteSequence")
+
+        let stringValue: String
+        var intValue: Int? { nil }
+
+        init?(intValue: Int) {
+          return nil
+        }
+
+        init(_ stringValue: String) {
+          self.stringValue = stringValue
+        }
       }
 
       enum Language: String, Codable {
@@ -74,7 +88,9 @@ extension MSIBundler {
         componentGroups: [ComponentGroup] = [],
         customActions: [CustomAction] = [],
         installUISequences: [InstallUISequence] = [],
-        installExecuteSequences: [InstallExecuteSequence] = []
+        installExecuteSequences: [InstallExecuteSequence] = [],
+        additionalAttributes: [String: String] = [:],
+        additionalChildren: [WXSValue] = []
       ) {
         self._language = Attribute(language)
         self._manufacturer = Attribute(manufacturer)
@@ -90,6 +106,60 @@ extension MSIBundler {
         self._customActions = Element(customActions)
         self._installUISequences = Element(installUISequences)
         self._installExecuteSequences = Element(installExecuteSequences)
+        self.additionalAttributes = additionalAttributes
+        self.additionalChildren = additionalChildren
+      }
+
+      func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(_language, forKey: .language)
+        try container.encode(_manufacturer, forKey: .manufacturer)
+        try container.encode(_name, forKey: .name)
+        try container.encode(_upgradeCode, forKey: .upgradeCode)
+        try container.encode(_version, forKey: .version)
+        try container.encode(_majorUpgrade, forKey: .majorUpgrade)
+        try container.encode(
+          _mediaTemplate,
+          forKey: .mediaTemplate
+        )
+        try container.encode(_icons, forKey: .icons)
+        try container.encode(_properties, forKey: .properties)
+        try container.encode(
+          _standardDirectories,
+          forKey: .standardDirectories
+        )
+        try container.encode(
+          _componentGroups,
+          forKey: .componentGroups
+        )
+        try container.encode(
+          _customActions,
+          forKey: .customActions
+        )
+        try container.encode(
+          _installUISequences,
+          forKey: .installUISequences
+        )
+        try container.encode(
+          _installExecuteSequences,
+          forKey: .installExecuteSequences
+        )
+
+        let additions = WXSValueXML(value: WXSValue(
+          tag: "",
+          attributes: additionalAttributes,
+          children: additionalChildren
+        ))
+        try additions.encode(intoContainer: &container)
+      }
+
+      init(from decoder: any Decoder) throws {
+        fatalError(
+          """
+          Decodable not implemented for WXSFile.Product; conformance exists to \
+          satisfy XMLCoder.Element requirements
+          """
+        )
       }
     }
 
@@ -364,15 +434,39 @@ extension MSIBundler {
 
     struct CustomAction: Codable {
       @Attribute var id: String
-      @Attribute var property: String
-      @Attribute var value: String
+      @Attribute var property: String?
+      @Attribute var value: String?
       @Attribute var execute: Scheduling
+      @Attribute var impersonate: YesOrNo?
+      @Attribute var `return`: Return?
+      @Attribute var directory: String?
+      @Attribute var exeCommand: String?
 
-      init(id: String, property: String, value: String, execute: Scheduling) {
+      init(
+        id: String,
+        property: String? = nil,
+        value: String? = nil,
+        execute: Scheduling,
+        impersonate: YesOrNo? = nil,
+        return: Return? = nil,
+        directory: String? = nil,
+        exeCommand: String? = nil
+      ) {
         self._id = Attribute(id)
         self._property = Attribute(property)
         self._value = Attribute(value)
         self._execute = Attribute(execute)
+        self._impersonate = Attribute(impersonate)
+        self._return = Attribute(`return`)
+        self._directory = Attribute(directory)
+        self._exeCommand = Attribute(exeCommand)
+      }
+
+      enum Return: String, Codable {
+        case asyncNoWait
+        case asyncWait
+        case check
+        case ignore
       }
 
       enum Scheduling: String, Codable {
@@ -390,6 +484,10 @@ extension MSIBundler {
         case property = "Property"
         case value = "Value"
         case execute = "Execute"
+        case impersonate = "Impersonate"
+        case `return` = "Return"
+        case directory = "Directory"
+        case exeCommand = "ExeCommand"
       }
     }
 
