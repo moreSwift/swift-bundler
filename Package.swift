@@ -42,7 +42,7 @@ let package = Package(
     // This fork removes the dependency on swift-syntax (which was used for
     // features we don't use) to speed up Swift Bundler release builds
     .package(url: "https://github.com/stackotter/swift-parsing", .upToNextMinor(from: "0.15.0")),
-    .package(url: "https://github.com/stackotter/TOMLKit", from: "0.6.1"),
+    .package(url: "https://github.com/stackotter/TOMLKit", from: "0.7.0"),
     .package(url: "https://github.com/onevcat/Rainbow", from: "4.0.0"),
     .package(url: "https://github.com/mxcl/Version", from: "2.0.0"),
     .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),

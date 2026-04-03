@@ -30,6 +30,10 @@ public enum SwiftBundlerErrorMapper: ErrorMapper {
           Decoding error at '\(CodingPath(context.codingPath))'; \
           \(context.debugDescription)
           """
+      case let error as TOMLKit.TOMLParseError:
+        return """
+          TOML decoding error: \(error.debugDescription)
+          """
       default:
         return nil
     }
