@@ -295,14 +295,14 @@ struct BundleCommand: ErrorHandledCommand {
     }
 
     do {
-      let identity: CodeSigner.Identity
+      let identity: DarwinCodeSigner.Identity
       if let identityShortName = identityArgument {
         identity = try await RichError<SwiftBundlerError>.catch {
-          try await CodeSigner.resolveIdentity(shortName: identityShortName)
+          try await DarwinCodeSigner.resolveIdentity(shortName: identityShortName)
         }
       } else {
         let identities = try await RichError<SwiftBundlerError>.catch {
-          try await CodeSigner.enumerateIdentities()
+          try await DarwinCodeSigner.enumerateIdentities()
         }
 
         guard let firstIdentity = identities.first else {

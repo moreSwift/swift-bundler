@@ -114,7 +114,7 @@ struct BundlerContext {
   /// issues more quickly.
   struct DarwinCodeSigningContext {
     /// The identity to sign the app with.
-    var identity: CodeSigner.Identity
+    var identity: DarwinCodeSigner.Identity
     /// A file containing entitlements to give the app if code signing.
     var entitlements: URL?
     /// A provisioning profile provided by the user.

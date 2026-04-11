@@ -14,8 +14,17 @@ struct ListIdentitiesCommand: ErrorHandledCommand {
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
-    let identities = try await RichError<SwiftBundlerError>.catch {
-      try await CodeSigner.enumerateIdentities()
+    let identities: [DarwinCodeSigner.Identity]
+    if HostPlatform.hostPlatform == .macOS {
+      identities = try await RichError<SwiftBundlerError>.catch {
+        try await DarwinCodeSigner.enumerateIdentities()
+      }
+    } else if HostPlatform.hostPlatform == .windows {
+      identities = try await RichError<SwiftBundlerError>.catch {
+        try await WindowsCodeSigner.enumerateIdentities()
+      }
+    } else {
+      throw RichError(.codesigningNotSupported(HostPlatform.hostPlatform))
     }
 
     Output {

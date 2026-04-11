@@ -23,7 +23,7 @@ enum ProvisioningProfileManager {
     bundleIdentifier: String,
     deviceId: String,
     deviceOS: NonMacAppleOS,
-    identity: CodeSigner.Identity
+    identity: DarwinCodeSigner.Identity
   ) async throws(Error) -> URL {
     #if SUPPORT_XCODEPROJ
       let provisioningProfile = try await locateSuitableProvisioningProfile(
@@ -39,7 +39,7 @@ enum ProvisioningProfileManager {
       }
 
       let teamIdentifier = try await Error.catch {
-        try await CodeSigner.getTeamIdentifier(for: identity)
+        try await DarwinCodeSigner.getTeamIdentifier(for: identity)
       }
 
       return try await generateProvisioningProfile(
@@ -59,7 +59,7 @@ enum ProvisioningProfileManager {
     bundleIdentifier: String,
     deviceId: String,
     deviceOS: NonMacAppleOS,
-    identity: CodeSigner.Identity
+    identity: DarwinCodeSigner.Identity
   ) async throws(Error) -> URL? {
     #if SUPPORT_XCODEPROJ
       let profiles = try await loadProvisioningProfiles()

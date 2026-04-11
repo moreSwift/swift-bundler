@@ -1,10 +1,10 @@
 import Foundation
 import ErrorKit
 
-extension CodeSigner {
+extension DarwinCodeSigner {
   typealias Error = RichError<ErrorMessage>
 
-  /// An error message related to ``CodeSigner``.
+  /// An error message related to ``DarwinCodeSigner``.
   enum ErrorMessage: Throwable {
     case failedToEnumerateIdentities
     case failedToParseIdentityList
@@ -13,12 +13,12 @@ extension CodeSigner {
     case failedToLoadProvisioningProfile(URL)
     case provisioningProfileMissingTeamIdentifier
     case failedToEnumerateDynamicLibraries
-    case failedToLocateSigningCertificate(CodeSigner.Identity)
+    case failedToLocateSigningCertificate(DarwinCodeSigner.Identity)
     case failedToParseSigningCertificate(pem: String)
-    case signingCertificateMissingTeamIdentifier(CodeSigner.Identity)
+    case signingCertificateMissingTeamIdentifier(DarwinCodeSigner.Identity)
     case identityShortNameNotMatched(String)
     case invalidId(String)
-    case certificateExpired(CodeSigner.Identity, notValidAfter: Date)
+    case certificateExpired(DarwinCodeSigner.Identity, notValidAfter: Date)
 
     var userFriendlyMessage: String {
       switch self {

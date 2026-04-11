@@ -5,7 +5,7 @@ import SwiftASN1
 import X509
 
 /// A utility for codesigning Darwin application bundles
-enum CodeSigner {
+enum DarwinCodeSigner {
   /// The path to the `codesign` tool.
   static let codesignToolPath = "/usr/bin/codesign"
   /// The path to the `security` tool.
@@ -101,7 +101,7 @@ enum CodeSigner {
 
       entitlementsFile = file
 
-      try await CodeSigner.generateEntitlementsFile(
+      try await DarwinCodeSigner.generateEntitlementsFile(
         at: file,
         for: bundle,
         identityId: identityId,

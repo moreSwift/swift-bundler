@@ -157,7 +157,7 @@ struct BundleArguments: ParsableArguments {
   var simulatorSpecifier: String?
 
   /// A codesigning identity to use.
-  #if os(macOS)
+  #if os(macOS) || os(Windows)
     @Option(
       name: .customLong("identity"),
       help: "The identity to use for codesigning")
@@ -177,7 +177,7 @@ struct BundleArguments: ParsableArguments {
   var provisioningProfile: URL?
 
   /// If `true`, the application will be codesigned.
-  #if os(macOS)
+  #if os(macOS) || os(Windows)
     @Flag(
       name: .customLong("codesign"),
       inversion: .prefixedNo,
