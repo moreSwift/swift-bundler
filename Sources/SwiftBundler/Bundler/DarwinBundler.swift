@@ -240,7 +240,7 @@ enum DarwinBundler: Bundler {
   ) async throws(Error) {
     try await Error.catch {
       if let codeSigningContext = context.darwinCodeSigningContext {
-        try await CodeSigner.signAppBundle(
+        try await DarwinCodeSigner.signAppBundle(
           bundle: appBundle,
           identityId: codeSigningContext.identity.id,
           bundleIdentifier: context.appConfiguration.identifier,
@@ -249,7 +249,7 @@ enum DarwinBundler: Bundler {
         )
       } else {
         // Codesign using an adhoc signature
-        try await CodeSigner.signAppBundle(
+        try await DarwinCodeSigner.signAppBundle(
           bundle: appBundle,
           identityId: "-",
           bundleIdentifier: context.appConfiguration.identifier,

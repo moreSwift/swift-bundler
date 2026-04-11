@@ -15,6 +15,7 @@ enum SwiftBundlerError: Throwable {
   case failedToResolveCodesigningConfiguration(reason: String)
   case failedToCopyOutBundle
   case missingConfigurationFile(URL)
+  case codesigningNotSupported(HostPlatform)
 
   var userFriendlyMessage: String {
     switch self {
@@ -73,6 +74,10 @@ enum SwiftBundlerError: Throwable {
         return """
           Could not find \(file.lastPathComponent) at standard location. Are you \
           sure that you're in the root of a Swift Bundler project?
+          """
+      case .codesigningNotSupported(let platform):
+        return """
+          Codesigning isn't supported on \(platform.platform.displayName)
           """
     }
   }
