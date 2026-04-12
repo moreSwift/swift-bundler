@@ -13,12 +13,12 @@ extension DarwinCodeSigner {
     case failedToLoadProvisioningProfile(URL)
     case provisioningProfileMissingTeamIdentifier
     case failedToEnumerateDynamicLibraries
-    case failedToLocateSigningCertificate(DarwinCodeSigner.Identity)
+    case failedToLocateSigningCertificate(CodeSigningIdentity)
     case failedToParseSigningCertificate(pem: String)
-    case signingCertificateMissingTeamIdentifier(DarwinCodeSigner.Identity)
+    case signingCertificateMissingTeamIdentifier(CodeSigningIdentity)
     case identityShortNameNotMatched(String)
     case invalidId(String)
-    case certificateExpired(DarwinCodeSigner.Identity, notValidAfter: Date)
+    case certificateExpired(CodeSigningIdentity, notValidAfter: Date)
 
     var userFriendlyMessage: String {
       switch self {

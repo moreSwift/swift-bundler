@@ -77,6 +77,16 @@ enum MSIBundler: Bundler {
       try await process.runAndWait()
     }
 
+    if let codeSigningContext = context.codeSigningContext {
+      log.info("Signing installer")
+      try await Error.catch {
+        try await WindowsCodeSigner.signFile(
+          outputStructure.bundle,
+          identity: codeSigningContext.identity
+        )
+      }
+    }
+
     return outputStructure
   }
 

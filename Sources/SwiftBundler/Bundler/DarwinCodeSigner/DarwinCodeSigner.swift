@@ -14,22 +14,6 @@ enum DarwinCodeSigner {
   /// margin of its expiry.
   static let certificateExpiryWarningMargin: TimeInterval = 24 * 60 * 60
 
-  /// An identity that can be used to codesign a bundle.
-  struct Identity: CustomStringConvertible {
-    /// The identity's id, which is the SHA-1 hash of the corresponding
-    /// certificate's DER representation.
-    var id: String
-    /// This is the parsed representation of ``id``, and is the SHA-1 hash of
-    /// the corresponding certificate's DER representation.
-    var certificateSHA1: [UInt8]
-    /// The identity's display name.
-    var name: String
-
-    var description: String {
-      "'\(name)' (\(id))"
-    }
-  }
-
   /// Generates an iOS entitlements file.
   /// - Parameters:
   ///   - outputFile: The destination for the generated entitlements file.
@@ -168,7 +152,7 @@ enum DarwinCodeSigner {
 
   /// Enumerates the user's available codesigning identities.
   /// - Returns: An array of identities.
-  static func enumerateIdentities() async throws(Error) -> [Identity] {
+  static func enumerateIdentities() async throws(Error) -> [CodeSigningIdentity] {
     let process = Process.create(
       securityToolPath,
       arguments: ["find-identity", "-pcodesigning", "-v"]
@@ -209,14 +193,14 @@ enum DarwinCodeSigner {
       return identities
     }
 
-    let identities: [Identity]
+    let identities: [CodeSigningIdentity]
     do {
       identities = try identityListParser.parse(output)
         .map { (id, name) in
           guard let parsedId = Array(fromHex: id) else {
             throw Error(.invalidId(id))
           }
-          return Identity(id: id, certificateSHA1: parsedId, name: name)
+          return CodeSigningIdentity(id: id, certificateSHA1: parsedId, name: name)
         }
     } catch {
       throw Error(.failedToParseIdentityList, cause: error)
@@ -229,7 +213,7 @@ enum DarwinCodeSigner {
   /// a substring of an identity's display name.
   static func resolveIdentity(
     shortName: String
-  ) async throws(Error) -> Identity {
+  ) async throws(Error) -> CodeSigningIdentity {
     let identities = try await enumerateIdentities()
     let matchingIdentities = identities.filter { identity in
       identity.id == shortName || identity.name.contains(shortName)
@@ -248,7 +232,7 @@ enum DarwinCodeSigner {
   }
 
   static func loadCertificate(
-    for identity: Identity
+    for identity: CodeSigningIdentity
   ) async throws(Error) -> Certificate {
     let output: String
     do {
@@ -321,7 +305,7 @@ enum DarwinCodeSigner {
     return certificate
   }
 
-  static func getTeamIdentifier(for identity: Identity) async throws(Error) -> String {
+  static func getTeamIdentifier(for identity: CodeSigningIdentity) async throws(Error) -> String {
     let certificate = try await loadCertificate(for: identity)
 
     for element in certificate.subject {
