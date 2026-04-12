@@ -240,30 +240,107 @@ struct BundleCommand: ErrorHandledCommand {
     provisioningProfile: URL?,
     entitlements: URL?,
     platform: Platform
-  ) async throws(RichError<SwiftBundlerError>) -> BundlerContext.DarwinCodeSigningContext? {
-    guard let platform = platform.asApplePlatform else {
-      let invalidArguments = [
-        ("--codesign", codesignArgument == true),
-        ("--identity", identityArgument != nil),
-        ("--entitlements", entitlements != nil),
-        ("--provisioning-profile", provisioningProfile != nil),
-      ].filter { $0.1 }.map { $0.0 }
+  ) async throws(RichError<SwiftBundlerError>) -> BundlerContext.CodeSigningContext? {
+    switch platform.partitioned {
+      case .apple(let platform):
+        return try await resolveDarwinCodeSigningContext(
+          codesignArgument: codesignArgument,
+          identityArgument: identityArgument,
+          provisioningProfile: provisioningProfile,
+          entitlements: entitlements,
+          platform: platform
+        )
+      case .windows:
+        return try await resolveWindowsCodeSigningContext(
+          codesignArgument: codesignArgument,
+          identityArgument: identityArgument,
+          provisioningProfile: provisioningProfile,
+          entitlements: entitlements
+        )
+      case .linux:
+        // Handle unsupported platforms (just Linux now)
+        let invalidArguments = [
+          ("--codesign", codesignArgument == true),
+          ("--identity", identityArgument != nil),
+          ("--entitlements", entitlements != nil),
+          ("--provisioning-profile", provisioningProfile != nil),
+        ].filter { $0.1 }.map { $0.0 }
 
-      guard invalidArguments.count == 0 else {
-        let list = invalidArguments.map { "'\($0)'" }
-          .joinedGrammatically(
-            withTrailingVerb: Verb(
-              singular: "isn't",
-              plural: "aren't"
+        guard invalidArguments.count == 0 else {
+          let list = invalidArguments.map { "'\($0)'" }
+            .joinedGrammatically(
+              withTrailingVerb: Verb(
+                singular: "isn't",
+                plural: "aren't"
+              )
             )
-          )
-        let reason = "\(list) supported when targeting '\(platform.name)'"
-        throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
-      }
+          let reason = "\(list) supported when targeting '\(platform.name)'"
+          throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+        }
 
+        return nil
+    }
+  }
+
+  static func resolveWindowsCodeSigningContext(
+    codesignArgument: Bool?,
+    identityArgument: String?,
+    provisioningProfile: URL?,
+    entitlements: URL?
+  ) async throws(RichError<SwiftBundlerError>) -> BundlerContext.CodeSigningContext? {
+    guard entitlements == nil else {
+      let reason = "Code signing entitlements aren't supported on Windows"
+      throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+    }
+
+    guard provisioningProfile == nil else {
+      let reason = "Provisioning profiles aren't supported on Windows"
+      throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+    }
+
+    guard codesignArgument == true else {
       return nil
     }
 
+    let identity: CodeSigningIdentity
+    if let searchTerm = identityArgument {
+      identity = try RichError<SwiftBundlerError>.catch {
+        try WindowsCodeSigner.resolveIdentity(searchTerm: searchTerm)
+      }
+    } else {
+      let identities = try RichError<SwiftBundlerError>.catch {
+        try WindowsCodeSigner.enumerateIdentities()
+      }
+      guard let match = identities.first else {
+        let reason = """
+          No code signing identities found. If you created a self-signed \
+          certificate ensure that it has code signing as a valid usage listed \
+          in its EKU field.
+          """
+        throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+      }
+      if identities.count > 1 {
+        log.warning(
+          """
+          Found multiple code signing identities, using \(match); list all available \
+          identities using 'swift-bundler list-identities' and provide the '--identity' \
+          option to select a particular identity
+          """
+        )
+      }
+      identity = match
+    }
+
+    return BundlerContext.CodeSigningContext(identity: identity)
+  }
+
+  static func resolveDarwinCodeSigningContext(
+    codesignArgument: Bool?,
+    identityArgument: String?,
+    provisioningProfile: URL?,
+    entitlements: URL?,
+    platform: ApplePlatform
+  ) async throws(RichError<SwiftBundlerError>) -> BundlerContext.CodeSigningContext? {
     let codesign: Bool
     if platform.requiresProvisioningProfiles {
       if codesignArgument == nil || codesignArgument == true {
@@ -295,7 +372,7 @@ struct BundleCommand: ErrorHandledCommand {
     }
 
     do {
-      let identity: DarwinCodeSigner.Identity
+      let identity: CodeSigningIdentity
       if let identityShortName = identityArgument {
         identity = try await RichError<SwiftBundlerError>.catch {
           try await DarwinCodeSigner.resolveIdentity(shortName: identityShortName)
@@ -319,7 +396,7 @@ struct BundleCommand: ErrorHandledCommand {
         identity = firstIdentity
       }
 
-      return BundlerContext.DarwinCodeSigningContext(
+      return BundlerContext.CodeSigningContext(
         identity: identity,
         entitlements: entitlements,
         manualProvisioningProfile: provisioningProfile
@@ -707,7 +784,7 @@ struct BundleCommand: ErrorHandledCommand {
         outputDirectory: appOutputDirectory,
         platform: resolvedPlatform,
         device: resolvedDevice,
-        darwinCodeSigningContext: resolvedCodesigningContext,
+        codeSigningContext: resolvedCodesigningContext,
         builtDependencies: [:],
         executableArtifact: executableArtifact
       )

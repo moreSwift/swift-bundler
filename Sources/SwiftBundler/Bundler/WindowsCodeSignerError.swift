@@ -6,11 +6,14 @@ extension WindowsCodeSigner {
   /// An error message related to ``WindowsCodeSigner``.
   enum ErrorMessage: Throwable {
     case failedToLoadCertificateStore(_ identifier: String)
+    case identityNotFound(_ searchTerm: String)
 
     var userFriendlyMessage: String {
       switch self {
         case .failedToLoadCertificateStore(let identifier):
           return "Failed to load current user certificate store named '\(identifier)'"
+        case .identityNotFound(let searchTerm):
+          return "Code signing identity not found for search term '\(searchTerm)'"
       }
     }
   }

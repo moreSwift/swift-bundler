@@ -10,13 +10,56 @@ enum WindowsCodeSigner {
   /// The OID for codesigning certificate usage specified in the EKU field.
   static let ekuCodeSigningOID = "1.3.6.1.5.5.7.3.3"
 
+  /// Signs a file using the given code signing identity. Also securely timestamps the file.
+  static func signFile(_ file: URL, identity: CodeSigningIdentity) async throws(Error) {
+    try await Error.catch {
+      try await Process.create(
+        "SignTool",
+        arguments: [
+          "sign", "/a",
+          "/fd", "SHA256",
+          "/tr", "http://timestamp.digicert.com",
+          "/td", "SHA256",
+          "/sha1", identity.id,
+          file.path
+        ]
+      ).runAndWait()
+    }
+  }
+
+  /// Resolve an identity search term to a specific identity. If multiple identities match
+  /// then one of the matches is chosen using an approach that remains stable across runs.
+  static func resolveIdentity(searchTerm: String) throws -> CodeSigningIdentity {
+    let identities = try enumerateIdentities()
+    let normalizedSearchTerm = searchTerm.lowercased()
+    if let identity = identities.first(where: { $0.id.lowercased() == normalizedSearchTerm }) {
+      return identity
+    }
+
+    let matches = identities.filter { identity in
+      identity.name.lowercased().contains(normalizedSearchTerm)
+      || identity.id.lowercased().contains(normalizedSearchTerm)
+    }
+
+    guard let match = matches.first else {
+      throw Error(.identityNotFound(searchTerm))
+    }
+
+    if matches.count > 1 {
+      log.warning("Multiple identities match '\(searchTerm)', using \(match)")
+      log.debug("Matches: \(matches)")
+    }
+
+    return match
+  }
+
   /// Enumerates available signing identities in the 'CurrentUser\My' certificate store.
   ///
   /// To verify its output, you can run `certutil -v -user -store My` to list all certificates
   /// in the 'CurrentUser\My' certificate store, and then ignore any that don't have a
   /// private key, and any that have the EKU field but don't have the codesigning EKU usage
   /// identifier.
-  static func enumerateIdentities() async throws(Error) -> [DarwinCodeSigner.Identity] {
+  static func enumerateIdentities() throws(Error) -> [CodeSigningIdentity] {
     #if os(Windows)
       // Inspired by https://stackoverflow.com/a/34779140/8268001
       guard let store = CertOpenSystemStoreA(0, "MY") else {
@@ -25,19 +68,16 @@ enum WindowsCodeSigner {
       defer { CertCloseStore(store, UInt32(CERT_CLOSE_STORE_FORCE_FLAG)) }
 
       var nextCertificate = CertEnumCertificatesInStore(store, nil)
-      var identities: [DarwinCodeSigner.Identity] = []
+      var identities: [CodeSigningIdentity] = []
       while let certificatePointer = nextCertificate {
-        print("Wrap cert")
         let certificate = WinCryptCert(cert: certificatePointer)
         defer { nextCertificate = CertEnumCertificatesInStore(store, certificatePointer) }
 
-        print("Has private key")
         guard certificate.hasPrivateKey else {
           // Certificates without code signing are useless to us
           continue
         }
 
-        print("OIDs")
         if let ekuOIDs = certificate.ekuOIDs {
           // If the EKU information is present, we have to check whether the cert
           // is valid for codesigning.
@@ -46,11 +86,9 @@ enum WindowsCodeSigner {
           }
         }
 
-        print("Get hash")
         let hash = certificate.hash
-        print("Get name")
         identities.append(
-          DarwinCodeSigner.Identity(
+          CodeSigningIdentity(
             id: hash.map { byte in
               String(format: "%02X", byte)
             }.joined(separator: ""),
@@ -59,7 +97,11 @@ enum WindowsCodeSigner {
           )
         )
       }
-      return identities
+
+      return identities.sorted { first, second in
+        // Sort for a stable ordering in case of multiple matches
+        (first.name, first.id) <= (second.name, second.id)
+      }
     #else
       return []
     #endif

@@ -96,11 +96,11 @@ struct BundlerContext {
   /// The target device if any.
   var device: Device?
 
-  /// Apple-specific code signing context used by bundlers that support Apple
-  /// platforms. Exists in the generic bundler context because Swift Bundler
-  /// loads codesigning context up-front to notify users of configuration
-  /// issues more quickly.
-  var darwinCodeSigningContext: DarwinCodeSigningContext?
+  /// Code signing information for bundlers that support code signing.
+  ///
+  /// Exists in the generic bundler context because Swift Bundler loads codesigning
+  /// context up-front to notify users of configuration issues more quickly.
+  var codeSigningContext: CodeSigningContext?
 
   /// The app's built dependencies.
   var builtDependencies: [String: ProjectBuilder.BuiltProduct]
@@ -108,13 +108,13 @@ struct BundlerContext {
   /// The app's main built executable file.
   var executableArtifact: URL
 
-  /// Apple-specific code signing context used by bundlers that support Apple
-  /// platforms. Exists in the generic bundler context because Swift Bundler
-  /// loads codesigning context up-front to notify users of configuration
-  /// issues more quickly.
-  struct DarwinCodeSigningContext {
+  /// Code signing information for bundlers that support code signing.
+  ///
+  /// Exists in the generic bundler context because Swift Bundler loads codesigning
+  /// context up-front to notify users of configuration issues more quickly.
+  struct CodeSigningContext {
     /// The identity to sign the app with.
-    var identity: DarwinCodeSigner.Identity
+    var identity: CodeSigningIdentity
     /// A file containing entitlements to give the app if code signing.
     var entitlements: URL?
     /// A provisioning profile provided by the user.

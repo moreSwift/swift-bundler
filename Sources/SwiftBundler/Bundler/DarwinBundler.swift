@@ -239,7 +239,7 @@ enum DarwinBundler: Bundler {
     additionalContext: Context
   ) async throws(Error) {
     try await Error.catch {
-      if let codeSigningContext = context.darwinCodeSigningContext {
+      if let codeSigningContext = context.codeSigningContext {
         try await DarwinCodeSigner.signAppBundle(
           bundle: appBundle,
           identityId: codeSigningContext.identity.id,
@@ -267,7 +267,7 @@ enum DarwinBundler: Bundler {
     for context: BundlerContext
   ) async throws(Error) -> URL? {
     // If the user provided a provisioning profile, use it
-    if let profile = context.darwinCodeSigningContext?.manualProvisioningProfile {
+    if let profile = context.codeSigningContext?.manualProvisioningProfile {
       return profile
     }
 
@@ -281,7 +281,7 @@ enum DarwinBundler: Bundler {
 
     // If the target platform requires provisioning profiles, locate or
     // generate one. This requires a code signing context.
-    guard let codeSigningContext = context.darwinCodeSigningContext else {
+    guard let codeSigningContext = context.codeSigningContext else {
       throw Error(.missingCodeSigningContextForProvisioning(device.platform.os))
     }
 
