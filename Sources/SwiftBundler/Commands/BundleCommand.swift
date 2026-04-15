@@ -234,29 +234,36 @@ struct BundleCommand: ErrorHandledCommand {
     return true
   }
 
-  static func resolveCodesigningContext(
+  static func resolveCodeSigningContext(
     codesignArgument: Bool?,
     identityArgument: String?,
     provisioningProfile: URL?,
     entitlements: URL?,
+    azureArtifactSigningMetadata: URL?,
     platform: Platform
-  ) async throws(RichError<SwiftBundlerError>) -> BundlerContext.CodeSigningContext? {
+  ) async throws(RichError<SwiftBundlerError>) -> (
+    BundlerContext.DarwinCodeSigningContext?,
+    BundlerContext.WindowsCodeSigningContext?
+  ) {
     switch platform.partitioned {
       case .apple(let platform):
-        return try await resolveDarwinCodeSigningContext(
+        let context = try await resolveDarwinCodeSigningContext(
           codesignArgument: codesignArgument,
           identityArgument: identityArgument,
           provisioningProfile: provisioningProfile,
           entitlements: entitlements,
           platform: platform
         )
+        return (context, nil)
       case .windows:
-        return try await resolveWindowsCodeSigningContext(
+        let context = try await resolveWindowsCodeSigningContext(
           codesignArgument: codesignArgument,
           identityArgument: identityArgument,
           provisioningProfile: provisioningProfile,
-          entitlements: entitlements
+          entitlements: entitlements,
+          azureArtifactSigningMetadata: azureArtifactSigningMetadata
         )
+        return (nil, context)
       case .linux:
         // Handle unsupported platforms (just Linux now)
         let invalidArguments = [
@@ -275,10 +282,10 @@ struct BundleCommand: ErrorHandledCommand {
               )
             )
           let reason = "\(list) supported when targeting '\(platform.name)'"
-          throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+          throw RichError(SwiftBundlerError.failedToResolveCodeSigningConfiguration(reason: reason))
         }
 
-        return nil
+        return (nil, nil)
     }
   }
 
@@ -286,20 +293,31 @@ struct BundleCommand: ErrorHandledCommand {
     codesignArgument: Bool?,
     identityArgument: String?,
     provisioningProfile: URL?,
-    entitlements: URL?
-  ) async throws(RichError<SwiftBundlerError>) -> BundlerContext.CodeSigningContext? {
+    entitlements: URL?,
+    azureArtifactSigningMetadata: URL?
+  ) async throws(RichError<SwiftBundlerError>) -> BundlerContext.WindowsCodeSigningContext? {
     guard entitlements == nil else {
       let reason = "Code signing entitlements aren't supported on Windows"
-      throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+      throw RichError(SwiftBundlerError.failedToResolveCodeSigningConfiguration(reason: reason))
     }
 
     guard provisioningProfile == nil else {
       let reason = "Provisioning profiles aren't supported on Windows"
-      throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+      throw RichError(SwiftBundlerError.failedToResolveCodeSigningConfiguration(reason: reason))
     }
 
     guard codesignArgument == true else {
       return nil
+    }
+
+    if let azureArtifactSigningMetadata {
+      guard identityArgument == nil else {
+        let reason = "--identity is incompatible with --azure-artifact-signing-metadata"
+        throw RichError(SwiftBundlerError.failedToResolveCodeSigningConfiguration(reason: reason))
+      }
+      return BundlerContext.WindowsCodeSigningContext.azureArtifactSigning(
+        metadata: azureArtifactSigningMetadata
+      )
     }
 
     let identity: CodeSigningIdentity
@@ -317,7 +335,7 @@ struct BundleCommand: ErrorHandledCommand {
           certificate ensure that it has code signing as a valid usage listed \
           in its EKU field.
           """
-        throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+        throw RichError(SwiftBundlerError.failedToResolveCodeSigningConfiguration(reason: reason))
       }
       if identities.count > 1 {
         log.warning(
@@ -331,7 +349,7 @@ struct BundleCommand: ErrorHandledCommand {
       identity = match
     }
 
-    return BundlerContext.CodeSigningContext(identity: identity)
+    return BundlerContext.WindowsCodeSigningContext.localCertificate(identity: identity)
   }
 
   static func resolveDarwinCodeSigningContext(
@@ -340,7 +358,7 @@ struct BundleCommand: ErrorHandledCommand {
     provisioningProfile: URL?,
     entitlements: URL?,
     platform: ApplePlatform
-  ) async throws(RichError<SwiftBundlerError>) -> BundlerContext.CodeSigningContext? {
+  ) async throws(RichError<SwiftBundlerError>) -> BundlerContext.DarwinCodeSigningContext? {
     let codesign: Bool
     if platform.requiresProvisioningProfiles {
       if codesignArgument == nil || codesignArgument == true {
@@ -350,7 +368,7 @@ struct BundleCommand: ErrorHandledCommand {
           \(platform.platform.name) is incompatible with '--no-codesign' \
           because it requires provisioning profiles
           """
-        throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+        throw RichError(SwiftBundlerError.failedToResolveCodeSigningConfiguration(reason: reason))
       }
     } else {
       codesign = codesignArgument ?? false
@@ -366,7 +384,7 @@ struct BundleCommand: ErrorHandledCommand {
         let list = invalidArguments.map { "'\($0)'" }
           .joinedGrammatically(withTrailingVerb: .be)
         let reason = "\(list) invalid when not codesigning"
-        throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+        throw RichError(SwiftBundlerError.failedToResolveCodeSigningConfiguration(reason: reason))
       }
       return nil
     }
@@ -386,7 +404,7 @@ struct BundleCommand: ErrorHandledCommand {
           let reason = """
             No codesigning identities found. Please sign into Xcode and try again.
             """
-          throw RichError(SwiftBundlerError.failedToResolveCodesigningConfiguration(reason: reason))
+          throw RichError(SwiftBundlerError.failedToResolveCodeSigningConfiguration(reason: reason))
         }
 
         if identities.count > 1 {
@@ -396,7 +414,7 @@ struct BundleCommand: ErrorHandledCommand {
         identity = firstIdentity
       }
 
-      return BundlerContext.CodeSigningContext(
+      return BundlerContext.DarwinCodeSigningContext(
         identity: identity,
         entitlements: entitlements,
         manualProvisioningProfile: provisioningProfile
@@ -607,13 +625,15 @@ struct BundleCommand: ErrorHandledCommand {
     resolvedPlatform: Platform,
     resolvedDevice: Device? = nil
   ) async throws(RichError<SwiftBundlerError>) -> BundlerOutputStructure {
-    let resolvedCodesigningContext = try await Self.resolveCodesigningContext(
-      codesignArgument: arguments.codesign,
-      identityArgument: arguments.identity,
-      provisioningProfile: arguments.provisioningProfile,
-      entitlements: arguments.entitlements,
-      platform: resolvedPlatform
-    )
+    let (resolvedDarwinCodeSigningContext, resolveWindowsCodeSigningContext) =
+      try await Self.resolveCodeSigningContext(
+        codesignArgument: arguments.codesign,
+        identityArgument: arguments.identity,
+        provisioningProfile: arguments.provisioningProfile,
+        entitlements: arguments.entitlements,
+        azureArtifactSigningMetadata: arguments.azureArtifactSigningMetadata,
+        platform: resolvedPlatform
+      )
 
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
@@ -784,7 +804,8 @@ struct BundleCommand: ErrorHandledCommand {
         outputDirectory: appOutputDirectory,
         platform: resolvedPlatform,
         device: resolvedDevice,
-        codeSigningContext: resolvedCodesigningContext,
+        darwinCodeSigningContext: resolvedDarwinCodeSigningContext,
+        windowsCodeSigningContext: resolveWindowsCodeSigningContext,
         builtDependencies: [:],
         executableArtifact: executableArtifact
       )

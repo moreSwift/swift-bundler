@@ -49,7 +49,6 @@ let package = Package(
     .package(url: "https://github.com/tuist/XcodeProj", from: "8.16.0"),
     .package(url: "https://github.com/yonaskolb/XcodeGen", from: "2.42.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax", from: "601.0.0"),
-    .package(url: "https://github.com/pointfreeco/swift-overture", from: "0.5.0"),
     .package(url: "https://github.com/swhitty/FlyingFox", from: "0.22.0"),
     .package(url: "https://github.com/jpsim/Yams", from: "5.1.2"),
     .package(url: "https://github.com/kylef/PathKit", from: "1.0.1"),
@@ -103,7 +102,6 @@ let package = Package(
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "Logging", package: "swift-log"),
         .product(name: "Parsing", package: "swift-parsing"),
-        .product(name: "Overture", package: "swift-overture"),
         .product(name: "AsyncCollections", package: "async-collections"),
         .product(name: "Mutex", package: "swift-mutex"),
         .product(

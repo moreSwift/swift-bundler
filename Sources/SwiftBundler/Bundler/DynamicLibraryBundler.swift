@@ -1,5 +1,4 @@
 import Foundation
-import Overture
 
 /// A utility for copying dynamic libraries into an app bundle and updating the app executable's rpaths accordingly.
 enum DynamicLibraryBundler {

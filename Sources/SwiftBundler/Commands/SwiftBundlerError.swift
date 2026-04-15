@@ -12,7 +12,7 @@ enum SwiftBundlerError: Throwable {
   case failedToRemoveExistingOutputs(outputDirectory: URL)
   case invalidXcodeprojDetected
   case failedToResolveTargetDevice(reason: String)
-  case failedToResolveCodesigningConfiguration(reason: String)
+  case failedToResolveCodeSigningConfiguration(reason: String)
   case failedToCopyOutBundle
   case missingConfigurationFile(URL)
   case codesigningNotSupported(HostPlatform)
@@ -66,8 +66,8 @@ enum SwiftBundlerError: Throwable {
           """
       case .failedToResolveTargetDevice(let reason):
         return "Failed to resolve target device: \(reason)"
-      case .failedToResolveCodesigningConfiguration(let reason):
-        return "Failed to resolve codesigning configuration: \(reason)"
+      case .failedToResolveCodeSigningConfiguration(let reason):
+        return "Failed to resolve code-signing configuration: \(reason)"
       case .failedToCopyOutBundle:
         return "Failed to copy out bundle"
       case .missingConfigurationFile(let file):
@@ -77,7 +77,7 @@ enum SwiftBundlerError: Throwable {
           """
       case .codesigningNotSupported(let platform):
         return """
-          Codesigning isn't supported on \(platform.platform.displayName)
+          Code-signing isn't supported on \(platform.platform.displayName)
           """
     }
   }

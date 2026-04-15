@@ -10,13 +10,30 @@ enum WindowsCodeSigner {
   /// The OID for codesigning certificate usage specified in the EKU field.
   static let ekuCodeSigningOID = "1.3.6.1.5.5.7.3.3"
 
+  /// The download URL for the version of Microsoft.ArtifactSigning.Client that we use.
+  static let azureArtifactSigningNUPKG =
+    URL(string: "https://www.nuget.org/api/v2/package/Microsoft.ArtifactSigning.Client/1.0.128")!
+
+  /// Signs a file using the given code signing context. Also securely timestamps the file.
+  static func signFile(
+    _ file: URL,
+    context: BundlerContext.WindowsCodeSigningContext
+  ) async throws(Error) {
+    switch context {
+      case .azureArtifactSigning(let metadata):
+        try await signFile(file, azureArtifactSigningMetadata: metadata)
+      case .localCertificate(let identity):
+        try await signFile(file, identity: identity)
+    }
+  }
+
   /// Signs a file using the given code signing identity. Also securely timestamps the file.
   static func signFile(_ file: URL, identity: CodeSigningIdentity) async throws(Error) {
     try await Error.catch {
       try await Process.create(
         "SignTool",
         arguments: [
-          "sign", "/a",
+          "sign",
           "/fd", "SHA256",
           "/tr", "http://timestamp.digicert.com",
           "/td", "SHA256",
@@ -25,6 +42,56 @@ enum WindowsCodeSigner {
         ]
       ).runAndWait()
     }
+  }
+
+  /// Signs a file using the given code signing identity. Also securely timestamps the file.
+  static func signFile(_ file: URL, azureArtifactSigningMetadata: URL) async throws(Error) {
+    let clientDLL = try await ensureArtifactSigningDLL()
+    try await Error.catch {
+      try await Process.create(
+        "SignTool",
+        arguments: [
+          "sign",
+          "/fd", "SHA256",
+          "/tr", "http://timestamp.acs.microsoft.com",
+          "/td", "SHA256",
+          "/dlib", clientDLL.path,
+          "/dmdf", azureArtifactSigningMetadata.path,
+          file.path
+        ]
+      ).runAndWait()
+    }
+  }
+
+  /// Ensures that the Azure Artifact Signing Client dll has been downloaded,
+  /// and returns its location. Downloads the client if necessary.
+  private static func ensureArtifactSigningDLL() async throws(Error) -> URL {
+    let toolsDirectory = try Error.catch {
+      try System.getToolsDirectory()
+    }
+
+    let artifactSigningDirectory = toolsDirectory / "Azure.CodeSigning.Client"
+    let dll = artifactSigningDirectory / "bin" / "x64" / "Azure.CodeSigning.Dlib.dll"
+    if dll.exists() {
+      return dll
+    }
+
+    log.info("Downloading Azure Artifact Signing Dlib")
+    log.debug("Downloading from \(azureArtifactSigningNUPKG.absoluteString)")
+    let uuid = UUID().uuidString
+    let temp = FileManager.default.temporaryDirectory
+    let artifactSigningZip = temp / "AzureArtifactSigningClient-\(uuid).zip"
+    try Error.catch(withMessage: .failedToDownloadArtifactSigningClient) {
+      let content = try Data(contentsOf: azureArtifactSigningNUPKG)
+      try content.write(to: artifactSigningZip)
+      try FileManager.default.unzipItem(at: artifactSigningZip, to: artifactSigningDirectory)
+    }
+
+    defer {
+      try? FileManager.default.removeItem(at: artifactSigningZip)
+    }
+
+    return dll
   }
 
   /// Resolve an identity search term to a specific identity. If multiple identities match

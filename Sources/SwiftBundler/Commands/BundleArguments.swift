@@ -159,10 +159,21 @@ struct BundleArguments: ParsableArguments {
   /// A codesigning identity to use.
   #if os(macOS) || os(Windows)
     @Option(
-      name: .customLong("identity"),
       help: "The identity to use for codesigning")
   #endif
   var identity: String?
+
+  /// The path to an Azure Artifact Signing metadata file to use instead of a
+  /// codesigning identity.
+  #if os(Windows)
+    @Option(
+      help: """
+        The path to an Azure Artifact Signing metadata file. Refer to \
+        https://learn.microsoft.com/en-us/azure/artifact-signing/how-to-signing-integrations#create-a-json-file
+        """,
+      transform: URL.init(fileURLWithPath:))
+  #endif
+  var azureArtifactSigningMetadata: URL?
 
   /// A provisioning profile to use.
   #if os(macOS)

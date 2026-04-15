@@ -96,11 +96,17 @@ struct BundlerContext {
   /// The target device if any.
   var device: Device?
 
-  /// Code signing information for bundlers that support code signing.
+  /// Code signing information for bundlers that support Darwin code signing.
   ///
   /// Exists in the generic bundler context because Swift Bundler loads codesigning
   /// context up-front to notify users of configuration issues more quickly.
-  var codeSigningContext: CodeSigningContext?
+  var darwinCodeSigningContext: DarwinCodeSigningContext?
+
+  /// Code signing information for bundlers that support Windows code signing.
+  ///
+  /// Exists in the generic bundler context because Swift Bundler loads codesigning
+  /// context up-front to notify users of configuration issues more quickly.
+  var windowsCodeSigningContext: WindowsCodeSigningContext?
 
   /// The app's built dependencies.
   var builtDependencies: [String: ProjectBuilder.BuiltProduct]
@@ -108,17 +114,29 @@ struct BundlerContext {
   /// The app's main built executable file.
   var executableArtifact: URL
 
-  /// Code signing information for bundlers that support code signing.
+  /// Code signing information for bundlers that support Darwin code signing.
   ///
   /// Exists in the generic bundler context because Swift Bundler loads codesigning
   /// context up-front to notify users of configuration issues more quickly.
-  struct CodeSigningContext {
+  struct DarwinCodeSigningContext {
     /// The identity to sign the app with.
     var identity: CodeSigningIdentity
     /// A file containing entitlements to give the app if code signing.
     var entitlements: URL?
     /// A provisioning profile provided by the user.
     var manualProvisioningProfile: URL?
+  }
+
+  /// Code signing information for bundlers that support Windows code signing.
+  ///
+  /// Exists in the generic bundler context because Swift Bundler loads codesigning
+  /// context up-front to notify users of configuration issues more quickly.
+  enum WindowsCodeSigningContext {
+    /// Sign files using Azure Artifact Signing.
+    case azureArtifactSigning(metadata: URL)
+    /// Sign files using a local code signing certificate stored in the user's
+    /// certificate store.
+    case localCertificate(identity: CodeSigningIdentity)
   }
 }
 

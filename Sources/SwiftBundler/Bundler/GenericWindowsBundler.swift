@@ -206,12 +206,12 @@ enum GenericWindowsBundler: Bundler {
 
     try copyExecutable(at: executableArtifact, to: structure.mainExecutable)
 
-    if let codeSigningContext = context.codeSigningContext {
+    if let codeSigningContext = context.windowsCodeSigningContext {
       log.info("Signing executable")
       try await Error.catch {
         try await WindowsCodeSigner.signFile(
           structure.mainExecutable,
-          identity: codeSigningContext.identity
+          context: codeSigningContext
         )
       }
     }
@@ -352,12 +352,12 @@ enum GenericWindowsBundler: Bundler {
         }
 
         if artifact.location.pathExtension == "exe",
-          let codeSigningContext = context.codeSigningContext
+          let codeSigningContext = context.windowsCodeSigningContext
         {
           try await Error.catch {
             try await WindowsCodeSigner.signFile(
               destination,
-              identity: codeSigningContext.identity
+              context: codeSigningContext
             )
           }
         }

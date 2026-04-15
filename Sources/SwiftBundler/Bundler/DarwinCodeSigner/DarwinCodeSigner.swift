@@ -58,7 +58,7 @@ enum DarwinCodeSigner {
     platform: ApplePlatform,
     entitlements: URL?
   ) async throws(Error) {
-    log.info("Codesigning app bundle")
+    log.info("Code-signing app bundle")
 
     let librariesDirectory = bundle.appendingPathComponent("Libraries")
     if librariesDirectory.exists(withType: .directory) {
