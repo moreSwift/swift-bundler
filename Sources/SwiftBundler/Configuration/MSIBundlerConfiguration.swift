@@ -2,7 +2,7 @@ import Foundation
 import XMLCoder
 
 @Configuration(overlayable: false)
-struct MSIBundlerConfiguration: Codable {
+struct MSIBundlerConfiguration: Codable, Sendable {
   /// Additional entries to add to the app's WXS configuration file before
   /// invoking the WiX CLI to produce the final MSI.
   ///

@@ -1,4 +1,4 @@
-struct WXSValue: TriviallyFlattenable {
+struct WXSValue: TriviallyFlattenable, Sendable {
   var tag: String
   var attributes: [String: String]
   var children: [WXSValue]

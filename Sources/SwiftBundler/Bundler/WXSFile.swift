@@ -5,7 +5,7 @@ extension MSIBundler {
   /// This isn't intended to be used to parse or produce arbitrary WXS files.
   /// Notably we have a lot of non-nullable properties that in reality are
   /// nullable from WiX's point of view.
-  struct WXSFile: Encodable {
+  struct WXSFile: Encodable, Sendable {
     @Attribute var xmlns: String
     @Element var package: Package
 
@@ -19,7 +19,7 @@ extension MSIBundler {
       case package = "Package"
     }
 
-    struct Package: Codable {
+    struct Package: Codable, Sendable {
       @Attribute var language: Language
       @Attribute var manufacturer: String
       @Attribute var name: String
@@ -223,7 +223,7 @@ extension MSIBundler {
       }
     }
 
-    struct StandardDirectory: Codable {
+    struct StandardDirectory: Codable, Sendable {
       @Attribute var id: String
       @Element var directories: [Directory]
 
@@ -238,7 +238,7 @@ extension MSIBundler {
       }
     }
 
-    struct Directory: Codable {
+    struct Directory: Codable, Sendable {
       @Attribute var id: String?
       @Attribute var name: String
       @Element var directories: [Directory]
@@ -270,7 +270,7 @@ extension MSIBundler {
       }
     }
 
-    struct ComponentGroup: Codable {
+    struct ComponentGroup: Codable, Sendable {
       @Attribute var id: String
       @Attribute var directory: String
       @Element var components: [Component]
@@ -288,7 +288,7 @@ extension MSIBundler {
       }
     }
 
-    struct Component: Codable {
+    struct Component: Codable, Sendable {
       @Attribute var id: String
       @Element var files: [File]
       @Element var shortcuts: [Shortcut]
@@ -318,7 +318,7 @@ extension MSIBundler {
       }
     }
 
-    struct RemoveFolder: Codable {
+    struct RemoveFolder: Codable, Sendable {
       @Attribute var id: String
       @Attribute var directory: String?
       @Attribute var on: String
@@ -336,7 +336,7 @@ extension MSIBundler {
       }
     }
 
-    struct File: Codable {
+    struct File: Codable, Sendable {
       @Attribute var id: String?
       @Attribute var source: String
 
@@ -351,7 +351,7 @@ extension MSIBundler {
       }
     }
 
-    struct Shortcut: Codable {
+    struct Shortcut: Codable, Sendable {
       @Attribute var id: String
       @Attribute var directory: String
       @Attribute var advertise: YesOrNo
@@ -393,7 +393,7 @@ extension MSIBundler {
       }
     }
 
-    struct RegistryValue: Codable {
+    struct RegistryValue: Codable, Sendable {
       @Attribute var root: String
       @Attribute var key: String
       @Attribute var name: String
@@ -427,12 +427,12 @@ extension MSIBundler {
       }
     }
 
-    enum YesOrNo: String, Codable {
+    enum YesOrNo: String, Codable, Sendable {
       case yes
       case no
     }
 
-    struct CustomAction: Codable {
+    struct CustomAction: Codable, Sendable {
       @Attribute var id: String
       @Attribute var property: String?
       @Attribute var value: String?
@@ -496,7 +496,7 @@ extension MSIBundler {
 
     /// Used for both InstallExecuteSequence and InstallUISequence because for
     /// our current purposes they are identical.
-    struct InstallSequence: Codable {
+    struct InstallSequence: Codable, Sendable {
       @Element var custom: Custom
 
       init(custom: Custom) {
