@@ -95,25 +95,23 @@ enum AndroidSDKManager {
   static func enumerateNDKVersions(
     availableIn sdk: URL
   ) throws(Error) -> [(location: URL, version: Version)] {
-    let ndkDirectory = ndkDirectory(forSDK: sdk)
-    guard ndkDirectory.exists() else {
-      return []
-    }
-
-    let contents = try Error.catch {
-      try FileManager.default.contentsOfDirectory(at: ndkDirectory)
-    }
-
     var versions: [(URL, Version)] = []
-    for directory in contents where directory.exists(withType: .directory) {
-      do {
-        let version = try getVersion(ofNDKAt: directory)
-        versions.append((directory, version))
-      } catch {
-        // If someone places a malformed NDK in their SDK's ndk directory
-        // then we shouldn't let that break the rest of our NDK discovery,
-        // so we just warn instead of propagating the error.
-        log.warning("\(ErrorKit.userFriendlyMessage(for: error))")
+    let ndkDirectory = ndkDirectory(forSDK: sdk)
+    if ndkDirectory.exists() {
+      let contents = try Error.catch {
+        try FileManager.default.contentsOfDirectory(at: ndkDirectory)
+      }
+
+      for directory in contents where directory.exists(withType: .directory) {
+        do {
+          let version = try getVersion(ofNDKAt: directory)
+          versions.append((directory, version))
+        } catch {
+          // If someone places a malformed NDK in their SDK's ndk directory
+          // then we shouldn't let that break the rest of our NDK discovery,
+          // so we just warn instead of propagating the error.
+          log.warning("\(ErrorKit.userFriendlyMessage(for: error))")
+        }
       }
     }
 
