@@ -1,6 +1,14 @@
 import Foundation
+import Mutex
 
 extension SwiftPackageManager {
+  /// Shared mutable state used to coordinate the package graph loading process.
+  private struct PackageGraphLoadingState: Sendable {
+    var coveredDependencies: [PackageReference] = []
+    var dependencyPackages: [PackageReference: Package<PackageReference>] = [:]
+    var ignoredTransitiveDependencies: [PackageReference] = []
+  }
+
   /// Loads the given package and all of its dependencies into a package graph.
   ///
   /// It's best to call this on a root package (rather than a package checkout)
@@ -31,41 +39,122 @@ extension SwiftPackageManager {
       toolchain: toolchain
     )
 
-    var remainingDependencies = root.dependencies
-    var dependencyPackages: [PackageReference: Package<PackageReference>] = [:]
-    var ignoredTransitiveDependencies: [PackageReference] = []
-    while let dependency = remainingDependencies.popLast() {
-      let dependencyDirectory = dependency.localCheckout(
-        packageDirectory: packageDirectory,
-        checkoutsDirectory: checkoutsDirectory
-      )
+    let state = Mutex(PackageGraphLoadingState(
+      // We initially process all root dependencies, so mark them as covered straight away.
+      coveredDependencies: root.dependencies.map(\.identity).map(PackageReference.init(identity:)),
+      dependencyPackages: [:],
+      ignoredTransitiveDependencies: []
+    ))
 
-      if dependency.location.isRemote && !dependencyDirectory.exists() {
-        throw Error(.missingDependencyCheckout(dependencyDirectory))
+    // A wrapper around 'processDependency' to make callsites more succinct (using captures)
+    let processDependency = { (dependency: PackageManifest.PackageDependency) async in
+      return await Result.catching { () throws(Error) in
+        try await Self.processDependency(
+          dependency,
+          state: state,
+          packageDirectory: packageDirectory,
+          checkoutsDirectory: checkoutsDirectory,
+          configurationContext: configurationContext,
+          toolchain: toolchain
+        )
+      }
+    }
+
+    let result: Result<(), Error> = await withTaskGroup(
+      of: Result<[PackageManifest.PackageDependency], Error>.self
+    ) { taskGroup in
+      for dependency in root.dependencies {
+        taskGroup.addTask {
+          await processDependency(dependency)
+        }
       }
 
-      let source = switch dependency.location {
-        case .fileSystem(let path): PackageSource.local(path: path)
-        case .sourceControl(let url): PackageSource.remote(gitRepository: url)
+      // Each dependency task can return transitive dependencies to process.
+      // These dependencies have already been de-duplicated so all we have to
+      // do here is queue them for processing.
+      for await result in taskGroup {
+        switch result {
+          case .failure(let error):
+            taskGroup.cancelAll()
+            return .failure(error)
+          case .success(let transitiveDependencies):
+            for dependency in transitiveDependencies {
+              taskGroup.addTask {
+                await processDependency(dependency)
+              }
+            }
+        }
       }
 
-      let package = try await loadPackage(
-        packageDirectory: dependencyDirectory,
-        source: source,
-        identityOverride: dependency.identity,
-        isRootPackage: false,
-        configurationContext: configurationContext,
-        toolchain: toolchain
-      )
-      let reference = PackageReference(identity: package.identity)
-      dependencyPackages[reference] = package.withReferences
+      return .success(())
+    }
+    try result.get()
+
+    let finalState = state.withLock { $0 }
+    return PackageGraph(
+      rootPackage: root.withReferences,
+      dependencyPackages: finalState.dependencyPackages,
+      ignoredTransitiveDependencies: finalState.ignoredTransitiveDependencies
+    )
+  }
+
+  /// Process a dependency as part of our parallelized TaskGroup-based package
+  /// graph loading implementation.
+  /// - Parameters:
+  ///   - dependency: The dependency to load.
+  ///   - state: Protected mutable state shared by all tasks in the task group.
+  ///   - packageDirectory: The root directory of the root package of the package graph.
+  ///   - checkoutsDirectory: The directory the SwiftPM stores package checkouts
+  ///     for the root package of the package graph.
+  ///   - configurationContext: Context used when loading Swift Bundler configuration
+  ///     files contained within the dependency (if there are any).
+  ///   - toolchain: The Swift toolchain to use when loading the dependency.
+  private static func processDependency(
+    _ dependency: PackageManifest.PackageDependency,
+    state: borrowing Mutex<PackageGraphLoadingState>,
+    packageDirectory: URL,
+    checkoutsDirectory: URL,
+    configurationContext: ConfigurationFlattener.Context,
+    toolchain: URL?
+  ) async throws(Error) -> [PackageManifest.PackageDependency] {
+    let dependencyDirectory = dependency.localCheckout(
+      packageDirectory: packageDirectory,
+      checkoutsDirectory: checkoutsDirectory
+    )
+
+    if dependency.location.isRemote && !dependencyDirectory.exists() {
+      throw Error(.missingDependencyCheckout(dependencyDirectory))
+    }
+
+    let source = switch dependency.location {
+      case .fileSystem(let path): PackageSource.local(path: path)
+      case .sourceControl(let url): PackageSource.remote(gitRepository: url)
+    }
+
+    // BEGIN: Slow section
+    let package = try await loadPackage(
+      packageDirectory: dependencyDirectory,
+      source: source,
+      identityOverride: dependency.identity,
+      isRootPackage: false,
+      configurationContext: configurationContext,
+      toolchain: toolchain
+    )
+    // END: Slow section
+
+    let reference = PackageReference(identity: package.identity)
+
+    /// Determine transitive dependencies that are yet to be loaded and return
+    /// them for further processing.
+    var queuedDependencies: [PackageManifest.PackageDependency] = []
+    state.withLock { state in
+      state.dependencyPackages[reference] = package.withReferences
 
       for transitiveDependency in package.dependencies {
-        // Make sure that we haven't loaded this dependency yet and aren't already queued to
+        // Make sure that we haven't covered this dependency yet
         let dependencyReference = PackageReference(identity: transitiveDependency.identity)
         guard
-          !dependencyPackages.keys.contains(dependencyReference),
-          !remainingDependencies.contains(
+          !state.coveredDependencies.contains(
             where: { $0.identity == transitiveDependency.identity
           })
         else {
@@ -81,22 +170,19 @@ extension SwiftPackageManager {
           dependencyReference,
           packageIdentity: package.identity,
           ignored: !isUsed,
-          ignoredTransitiveDependencies: &ignoredTransitiveDependencies
+          ignoredTransitiveDependencies: &state.ignoredTransitiveDependencies
         )
 
         guard isUsed else {
           continue
         }
 
-        remainingDependencies.append(transitiveDependency)
+        state.coveredDependencies.append(dependencyReference)
+        queuedDependencies.append(transitiveDependency)
       }
     }
 
-    return PackageGraph(
-      rootPackage: root.withReferences,
-      dependencyPackages: dependencyPackages,
-      ignoredTransitiveDependencies: ignoredTransitiveDependencies
-    )
+    return queuedDependencies
   }
 
   /// Logs debug messages regarding our decision to ignore or load a given
