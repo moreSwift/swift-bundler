@@ -389,7 +389,8 @@ enum SwiftPackageManager {
     try await Error.catch(withMessage: .failedToResolveDependencies(packageDirectory)) {
       try await Process.create(
         swiftPath(toolchain: toolchain),
-        arguments: ["package", "resolve"]
+        arguments: ["package", "resolve"],
+        directory: packageDirectory
       ).runAndWait()
     }
   }

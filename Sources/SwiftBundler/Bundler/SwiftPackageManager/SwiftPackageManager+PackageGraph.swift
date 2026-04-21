@@ -25,11 +25,13 @@ extension SwiftPackageManager {
     configurationContext: ConfigurationFlattener.Context,
     toolchain: URL?
   ) async throws(Error) -> PackageGraph {
+    log.info("Resolving dependencies")
     try await SwiftPackageManager.resolveDependencies(
       packageDirectory: packageDirectory,
       toolchain: toolchain
     )
 
+    log.info("Loading package graph")
     let checkoutsDirectory = packageDirectory / ".build/checkouts"
     let root = try await loadPackage(
       packageDirectory: packageDirectory,

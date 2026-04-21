@@ -37,6 +37,7 @@ struct PackageManifest: Sendable, Decodable {
     case plugin
     case macro
     case snippet
+    case binary
     case other(String)
 
     init(from decoder: any Decoder) throws {
@@ -51,6 +52,7 @@ struct PackageManifest: Sendable, Decodable {
           case "plugin": self = .plugin
           case "macro": self = .macro
           case "snippet": self = .snippet
+          case "binary": self = .binary
           case let other: self = .other(other)
         }
       } catch {

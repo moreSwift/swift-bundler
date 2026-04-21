@@ -26,6 +26,8 @@ extension SwiftPackageManager {
       case macro
       /// A plugin target.
       case plugin
+      /// A binary target.
+      case binary
       /// A snippet target.
       case snippet
 
@@ -47,6 +49,8 @@ extension SwiftPackageManager {
             self = .plugin
           case .snippet:
             self = .snippet
+          case .binary:
+            self = .binary
           case .other(_):
             return nil
         }
