@@ -72,50 +72,20 @@ extension SwiftPackageManager {
           continue
         }
 
-        // Only load a transitive dependency if it's used by a product, because
-        // anything else gets counted as an internal detail by SwiftPM, which
-        // leads to SwiftPM not checking out said dependency.
-        let isUsed = package.products.contains { productName, product in
-          let productTargets = package.targets.filter { targetName, _ in
-            product.targets.contains(targetName)
-          }.values
+        let isUsed = dependencyIsPubliclyUsed(
+          dependency: transitiveDependency,
+          package: package
+        )
 
-          return productTargets.contains { target in
-            target.dependencies.contains { targetDependency in
-              switch targetDependency {
-                case .product(let packageIdentity, _, _):
-                  transitiveDependency.identity == packageIdentity
-                default:
-                  false
-              }
-            }
-          }
-        }
+        logDependency(
+          dependencyReference,
+          packageIdentity: package.identity,
+          ignored: !isUsed,
+          ignoredTransitiveDependencies: &ignoredTransitiveDependencies
+        )
 
         guard isUsed else {
-          log.debug(
-            """
-            Ignoring transitive dependency '\(transitiveDependency.identity)' \
-            because '\(package.identity)' doesn't use it in any executable, \
-            library, or systemTarget targets
-            """
-          )
-          if !ignoredTransitiveDependencies.contains(dependencyReference) {
-            ignoredTransitiveDependencies.append(dependencyReference)
-          }
           continue
-        }
-
-        if ignoredTransitiveDependencies.contains(dependencyReference) {
-          // We're not ignoring it anymore!
-          log.debug(
-            """
-            Not ignoring transitive dependency '\(transitiveDependency.identity)' \
-            because '\(package.identity)' uses it in an executable, library, or \
-            systemTarget target
-            """
-          )
-          ignoredTransitiveDependencies.removeAll { $0 == dependencyReference }
         }
 
         remainingDependencies.append(transitiveDependency)
@@ -127,5 +97,71 @@ extension SwiftPackageManager {
       dependencyPackages: dependencyPackages,
       ignoredTransitiveDependencies: ignoredTransitiveDependencies
     )
+  }
+
+  /// Logs debug messages regarding our decision to ignore or load a given
+  /// package dependency. Updates `ignoredTransitiveDependencies` (and uses
+  /// it to avoid duplicate messages).
+  private static func logDependency(
+    _ dependencyReference: PackageReference,
+    packageIdentity: String,
+    ignored: Bool,
+    ignoredTransitiveDependencies: inout [PackageReference]
+  ) {
+    if ignored {
+      log.debug(
+        """
+        Ignoring transitive dependency '\(dependencyReference.identity)' \
+        because '\(packageIdentity)' doesn't use it in any executable, \
+        library, or systemTarget targets
+        """
+      )
+      if !ignoredTransitiveDependencies.contains(dependencyReference) {
+        ignoredTransitiveDependencies.append(dependencyReference)
+      }
+    } else {
+      if ignoredTransitiveDependencies.contains(dependencyReference) {
+        // We're not ignoring it anymore!
+        log.debug(
+          """
+          Not ignoring transitive dependency '\(dependencyReference.identity)' \
+          because '\(packageIdentity)' uses it in an executable, library, or \
+          systemTarget target
+          """
+        )
+        ignoredTransitiveDependencies.removeAll { $0 == dependencyReference }
+      }
+    }
+  }
+
+  /// Computes whether a given dependency is used publicly by a package. This aims
+  /// to reproduce the logic used by SwiftPM to decide whether to include a given
+  /// transitive dependency in package resolution or not.
+  /// - Parameters:
+  ///   - dependency: The dependency to check for usage of.
+  ///   - package: The package to check for usage within.
+  private static func dependencyIsPubliclyUsed(
+    dependency: PackageManifest.PackageDependency,
+    package: Package<PackageManifest.PackageDependency>
+  ) -> Bool {
+    // Only load a transitive dependency if it's used by a product, because
+    // anything else gets counted as an internal detail by SwiftPM, which
+    // leads to SwiftPM not checking out said dependency.
+    return package.products.contains { productName, product in
+      let productTargets = package.targets.filter { targetName, _ in
+        product.targets.contains(targetName)
+      }.values
+
+      return productTargets.contains { target in
+        target.dependencies.contains { targetDependency in
+          switch targetDependency {
+            case .product(let packageIdentity, _, _):
+              dependency.identity == packageIdentity
+            default:
+              false
+          }
+        }
+      }
+    }
   }
 }
