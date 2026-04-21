@@ -1,9 +1,6 @@
 import Foundation
 
 extension SwiftPackageManager {
-  // I know this function is horrid, I'm planning some refactoring but don't
-  //   have the time right now. At least the function is naturally split into
-  //   sections.
   /// Loads the given package.
   /// - Parameters:
   ///   - packageDirectory: The root directory of the package to load.
@@ -30,9 +27,168 @@ extension SwiftPackageManager {
     let packageName = manifest.name
     let packageIdentity = identityOverride ?? packageIdentity(forPackageWithName: packageName)
 
-    var products: [String: Product] = [:]
+    let products = products(
+      forManifest: manifest,
+      partialManifest: partialManifest,
+      isRootPackage: isRootPackage
+    )
+
+    let targets = targets(
+      forManifest: manifest,
+      partialManifest: partialManifest,
+      products: products,
+      packageName: packageName,
+      packageIdentity: packageIdentity,
+      packageDirectory: packageDirectory
+    )
+
+    // Load the package's bundler config file if present.
+    let fullConfiguration: PackageConfiguration?
+    let configuration: PackageConfiguration.Flat?
+    if PackageConfiguration.standardConfigurationFileLocation(for: packageDirectory).exists() {
+      let loadedConfiguration = try await Error.catch {
+        try await PackageConfiguration.load(fromDirectory: packageDirectory)
+      }
+      fullConfiguration = loadedConfiguration
+      configuration = try Error.catch {
+        try ConfigurationFlattener.flatten(
+          loadedConfiguration,
+          with: configurationContext
+        )
+      }
+    } else {
+      fullConfiguration = nil
+      configuration = nil
+    }
+
+    return Package(
+      name: packageName,
+      identity: packageIdentity,
+      source: source,
+      localCheckout: packageDirectory,
+      dependencies: manifest.dependencies,
+      products: products,
+      targets: targets,
+      fullConfiguration: fullConfiguration,
+      configuration: configuration
+    )
+  }
+
+  /// Parses out the targets from a package manifest and partial manifest dump.
+  /// - Parameters:
+  ///   - manifest: The package's manifest as loaded via the stable `swift package describe`
+  ///     command.
+  ///   - partialManifest: The package's manifest as loaded via the less stable
+  ///     `swift package dump-package` command. We only load as much information
+  ///     as we require to fully parse the package graph (to minimise the risk of
+  ///     being affected by breaking changes to the output format).
+  ///   - products: The products parsed from the manifest and partial manifest.
+  ///   - packageName: Name to use for the package when resolving `.product`
+  ///     target dependencies.
+  ///   - packageIdentity: The package's identity in the package graph.
+  ///   - packageDirectory: The root directory of the package.
+  private static func targets(
+    forManifest manifest: PackageManifest,
+    partialManifest: PartialPackageDump,
+    products: [String: Product],
+    packageName: String,
+    packageIdentity: String,
+    packageDirectory: URL
+  ) -> [String: Target] {
     var targets: [String: Target] = [:]
 
+    let targetDependencyPackageNameMap = targetDependencyPackageNameMap(
+      manifest: manifest,
+      partialManifest: partialManifest,
+      packageName: packageName,
+      packageIdentity: packageIdentity
+    )
+
+    for target in manifest.targets {
+      guard target.type != .snippet else {
+        // We don't care about snippets at the moment, and we also don't parse
+        // them in our partial manifest dumps
+        continue
+      }
+
+      guard
+        let partialTarget = partialManifest.targets.first(
+          where: { $0.name == target.name }
+        )
+      else {
+        // Usually we'd throw an error for this sort of failure, but we want this
+        // code to be as resilient as possible against future Swift package manifest
+        // format changes. If we just ignore problematic targets then we at least
+        // have a chance of still parsing enough to be useful.
+        log.warning(
+          """
+          Target '\(target.name)' in package '\(manifest.name)' is missing from \
+          partial package manifest dump. Please open an issue at \
+          \(SwiftBundler.newIssueURL), as this is likely due to a newer Swift \
+          version breaking our parsing. Skipping target.
+          """
+        )
+        log.debug("Available targets: \(partialManifest.targets.map(\.name))")
+        continue
+      }
+
+      var targetDependencies: [TargetDependency] = []
+      for dependency in partialTarget.dependencies {
+        guard
+          let targetDependency = parseTargetDependency(
+            dependency,
+            target: target,
+            packageName: manifest.name,
+            packageNameMap: targetDependencyPackageNameMap
+          )
+        else {
+          continue
+        }
+
+        targetDependencies.append(targetDependency)
+      }
+
+      guard let kind = Target.Kind(from: target.type) else {
+        log.warning(
+          """
+          Target '\(target.name)' in package '\(manifest.name)' has unhandled \
+          type '\(target.type)'. Please open an issue at \(SwiftBundler.newIssueURL), \
+          as this is likely due to a newer Swift version introducing a new target \
+          type. Skipping target.
+          """
+        )
+        continue
+      }
+
+      targets[target.name] = Target(
+        name: target.name,
+        kind: kind,
+        directory: packageDirectory / target.path,
+        dependencies: targetDependencies
+      )
+    }
+    
+    return targets
+  }
+
+  /// Pre-computes a map from package names to package identities. The map is used
+  /// to resolve target dependencies on products.
+  /// - Parameters:
+  ///   - manifest: The package's manifest as loaded via the stable `swift package describe`
+  ///     command.
+  ///   - partialManifest: The package's manifest as loaded via the less stable
+  ///     `swift package dump-package` command. We only load as much information
+  ///     as we require to fully parse the package graph (to minimise the risk of
+  ///     being affected by breaking changes to the output format).
+  ///   - packageName: Name to use for the package when resolving `.product`
+  ///     target dependencies.
+  ///   - packageIdentity: The package's identity in the package graph.
+  private static func targetDependencyPackageNameMap(
+    manifest: PackageManifest,
+    partialManifest: PartialPackageDump,
+    packageName: String,
+    packageIdentity: String
+  ) -> [String: PackageReference] {
     // Maps from valid package names to use in `.product(name: _, package: <here>)`
     // syntax to package references. The keys are all lowercased and candidates
     // should be as well when indexing into the map. This is all because package
@@ -56,6 +212,130 @@ extension SwiftPackageManager {
       let name = resolutionName?.lowercased() ?? dependency.identity
       targetDependencyPackageNameMap[name] = reference
     }
+    return targetDependencyPackageNameMap
+  }
+
+  /// A description
+  /// - Parameters:
+  ///   - dependency: The dependency to parse.
+  ///   - target: The target that the dependency came from.
+  ///   - packageName: The name of the package that the dependency came from.
+  ///   - packageNameMap: A map from package names to package identities.
+  private static func parseTargetDependency(
+    _ dependency: PartialPackageDump.TargetDependency,
+    target: PackageManifest.Target,
+    packageName: String,
+    packageNameMap: [String: PackageReference]
+  ) -> TargetDependency? {
+    let partialCondition: PartialPackageDump.DependencyCondition?
+    switch dependency {
+      case .byName(_, let condition),
+          .target(_, let condition),
+          .product(_, _, let condition):
+        partialCondition = condition
+      case .unknown:
+        log.warning(
+          """
+          Target '\(target.name)' in package '\(packageName)' has a \
+          dependency that we failed to parse. Please open an issue at \
+          \(SwiftBundler.newIssueURL), as this is likely due to a newer \
+          Swift version breaking our parsing. Skipping dependency.
+          """
+        )
+        return nil
+    }
+
+    let condition: TargetDependency.Condition?
+    switch partialCondition {
+      case .platform(let names):
+        condition = .platform(names: names)
+      case .unknown:
+        log.warning(
+          """
+          Target '\(target.name)' in package '\(packageName)' has a \
+          dependency condition that we failed to parse. Please open an issue at \
+          \(SwiftBundler.newIssueURL), as this is likely due to a newer \
+          Swift version breaking our parsing. Treating condition as \
+          unconditionally true.
+          """
+        )
+        condition = nil
+      case .none:
+        condition = nil
+    }
+
+    /// Gets the normalized package identity of the dependency with the
+    /// given package name.
+    func dependencyPackageIdentity(_ dependencyPackageName: String) -> String? {
+      guard
+        let dependencyIdentity = packageNameMap[dependencyPackageName.lowercased()]
+      else {
+        log.warning(
+          """
+          Could not find package dependency '\(dependencyPackageName)' referred \
+          to by target '\(target.name)' in package '\(packageName)'.
+          """
+        )
+        return nil
+      }
+
+      return dependencyIdentity.identity
+    }
+
+    switch dependency {
+      case .byName(let dependencyName, _):
+        if target.productDependencies?.contains(dependencyName) == true {
+          guard let dependencyIdentity = dependencyPackageIdentity(dependencyName) else {
+            return nil
+          }
+
+          return TargetDependency.product(
+            packageIdentity: dependencyIdentity,
+            product: dependencyName,
+            condition: condition
+          )
+        } else {
+          return TargetDependency.target(name: dependencyName, condition: condition)
+        }
+      case .target(let name, _):
+        return TargetDependency.target(name: name, condition: condition)
+      case .product(let dependencyPackage, let product, _):
+        guard let dependencyIdentity = dependencyPackageIdentity(dependencyPackage) else {
+          return nil
+        }
+
+        return TargetDependency.product(
+          packageIdentity: dependencyIdentity,
+          product: product,
+          condition: condition
+        )
+      case .unknown:
+        log.warning(
+          """
+          Target '\(target.name)' in package '\(packageName)' has a \
+          dependency that we failed to parse. Please open an issue at \
+          \(SwiftBundler.newIssueURL), as this is likely due to a newer \
+          Swift version breaking our parsing. Skipping dependency.
+          """
+        )
+        return nil
+    }
+  }
+
+  /// Parses out products from the package's manifest and partial manifest dump.
+  /// - Parameters:
+  ///   - manifest: The package's manifest as loaded via the stable `swift package describe`
+  ///     command.
+  ///   - partialManifest: The package's manifest as loaded via the less stable
+  ///     `swift package dump-package` command. We only load as much information
+  ///   - isRootPackage: Whether the package is the root package in the package
+  ///     graph. This affects whether we load 'implicit' executable products or not.
+  private static func products(
+    forManifest manifest: PackageManifest,
+    partialManifest: PartialPackageDump,
+    isRootPackage: Bool
+  ) -> [String: Product] {
+    var products: [String: Product] = [:]
 
     let explicitProducts = partialManifest.products.map(\.name)
     for product in manifest.products {
@@ -107,204 +387,7 @@ extension SwiftPackageManager {
       )
     }
 
-    for target in manifest.targets {
-      guard target.type != .snippet else {
-        // We don't care about snippets at the moment, and we also don't parse
-        // them in our partial manifest dumps
-        continue
-      }
-
-      guard
-        let partialTarget = partialManifest.targets.first(
-          where: { $0.name == target.name }
-        )
-      else {
-        // Usually we'd throw an error for this sort of failure, but we want this
-        // code to be as resilient as possible against future Swift package manifest
-        // format changes. If we just ignore problematic targets then we at least
-        // have a chance of still parsing enough to be useful.
-        log.warning(
-          """
-          Target '\(target.name)' in package '\(manifest.name)' is missing from \
-          partial package manifest dump. Please open an issue at \
-          \(SwiftBundler.newIssueURL), as this is likely due to a newer Swift \
-          version breaking our parsing. Skipping target.
-          """
-        )
-        log.debug("Available targets: \(partialManifest.targets.map(\.name))")
-        continue
-      }
-
-      var targetDependencies: [TargetDependency] = []
-      for dependency in partialTarget.dependencies {
-        let partialCondition: PartialPackageDump.DependencyCondition?
-        switch dependency {
-          case .byName(_, let condition),
-              .target(_, let condition),
-              .product(_, _, let condition):
-            partialCondition = condition
-          case .unknown:
-            log.warning(
-              """
-              Target '\(target.name)' in package '\(manifest.name)' has a \
-              dependency that we failed to parse. Please open an issue at \
-              \(SwiftBundler.newIssueURL), as this is likely due to a newer \
-              Swift version breaking our parsing. Skipping dependency.
-              """
-            )
-            continue
-        }
-
-        let condition: TargetDependency.Condition?
-        switch partialCondition {
-          case .platform(let names):
-            condition = .platform(names: names)
-          case .unknown:
-            log.warning(
-              """
-              Target '\(target.name)' in package '\(manifest.name)' has a \
-              dependency condition that we failed to parse. Please open an issue at \
-              \(SwiftBundler.newIssueURL), as this is likely due to a newer \
-              Swift version breaking our parsing. Treating condition as \
-              unconditionally true.
-              """
-            )
-            condition = nil
-          case .none:
-            condition = nil
-        }
-
-        /// Gets the normalized package identity of the dependency with the
-        /// given package name.
-        func dependencyPackageIdentity(_ dependencyPackageName: String) -> String? {
-          guard
-            let dependencyIdentity =
-              targetDependencyPackageNameMap[dependencyPackageName.lowercased()]
-          else {
-            log.warning(
-              """
-              Could not find package dependency '\(dependencyPackageName)' referred \
-              to by target '\(target.name)' in package '\(manifest.name)'.
-              """
-            )
-            return nil
-          }
-
-          return dependencyIdentity.identity
-        }
-
-        switch dependency {
-          case .byName(let dependencyName, _):
-            if target.productDependencies?.contains(dependencyName) == true {
-              guard let dependencyIdentity = dependencyPackageIdentity(dependencyName) else {
-                continue
-              }
-
-              targetDependencies.append(
-                .product(
-                  packageIdentity: dependencyIdentity,
-                  product: dependencyName,
-                  condition: condition
-                )
-              )
-            } else {
-              targetDependencies.append(.target(name: dependencyName, condition: condition))
-            }
-          case .target(let name, _):
-            targetDependencies.append(.target(name: name, condition: condition))
-          case .product(let dependencyPackage, let product, _):
-            guard let dependencyIdentity = dependencyPackageIdentity(dependencyPackage) else {
-              continue
-            }
-
-            targetDependencies.append(
-              .product(
-                packageIdentity: dependencyIdentity,
-                product: product,
-                condition: condition
-              )
-            )
-          case .unknown:
-            log.warning(
-              """
-              Target '\(target.name)' in package '\(manifest.name)' has a \
-              dependency that we failed to parse. Please open an issue at \
-              \(SwiftBundler.newIssueURL), as this is likely due to a newer \
-              Swift version breaking our parsing. Skipping dependency.
-              """
-            )
-            continue
-        }
-      }
-
-      let kind: Target.Kind
-      switch target.type {
-        case .executable:
-          kind = .executable
-        case .library:
-          kind = .library
-        case .systemTarget:
-          kind = .systemTarget
-        case .test:
-          kind = .test
-        case .macro:
-          kind = .macro
-        case .plugin:
-          kind = .plugin
-        case .snippet:
-          // We already ignore these further up
-          continue
-        case .other(let other):
-          log.warning(
-            """
-            Target '\(target.name)' in package '\(manifest.name)' has unhandled \
-            type '\(other)'. Please open an issue at \(SwiftBundler.newIssueURL), \
-            as this is likely due to a newer Swift version introducing a new target \
-            type. Skipping target.
-            """
-          )
-          continue
-      }
-
-      targets[target.name] = Target(
-        name: target.name,
-        kind: kind,
-        directory: packageDirectory / target.path,
-        dependencies: targetDependencies
-      )
-    }
-
-    // Load the package's bundler config file if present.
-    let fullConfiguration: PackageConfiguration?
-    let configuration: PackageConfiguration.Flat?
-    if PackageConfiguration.standardConfigurationFileLocation(for: packageDirectory).exists() {
-      let loadedConfiguration = try await Error.catch {
-        try await PackageConfiguration.load(fromDirectory: packageDirectory)
-      }
-      fullConfiguration = loadedConfiguration
-      configuration = try Error.catch {
-        try ConfigurationFlattener.flatten(
-          loadedConfiguration,
-          with: configurationContext
-        )
-      }
-    } else {
-      fullConfiguration = nil
-      configuration = nil
-    }
-
-
-    return Package(
-      name: packageName,
-      identity: packageIdentity,
-      source: source,
-      localCheckout: packageDirectory,
-      dependencies: manifest.dependencies,
-      products: products,
-      targets: targets,
-      fullConfiguration: fullConfiguration,
-      configuration: configuration
-    )
+    return products
   }
 
   /// Computes a package's identity from its name.

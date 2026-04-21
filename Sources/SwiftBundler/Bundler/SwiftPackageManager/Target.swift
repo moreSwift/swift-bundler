@@ -26,6 +26,31 @@ extension SwiftPackageManager {
       case macro
       /// A plugin target.
       case plugin
+      /// A snippet target.
+      case snippet
+
+      /// Converts a manifest target type to a package graph target kind. Returns nil
+      /// in case of unrecognized target types.
+      init?(from manifestTargetType: PackageManifest.TargetType) {
+        switch manifestTargetType {
+          case .executable:
+            self = .executable
+          case .library:
+            self = .library
+          case .systemTarget:
+            self = .systemTarget
+          case .test:
+            self = .test
+          case .macro:
+            self = .macro
+          case .plugin:
+            self = .plugin
+          case .snippet:
+            self = .snippet
+          case .other(_):
+            return nil
+        }
+      }
     }
   }
 }
