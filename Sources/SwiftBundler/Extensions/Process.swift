@@ -36,7 +36,7 @@ extension Process {
   /// All processes that have been created using `Process.create(_:arguments:directory:pipe:)`.
   ///
   /// If the program is killed, all processes in this array are terminated before the program exits.
-  static var processes: [Process] = []
+  static var processes: Mutex<[Process]> = Mutex([])
 
   #if os(Linux)
     /// The PIDs of all AppImage processes started manually (due to the weird
@@ -48,9 +48,11 @@ extension Process {
   public static func killAllRunningProcessesOnExit() {
     for signal in Signal.allCases {
       trap(signal) {
-        for process in Process.processes {
-          if process.isRunning {
-            process.terminate()
+        Process.processes.withLock { processes in
+          for process in processes {
+            if process.isRunning {
+              process.terminate()
+            }
           }
         }
         #if os(Linux)
@@ -309,7 +311,9 @@ extension Process {
     }
     process.environment = env
 
-    processes.append(process)
+    processes.withLock { processes in
+      processes.append(process)
+    }
 
     return process
   }
