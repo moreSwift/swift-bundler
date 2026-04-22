@@ -31,6 +31,11 @@ extension SwiftPackageManager {
       toolchain: toolchain
     )
 
+    let toolchain = try await inferSwiftToolchain(
+      toolchain,
+      packageDirectory: packageDirectory
+    )
+
     log.info("Loading package graph")
     let checkoutsDirectory = packageDirectory / ".build/checkouts"
     let root = try await loadPackage(
@@ -98,6 +103,56 @@ extension SwiftPackageManager {
       dependencyPackages: finalState.dependencyPackages,
       ignoredTransitiveDependencies: finalState.ignoredTransitiveDependencies
     )
+  }
+
+  /// Infers the Swift toolchain to use. Specifically, if the currently specified
+  /// toolchain would result in Swiftly being invoked as a proxy then we query that
+  /// Swiftly installation to discover the true path of the Swift toolchain being
+  /// invoked. This lets us ignore '.swift-version' files present in the repositories
+  /// of dependencies when dumping their package manifests.
+  ///
+  /// Even if the user specifies a toolchain, they could've technically specified a
+  /// directory containing symlinks to swiftly, so we might as well cover that case
+  /// too (given that the logic won't affect anyone who isn't symlinking to swiftly).
+  /// - Parameter toolchain: The toolchain argument provided by the user (if any).
+  /// - Parameter packageDirectory: The root directory of the root package of the
+  ///   package graph. We let the '.swift-version' of that directory influence our
+  ///   inference (if it exists).
+  private static func inferSwiftToolchain(
+    _ toolchain: URL?,
+    packageDirectory: URL
+  ) async throws(Error) -> URL? {
+    let swiftExecutablePath = try await Error.catch {
+      if let toolchain {
+        return swiftPath(toolchain: toolchain)
+      } else {
+        return try await Process.locate("swift")
+      }
+    }
+
+    let swiftExecutable = URL(fileURLWithPath: swiftExecutablePath)
+      .actuallyResolvingSymlinksInPath()
+
+    let inferredToolchain: URL?
+    if swiftExecutable.lastPathComponent == "swiftly" {
+      let swiftlyExecutable = swiftExecutable
+      let actualSwiftPath = try await Error.catch {
+        try await Process.create(
+          swiftlyExecutable.path,
+          arguments: ["run", "which", "swift"],
+          directory: packageDirectory
+        ).getOutput().trimmingCharacters(in: .whitespacesAndNewlines)
+      }
+
+      inferredToolchain = URL(fileURLWithPath: actualSwiftPath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    } else {
+      inferredToolchain = toolchain
+    }
+
+    return inferredToolchain
   }
 
   /// Process a dependency as part of our parallelized TaskGroup-based package
