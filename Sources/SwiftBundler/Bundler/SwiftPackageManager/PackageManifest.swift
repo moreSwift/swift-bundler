@@ -176,9 +176,14 @@ struct PackageManifest: Sendable, Decodable {
     func localCheckout(packageDirectory: URL, checkoutsDirectory: URL) -> URL {
       switch location {
         case .fileSystem(let path):
-          path
-        case .sourceControl:
-          checkoutsDirectory / identity
+          return path
+        case .sourceControl(let location):
+          var name = location.lastPathComponent
+          let gitSuffix = ".git"
+          if name.hasSuffix(gitSuffix) {
+            name = String(name.dropLast(gitSuffix.count))
+          }
+          return checkoutsDirectory / name
       }
     }
   }
