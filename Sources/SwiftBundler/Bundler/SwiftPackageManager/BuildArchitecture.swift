@@ -66,4 +66,14 @@ extension BuildArchitecture {
       default: return nil
     }
   }
+
+  init?(fromAndroidABI androidABI: String) {
+    switch androidABI {
+      case "arm64-v8a": self = .arm64
+      case "armeabi-v7a": self = .armv7
+      case "x86_64": self = .x86_64
+      case "x86": self = .x86
+      default: return nil
+    }
+  }
 }

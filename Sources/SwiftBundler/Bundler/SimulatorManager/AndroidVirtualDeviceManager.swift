@@ -88,14 +88,14 @@ enum AndroidVirtualDeviceManager {
       }
 
       let values = parseIniRelaxed(configIniContents)
-      guard let architectureString = values["hw.cpu.arch"] else {
+      guard let abiString = values["abi.type"] else {
         log.warning("Failed to locate AVD architecture in \(configIni.path)")
         return nil
       }
 
-      guard let architecture = BuildArchitecture(fromAndroidName: architectureString) else {
+      guard let architecture = BuildArchitecture(fromAndroidABI: abiString) else {
         log.warning(
-          "AVD '\(name)' has unrecognized architecture '\(architectureString)', skipping"
+          "AVD '\(name)' has unrecognized ABI '\(abiString)', skipping"
         )
         return nil
       }
@@ -123,7 +123,9 @@ enum AndroidVirtualDeviceManager {
         continue
       }
 
-      values[String(parts[0])] = String(parts[1])
+      let key = String(parts[0].trimmingCharacters(in: .whitespaces))
+      let value = String(parts[1].trimmingCharacters(in: .whitespaces))
+      values[key] = value
     }
     return values
   }
