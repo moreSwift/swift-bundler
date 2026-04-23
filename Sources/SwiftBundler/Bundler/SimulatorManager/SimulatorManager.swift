@@ -18,8 +18,8 @@ enum SimulatorManager {
     }
 
     if oses.contains(.android) {
-      if (try? AndroidSDKManager.locateAndroidSDK()) == nil {
-        log.warning("Android SDK not found, skipping Android emulators")
+      if (try? AndroidVirtualDeviceManager.locateAVDManagerExecutable()) == nil {
+        log.warning("Android cmdline-tools not found, skipping Android emulators")
       } else {
         log.debug("Enumerating Android emulators")
         let emulators = try await Error.catch {
