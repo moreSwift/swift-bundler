@@ -644,14 +644,77 @@ struct BundleCommand: ErrorHandledCommand {
       simulatorSpecifier: arguments.simulatorSpecifier
     )
 
+    let architectures = try await getArchitectures(platform: platform, device: device)
+    let (toolchain, swiftSDK) = try await resolveSwiftToolchain(
+      resolvedPlatform: platform,
+      architectures: architectures
+    )
+
     let bundler = arguments.bundler
       ?? BundlerChoice.defaultForTargetPlatform(platform)
 
     _ = try await doBundling(
       resolvedPlatform: platform,
       resolvedBundler: bundler,
-      resolvedDevice: device
+      resolvedDevice: device,
+      resolvedToolchain: toolchain,
+      resolvedSwiftSDK: swiftSDK,
+      resolvedArchitectures: architectures
     )
+  }
+
+  func resolveSwiftToolchain(
+    resolvedPlatform: Platform,
+    architectures: [BuildArchitecture]
+  ) async throws(RichError<SwiftBundlerError>) -> (URL?, SwiftSDK?) {
+    // Resolve toolchain
+    var resolvedToolchain = arguments.toolchain
+    let swiftSDK: SwiftSDK?
+    if resolvedPlatform == .android {
+      // TODO(stackotter): Refactor SwiftPackageManager so that we can
+      //   resolve the Swift Android SDK once and pass it into each
+      //   piece of code that needs it.
+      let targetTriple = try RichError<SwiftBundlerError>.catch {
+        try resolvedPlatform.targetTriple(
+          withArchitecture: architectures[0],
+          andPlatformVersion: SwiftPackageManager.androidAPIVersion
+        )
+      }
+
+      let androidSDK = try RichError<SwiftBundlerError>.catch {
+        try SwiftSDKManager.locateSDKMatching(
+          hostPlatform: .hostPlatform,
+          hostArchitecture: .host,
+          targetTriple: targetTriple
+        )
+      }
+      swiftSDK = androidSDK
+
+      log.info("Using Swift Android SDK at '\(androidSDK.bundle.path)'")
+
+      if resolvedToolchain == nil {
+        do {
+          let toolchain = try await SwiftToolchainManager.locateSwiftToolchain(
+            compatibleWithAndroidSDK: androidSDK
+          ).root
+
+          resolvedToolchain = toolchain
+
+          log.info("Found compatible Swift toolchain at '\(toolchain.path)'")
+        } catch {
+          log.warning(
+            """
+            Failed to resolve compatible toolchain to use for Android: \
+            \(chainDescription(for: error, verbose: verbose))
+            """
+          )
+        }
+      }
+    } else {
+      swiftSDK = nil
+    }
+
+    return (resolvedToolchain, swiftSDK)
   }
 
   // swiftlint:disable cyclomatic_complexity
@@ -672,7 +735,10 @@ struct BundleCommand: ErrorHandledCommand {
     dryRun: Bool = false,
     resolvedPlatform: Platform,
     resolvedBundler: BundlerChoice,
-    resolvedDevice: Device? = nil
+    resolvedDevice: Device? = nil,
+    resolvedToolchain: URL?,
+    resolvedSwiftSDK: SwiftSDK?,
+    resolvedArchitectures: [BuildArchitecture]
   ) async throws(RichError<SwiftBundlerError>) -> BundlerOutputStructure {
     let (resolvedDarwinCodeSigningContext, resolveWindowsCodeSigningContext) =
       try await Self.resolveCodeSigningContext(
@@ -699,55 +765,8 @@ struct BundleCommand: ErrorHandledCommand {
       Foundation.exit(1)
     }
 
-    // Get relevant configuration
-    let architectures = try await getArchitectures(
-      platform: resolvedPlatform,
-      device: resolvedDevice
-    )
-
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
-      // Resolve toolchain
-      var resolvedToolchain = arguments.toolchain
-      if resolvedToolchain == nil && resolvedPlatform == .android {
-        // TODO(stackotter): Refactor SwiftPackageManager so that we can
-        //   resolve the Swift Android SDK once and pass it into each
-        //   piece of code that needs it.
-        let targetTriple = try RichError<SwiftBundlerError>.catch {
-          try resolvedPlatform.targetTriple(
-            withArchitecture: architectures[0],
-            andPlatformVersion: SwiftPackageManager.androidAPIVersion
-          )
-        }
-
-        let androidSDK = try RichError<SwiftBundlerError>.catch {
-          try SwiftSDKManager.locateSDKMatching(
-            hostPlatform: .hostPlatform,
-            hostArchitecture: .host,
-            targetTriple: targetTriple
-          )
-        }
-
-        log.info("Using Swift Android SDK at '\(androidSDK.bundle.path)'")
-
-        do {
-          let toolchain = try await SwiftToolchainManager.locateSwiftToolchain(
-            compatibleWithAndroidSDK: androidSDK
-          ).root
-
-          resolvedToolchain = toolchain
-
-          log.info("Found compatible Swift toolchain at '\(toolchain.path)'")
-        } catch {
-          log.warning(
-            """
-            Failed to resolve compatible toolchain to use for Android: \
-            \(chainDescription(for: error, verbose: verbose))
-            """
-          )
-        }
-      }
-
       // Load configuration
       let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
       let scratchDirectory =
@@ -756,7 +775,7 @@ struct BundleCommand: ErrorHandledCommand {
       let configurationFlattenerContext = ConfigurationFlattener.Context(
         platform: resolvedPlatform,
         bundler: resolvedBundler,
-        architectures: architectures
+        architectures: resolvedArchitectures
       )
 
       let (appName, appConfiguration, configuration) = try await Self.getConfiguration(
@@ -819,15 +838,26 @@ struct BundleCommand: ErrorHandledCommand {
         }
       }
 
-      // TODO: Support metadata compilation on Android. Requires us to be able to locate Swift SDKs ourselves.
+      // TODO: Support metadata compilation on Android. The main issue is that
+      //   -Xlinker flags get passed to macro/plugin builds in addition to the
+      //   app's main product build, leading to errors where we end up trying
+      //   to link the metadata into macOS executables (which obviously fails).
+      //   I'm not sure how we can work around that issue without SwiftPM
+      //   modifications. Maybe we can compile the metadata to a static library
+      //   then do something similar to swift-sentry where we create a systemLibrary
+      //   that links to the library by name, and Swift Bundler can place the
+      //   compiled metadata library into `.build/<config>` before starting the
+      //   build so that SwiftPM finds it.
       let compiledMetadata: MetadataInserter.CompiledMetadata?
       if resolvedPlatform != .android {
         compiledMetadata = try await RichError<SwiftBundlerError>.catch {
           return try await MetadataInserter.compileMetadata(
             in: metadataDirectory,
             for: MetadataInserter.metadata(for: appConfiguration),
-            architectures: architectures,
+            architectures: resolvedArchitectures,
             platform: resolvedPlatform,
+            swiftToolchain: resolvedToolchain,
+            swiftSDK: resolvedSwiftSDK,
             dryRun: dryRun || showBundlePath
           )
         }
@@ -853,7 +883,7 @@ struct BundleCommand: ErrorHandledCommand {
           projectDirectory: packageDirectory,
           scratchDirectory: scratchDirectory,
           configuration: arguments.buildConfiguration,
-          architectures: architectures,
+          architectures: resolvedArchitectures,
           platform: resolvedPlatform,
           platformVersion: platformVersion,
           additionalArguments: isUsingXcodebuild
@@ -863,7 +893,8 @@ struct BundleCommand: ErrorHandledCommand {
         toolchain: resolvedToolchain,
         hotReloadingEnabled: hotReloadingEnabled,
         isGUIExecutable: true,
-        compiledMetadata: compiledMetadata
+        compiledMetadata: compiledMetadata,
+        swiftSDK: resolvedSwiftSDK
       )
 
       // Get build output directory
@@ -878,7 +909,9 @@ struct BundleCommand: ErrorHandledCommand {
           }
         }
       } else {
-        let archString = architectures.compactMap({ $0.rawValue }).joined(separator: "_")
+        let archString = resolvedArchitectures.compactMap({ $0.rawValue })
+          .joined(separator: "_")
+
         // xcodebuild adds a platform suffix to the products directory for
         // certain platforms. E.g. it's 'Release-xrsimulator' for visionOS.
         let productsDirectoryBase = arguments.buildConfiguration.rawValue.capitalized
@@ -924,7 +957,9 @@ struct BundleCommand: ErrorHandledCommand {
         darwinCodeSigningContext: resolvedDarwinCodeSigningContext,
         windowsCodeSigningContext: resolveWindowsCodeSigningContext,
         builtDependencies: [:],
-        executableArtifact: executableArtifact
+        executableArtifact: executableArtifact,
+        swiftToolchain: resolvedToolchain,
+        swiftSDK: resolvedSwiftSDK
       )
 
       // If the user has requested the bundle path, print it and exit.

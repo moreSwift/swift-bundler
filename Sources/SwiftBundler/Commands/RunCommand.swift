@@ -87,6 +87,15 @@ struct RunCommand: ErrorHandledCommand {
       verbose: verbose
     )
 
+    let architectures = try await bundleCommand.getArchitectures(
+      platform: device.platform,
+      device: device
+    )
+    let (toolchain, swiftSDK) = try await bundleCommand.resolveSwiftToolchain(
+      resolvedPlatform: device.platform,
+      architectures: architectures
+    )
+
     let resolvedBundler = arguments.bundler
       ?? BundlerChoice.defaultForTargetPlatform(device.platform)
 
@@ -119,7 +128,10 @@ struct RunCommand: ErrorHandledCommand {
       dryRun: skipBuild,
       resolvedPlatform: device.platform,
       resolvedBundler: resolvedBundler,
-      resolvedDevice: device
+      resolvedDevice: device,
+      resolvedToolchain: toolchain,
+      resolvedSwiftSDK: swiftSDK,
+      resolvedArchitectures: architectures
     )
 
     let environmentVariables = try RichError<SwiftBundlerError>.catch {
@@ -138,10 +150,6 @@ struct RunCommand: ErrorHandledCommand {
     }
 
     let platformVersion = device.platform.platformVersion(from: manifest)
-    let architectures = try await bundleCommand.getArchitectures(
-      platform: device.platform,
-      device: device
-    )
 
     let additionalEnvironmentVariables: [String: String]
     #if SUPPORT_HOT_RELOADING
@@ -166,7 +174,8 @@ struct RunCommand: ErrorHandledCommand {
             try await server.start(
               product: appConfiguration.product,
               buildContext: buildContext,
-              swiftToolchain: arguments.toolchain,
+              swiftToolchain: toolchain,
+              swiftSDK: swiftSDK,
               appConfiguration: appConfiguration
             )
           } catch {

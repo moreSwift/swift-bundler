@@ -48,6 +48,9 @@ struct BundlerContext {
   /// The Swift toolchain used to perform the build.
   var swiftToolchain: URL?
 
+  /// The Swift SDK used to perform the build.
+  var swiftSDK: SwiftSDK?
+
   /// Code signing information for bundlers that support Darwin code signing.
   ///
   /// Exists in the generic bundler context because Swift Bundler loads codesigning

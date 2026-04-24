@@ -34,6 +34,7 @@ extension SwiftPackageManager {
     case packageIntentionallyExcludedFromPackageGraph(PackageReference)
     case productNotFoundInGraph(String)
     case cannotBuildForMultipleAndroidArchitecturesAtOnce
+    case cannotBuildForAndroidWithoutSwiftSDK
 
     var userFriendlyMessage: String {
       switch self {
@@ -129,6 +130,8 @@ extension SwiftPackageManager {
           return "Product named '\(name)' not found in package graph"
         case .cannotBuildForMultipleAndroidArchitecturesAtOnce:
           return "Cannot build for multiple Android architectures at once"
+        case .cannotBuildForAndroidWithoutSwiftSDK:
+          return "Cannot build for Android without a Swift Android SDK"
       }
     }
   }

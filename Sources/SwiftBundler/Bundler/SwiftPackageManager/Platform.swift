@@ -355,17 +355,15 @@ enum Platform: String, Sendable, Hashable, CaseIterable, Comparable {
     }
   }
 
-  static let androidAPI = 28
-
   /// Gets the platform version corresponding to this platform.
   func platformVersion(from manifest: PackageManifest) -> String? {
     if let platform = self.asApplePlatform {
-      manifest.platformVersion(for: platform)
+      return manifest.platformVersion(for: platform)
     } else if self == .android {
       // TODO: Make this configurable
-      String(Self.androidAPI)
+      return SwiftPackageManager.androidAPIVersion
     } else {
-      nil
+      return nil
     }
   }
 }

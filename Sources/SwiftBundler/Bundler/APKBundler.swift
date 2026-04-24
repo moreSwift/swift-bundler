@@ -211,13 +211,9 @@ enum APKBundler: Bundler {
       )
     }
 
-    let androidAPI = Platform.androidAPI
-    let sdk = try Error.catch {
-      try SwiftSDKManager.locateSDKMatching(
-        hostPlatform: .hostPlatform,
-        hostArchitecture: .host,
-        targetTriple: .android(architecture, api: androidAPI)
-      )
+    let androidAPI = SwiftPackageManager.androidAPIVersion
+    guard let sdk = context.swiftSDK else {
+      throw Error(.cannotBundleAPKWithoutSwiftAndroidSDK)
     }
 
     let subdirectory = switch architecture {
@@ -244,7 +240,7 @@ enum APKBundler: Bundler {
           requiresCopying: true
         ),
         DynamicLibrarySearchDirectory(
-          searchDirectory / subdirectory / "\(androidAPI)",
+          searchDirectory / subdirectory / androidAPI,
           requiresCopying: false
         ),
       ]

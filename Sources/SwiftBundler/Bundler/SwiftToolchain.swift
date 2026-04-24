@@ -35,6 +35,12 @@ struct SwiftToolchain: Hashable, Sendable {
   static func swiftExecutable(forToolchainWithRoot root: URL) -> URL {
     root / "usr/bin/swift"
   }
+
+  /// Computes the location of a toolchain's `swiftc` executable given its root
+  /// directory.
+  static func swiftcExecutable(forToolchainWithRoot root: URL) -> URL {
+    root / "usr/bin/swiftc"
+  }
 }
 
 /// Custom `Encodable` implementation to represent URLs as paths instead of

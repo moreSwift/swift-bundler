@@ -24,6 +24,8 @@ enum SwiftPackageManager {
     var isGUIExecutable: Bool
     /// The compiled metadata. Either an object file or a static library depending on platform.
     var compiledMetadata: MetadataInserter.CompiledMetadata?
+    /// The Swift SDK to use.
+    var swiftSDK: SwiftSDK?
   }
 
   /// The Android API version to target by default.
@@ -74,6 +76,15 @@ enum SwiftPackageManager {
     toolchain.map { toolchain in
       SwiftToolchain.swiftExecutable(forToolchainWithRoot: toolchain)
     }.map(\.path) ?? "swift"
+  }
+
+  /// Gets the path of the `swiftc` executable for the given toolchain (if any).
+  /// Returns the literal string `"swiftc"` when no toolchain is specified, so
+  /// that Process can perform its usual executable path resolution.
+  static func swiftcPath(toolchain: URL?) -> String {
+    toolchain.map { toolchain in
+      SwiftToolchain.swiftcExecutable(forToolchainWithRoot: toolchain)
+    }.map(\.path) ?? "swiftc"
   }
 
   /// Builds the specified product of a Swift package.
@@ -325,19 +336,8 @@ enum SwiftPackageManager {
           throw Error(.cannotBuildForMultipleAndroidArchitecturesAtOnce)
         }
 
-        let targetTriple = try Error.catch {
-          try platform.targetTriple(
-            withArchitecture: buildContext.genericContext.architectures[0],
-            andPlatformVersion: Self.androidAPIVersion
-          )
-        }
-
-        let sdk = try Error.catch {
-          try SwiftSDKManager.locateSDKMatching(
-            hostPlatform: .hostPlatform,
-            hostArchitecture: .host,
-            targetTriple: targetTriple
-          )
+        guard let sdk = buildContext.swiftSDK else {
+          throw Error(.cannotBuildForAndroidWithoutSwiftSDK)
         }
 
         let silo = try Error.catch {
