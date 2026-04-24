@@ -141,7 +141,7 @@ enum Device: Equatable, Sendable, CustomStringConvertible, Comparable {
 
   /// A multi-tiered index to use when sorting devices lexicographically. Should
   /// enforce a stable ordering.
-  var lexicographicIndex: (Platform, UInt, Int, String, UInt, String) {
+  var lexicographicIndex: (Platform, UInt, Int, String, UInt, String) { // swiftlint:disable:this large_tuple
     let statusValue = switch status {
       case .available: 0
       case .summonable: 1
@@ -151,14 +151,14 @@ enum Device: Equatable, Sendable, CustomStringConvertible, Comparable {
       // Sort by platform
       platform,
       // Put physical connected devices before simulators
-      isSimulator.int,
+      isSimulator ? 1 : 0,
       // Put available devices first within their group, followed by
       // summonabled devices, and then unavailable devices.
       statusValue,
       // Sort by name within each group
       name,
       // Put devices with no id first to break name ties
-      (id == nil).int,
+      id == nil ? 1 : 0,
       // Sort by id to break name ties
       id ?? "<no_id>"
     )

@@ -388,8 +388,8 @@ enum APKBundler: Bundler {
         try packageGraph.target(referredToBy: target)
       }
 
-      let javaDirectory = configuration.android.javaDirectory
-      let kotlinDirectory = configuration.android.kotlinDirectory ?? javaDirectory
+      let javaDirectory = configuration.android?.javaDirectory
+      let kotlinDirectory = configuration.android?.kotlinDirectory ?? javaDirectory
       if let javaDirectory {
         log.info("Target '\(target.name)' has Java sources")
         directories.append((targetInfo.directory / javaDirectory, target, "java"))

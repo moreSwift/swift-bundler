@@ -57,6 +57,10 @@ func withFixture(_ name: String, do action: (URL) async throws -> Void) async th
 
   // Restore .build directory (saves time for consecutive tests)
   if let savedBuildDirectory {
+    if buildDirectory.exists() {
+      print("warning: Fixture has .build directory, deleting to keep tests repeatable")
+      try FileManager.default.removeItem(at: buildDirectory)
+    }
     try FileManager.default.copyItem(at: savedBuildDirectory, to: buildDirectory)
   }
 
