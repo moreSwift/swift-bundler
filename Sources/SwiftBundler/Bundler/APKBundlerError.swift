@@ -28,6 +28,7 @@ extension APKBundler {
     case failedToEnumerateJVMSources(_ directory: URL, SwiftPackageManager.TargetReference)
     case failedToCopyJVMSource(source: URL, destination: URL)
     case cannotBundleAPKWithoutSwiftAndroidSDK
+    case cannotBuildAPKWithoutTargetAndroidPlatformVersion
 
     var userFriendlyMessage: String {
       switch self {
@@ -93,6 +94,8 @@ extension APKBundler {
             """
         case .cannotBundleAPKWithoutSwiftAndroidSDK:
           return "Cannot bundle APK without Swift Android SDK"
+        case .cannotBuildAPKWithoutTargetAndroidPlatformVersion:
+          return "Cannot build APK without target Android platform version"
       }
     }
   }

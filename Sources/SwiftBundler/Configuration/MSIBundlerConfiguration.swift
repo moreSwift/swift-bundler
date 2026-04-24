@@ -1,6 +1,7 @@
 import Foundation
 import XMLCoder
 
+/// MSI bundler related configuration properties.
 @Configuration(overlayable: false)
 struct MSIBundlerConfiguration: Codable, Sendable {
   /// Additional entries to add to the app's WXS configuration file before

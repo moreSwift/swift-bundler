@@ -29,6 +29,7 @@ enum SwiftBundlerError: Throwable {
     _ deviceArchitecture: BuildArchitecture,
     _ selectedArchitectures: [BuildArchitecture]
   )
+  case cannotResolveSwiftToolchainForAndroidWithoutMinSDK
 
   var userFriendlyMessage: String {
     switch self {
@@ -139,6 +140,8 @@ enum SwiftBundlerError: Throwable {
             selectedArchitectures.map(\.rawValue).joinedGrammatically()
           )
           """
+      case .cannotResolveSwiftToolchainForAndroidWithoutMinSDK:
+        return "Cannot resolve Swift toolchain without Android minSDK when targeting Android"
     }
   }
 }

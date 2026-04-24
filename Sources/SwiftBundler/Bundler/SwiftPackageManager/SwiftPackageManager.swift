@@ -28,9 +28,6 @@ enum SwiftPackageManager {
     var swiftSDK: SwiftSDK?
   }
 
-  /// The Android API version to target by default.
-  static let androidAPIVersion = "28"
-
   /// Creates a new package using the given directory as the package's root directory.
   /// - Parameters:
   ///   - directory: The package's root directory (will be created if it doesn't exist).

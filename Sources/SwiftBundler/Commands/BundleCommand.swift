@@ -637,47 +637,97 @@ struct BundleCommand: ErrorHandledCommand {
     return architectures
   }
 
-  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+  func resolveContext() async throws(RichError<SwiftBundlerError>) -> BundleCommandContext {
     let (platform, device) = try await Self.resolvePlatform(
       platform: arguments.platform,
       deviceSpecifier: arguments.deviceSpecifier,
       simulatorSpecifier: arguments.simulatorSpecifier
     )
 
-    let architectures = try await getArchitectures(platform: platform, device: device)
-    let (toolchain, swiftSDK) = try await resolveSwiftToolchain(
-      resolvedPlatform: platform,
-      architectures: architectures
-    )
-
     let bundler = arguments.bundler
       ?? BundlerChoice.defaultForTargetPlatform(platform)
 
-    _ = try await doBundling(
-      resolvedPlatform: platform,
-      resolvedBundler: bundler,
-      resolvedDevice: device,
-      resolvedToolchain: toolchain,
-      resolvedSwiftSDK: swiftSDK,
-      resolvedArchitectures: architectures
+    let architectures = try await getArchitectures(platform: platform, device: device)
+    let configurationFlattenerContext = ConfigurationFlattener.Context(
+      platform: platform,
+      bundler: bundler,
+      architectures: architectures
     )
+
+    let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
+
+    let (appName, appConfiguration, configuration) = try await Self.getConfiguration(
+      arguments.appName,
+      packageDirectory: packageDirectory,
+      context: configurationFlattenerContext,
+      customFile: arguments.configurationFileOverride
+    )
+
+    let (toolchain, swiftSDK) = try await resolveSwiftToolchain(
+      resolvedPlatform: platform,
+      architectures: architectures,
+      androidMinSDK: appConfiguration.androidMinSDKOrDefault
+    )
+    
+    if !showBundlePath {
+      log.info("Loading package manifest")
+    }
+    let manifest = try await RichError<SwiftBundlerError>.catch {
+      try await SwiftPackageManager.loadPackageManifest(
+        from: packageDirectory,
+        toolchain: toolchain
+      )
+    }
+
+    let platformVersion = platform.platformVersion(
+      from: manifest,
+      appConfiguration: appConfiguration
+    )
+
+    return BundleCommandContext(
+      packageDirectory: packageDirectory,
+      manifest: manifest,
+      configuration: configuration,
+      appName: appName,
+      appConfiguration: appConfiguration,
+      configurationFlattenerContext: configurationFlattenerContext,
+      platform: platform,
+      platformVersion: platformVersion,
+      architectures: architectures,
+      device: device,
+      bundler: bundler,
+      toolchain: toolchain,
+      swiftSDK: swiftSDK
+    )
+  }
+
+  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+    let context = try await resolveContext()
+    _ = try await doBundling(context: context)
   }
 
   func resolveSwiftToolchain(
     resolvedPlatform: Platform,
-    architectures: [BuildArchitecture]
+    architectures: [BuildArchitecture],
+    androidMinSDK: Int?
   ) async throws(RichError<SwiftBundlerError>) -> (URL?, SwiftSDK?) {
     // Resolve toolchain
     var resolvedToolchain = arguments.toolchain
     let swiftSDK: SwiftSDK?
     if resolvedPlatform == .android {
+      guard let androidMinSDK else {
+        throw RichError<SwiftBundlerError>(
+          .cannotResolveSwiftToolchainForAndroidWithoutMinSDK
+        )
+      }
+
       // TODO(stackotter): Refactor SwiftPackageManager so that we can
       //   resolve the Swift Android SDK once and pass it into each
       //   piece of code that needs it.
       let targetTriple = try RichError<SwiftBundlerError>.catch {
         try resolvedPlatform.targetTriple(
           withArchitecture: architectures[0],
-          andPlatformVersion: SwiftPackageManager.androidAPIVersion
+          andPlatformVersion: String(androidMinSDK)
         )
       }
 
@@ -719,45 +769,34 @@ struct BundleCommand: ErrorHandledCommand {
 
   // swiftlint:disable cyclomatic_complexity
   /// - Parameters
+  ///   - context: The context required to do bundling.
   ///   - dryRun: During a dry run, all of the validation steps are
   ///     performed without performing any side effects. This allows the
   ///     `RunCommand` to figure out where the output bundle will end up even
   ///     when the user instructs it to skip bundling.
-  ///   - resolvedPlatform: The target platform resolved from the various
-  ///     arguments users can use to specify it. This parameter purely exists
-  ///     to allow ``RunCommand`` to avoid resolving the target platform twice
-  ///     (once for its own use and once when this method gets called).
-  ///   - resolvedBundler: The bundler to use.
-  ///   - resolvedDevice: Must be provided when provisioning profiles are
-  ///     expected to be generated.
   /// - Returns: A description of the structure of the bundler's output.
   func doBundling(
-    dryRun: Bool = false,
-    resolvedPlatform: Platform,
-    resolvedBundler: BundlerChoice,
-    resolvedDevice: Device? = nil,
-    resolvedToolchain: URL?,
-    resolvedSwiftSDK: SwiftSDK?,
-    resolvedArchitectures: [BuildArchitecture]
+    context: BundleCommandContext,
+    dryRun: Bool = false
   ) async throws(RichError<SwiftBundlerError>) -> BundlerOutputStructure {
-    let (resolvedDarwinCodeSigningContext, resolveWindowsCodeSigningContext) =
+    let (resolvedDarwinCodeSigningContext, resolvedWindowsCodeSigningContext) =
       try await Self.resolveCodeSigningContext(
         codesignArgument: arguments.codesign,
         identityArgument: arguments.identity,
         provisioningProfile: arguments.provisioningProfile,
         entitlements: arguments.entitlements,
         azureArtifactSigningMetadata: arguments.azureArtifactSigningMetadata,
-        platform: resolvedPlatform
+        platform: context.platform
       )
 
     try RichError<SwiftBundlerError>.catch {
-      try resolvedBundler.bundler.checkHostCompatibility()
+      try context.bundler.bundler.checkHostCompatibility()
     }
 
     guard
       Self.validateArguments(
         arguments,
-        platform: resolvedPlatform,
+        platform: context.platform,
         skipBuild: skipBuild,
         builtWithXcode: builtWithXcode
       )
@@ -768,27 +807,13 @@ struct BundleCommand: ErrorHandledCommand {
     // Time execution so that we can report it to the user.
     let (elapsed, bundlerOutputStructure) = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
       // Load configuration
-      let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
       let scratchDirectory =
-        arguments.scratchDirectory ?? (packageDirectory / ".build")
-
-      let configurationFlattenerContext = ConfigurationFlattener.Context(
-        platform: resolvedPlatform,
-        bundler: resolvedBundler,
-        architectures: resolvedArchitectures
-      )
-
-      let (appName, appConfiguration, configuration) = try await Self.getConfiguration(
-        arguments.appName,
-        packageDirectory: packageDirectory,
-        context: configurationFlattenerContext,
-        customFile: arguments.configurationFileOverride
-      )
+        arguments.scratchDirectory ?? (context.packageDirectory / ".build")
 
       guard
         Self.validateArguments(
           arguments,
-          platform: resolvedPlatform,
+          platform: context.platform,
           skipBuild: skipBuild,
           builtWithXcode: builtWithXcode
         )
@@ -799,14 +824,14 @@ struct BundleCommand: ErrorHandledCommand {
       // Whether or not we are building with xcodebuild instead of swiftpm.
       let isUsingXcodebuild = Xcodebuild.isUsingXcodebuild(
         for: self,
-        resolvedPlatform: resolvedPlatform
+        resolvedPlatform: context.platform
       )
 
       if isUsingXcodebuild {
         // Terminate the program if the project is an Xcodeproj based project.
         let xcodeprojs = try RichError<SwiftBundlerError>.catch {
           try FileManager.default.contentsOfDirectory(
-            at: packageDirectory,
+            at: context.packageDirectory,
             includingPropertiesForKeys: nil
           ).filter({
             $0.pathExtension.contains("xcodeproj") || $0.pathExtension.contains("xcworkspace")
@@ -826,7 +851,7 @@ struct BundleCommand: ErrorHandledCommand {
       }
 
       let outputDirectory = Self.outputDirectory(for: scratchDirectory)
-      let appOutputDirectory = outputDirectory / "apps" / appName
+      let appOutputDirectory = outputDirectory / "apps" / context.appName
 
       let metadataDirectory = outputDirectory / "metadata"
       if !metadataDirectory.exists() {
@@ -849,15 +874,15 @@ struct BundleCommand: ErrorHandledCommand {
       //   compiled metadata library into `.build/<config>` before starting the
       //   build so that SwiftPM finds it.
       let compiledMetadata: MetadataInserter.CompiledMetadata?
-      if resolvedPlatform != .android {
+      if context.platform != .android {
         compiledMetadata = try await RichError<SwiftBundlerError>.catch {
           return try await MetadataInserter.compileMetadata(
             in: metadataDirectory,
-            for: MetadataInserter.metadata(for: appConfiguration),
-            architectures: resolvedArchitectures,
-            platform: resolvedPlatform,
-            swiftToolchain: resolvedToolchain,
-            swiftSDK: resolvedSwiftSDK,
+            for: MetadataInserter.metadata(for: context.appConfiguration),
+            architectures: context.architectures,
+            platform: context.platform,
+            swiftToolchain: context.toolchain,
+            swiftSDK: context.swiftSDK,
             dryRun: dryRun || showBundlePath
           )
         }
@@ -865,36 +890,23 @@ struct BundleCommand: ErrorHandledCommand {
         compiledMetadata = nil
       }
 
-      // Load package manifest
-      if !showBundlePath {
-        log.info("Loading package manifest")
-      }
-      let manifest = try await RichError<SwiftBundlerError>.catch {
-        try await SwiftPackageManager.loadPackageManifest(
-          from: packageDirectory,
-          toolchain: resolvedToolchain
-        )
-      }
-
-      let platformVersion = resolvedPlatform.platformVersion(from: manifest)
- 
       let buildContext = SwiftPackageManager.BuildContext(
         genericContext: GenericBuildContext(
-          projectDirectory: packageDirectory,
+          projectDirectory: context.packageDirectory,
           scratchDirectory: scratchDirectory,
           configuration: arguments.buildConfiguration,
-          architectures: resolvedArchitectures,
-          platform: resolvedPlatform,
-          platformVersion: platformVersion,
+          architectures: context.architectures,
+          platform: context.platform,
+          platformVersion: context.platformVersion,
           additionalArguments: isUsingXcodebuild
             ? arguments.additionalXcodeBuildArguments
             : arguments.additionalSwiftPMArguments
         ),
-        toolchain: resolvedToolchain,
+        toolchain: context.toolchain,
         hotReloadingEnabled: hotReloadingEnabled,
         isGUIExecutable: true,
         compiledMetadata: compiledMetadata,
-        swiftSDK: resolvedSwiftSDK
+        swiftSDK: context.swiftSDK
       )
 
       // Get build output directory
@@ -909,7 +921,7 @@ struct BundleCommand: ErrorHandledCommand {
           }
         }
       } else {
-        let archString = resolvedArchitectures.compactMap({ $0.rawValue })
+        let archString = context.architectures.compactMap({ $0.rawValue })
           .joined(separator: "_")
 
         // xcodebuild adds a platform suffix to the products directory for
@@ -917,22 +929,22 @@ struct BundleCommand: ErrorHandledCommand {
         let productsDirectoryBase = arguments.buildConfiguration.rawValue.capitalized
         let swiftpmSuffix: String
         let xcodeSuffix: String
-        if let suffix = resolvedPlatform.xcodeProductDirectorySuffix {
+        if let suffix = context.platform.xcodeProductDirectorySuffix {
           xcodeSuffix = "-\(suffix)"
           swiftpmSuffix = suffix
         } else {
           xcodeSuffix = ""
-          swiftpmSuffix = resolvedPlatform.rawValue
+          swiftpmSuffix = context.platform.rawValue
         }
         productsDirectory =
           arguments.productsDirectory
-          ?? (packageDirectory
+          ?? (context.packageDirectory
             / ".build/\(archString)-apple-\(swiftpmSuffix)"
             / "Build/Products/\(productsDirectoryBase)\(xcodeSuffix)")
       }
 
-      var originalExecutableArtifact = productsDirectory / appConfiguration.product
-      if let fileExtension = resolvedPlatform.executableFileExtension {
+      var originalExecutableArtifact = productsDirectory / context.appConfiguration.product
+      if let fileExtension = context.platform.executableFileExtension {
         originalExecutableArtifact = originalExecutableArtifact
           .appendingPathExtension(fileExtension)
       }
@@ -944,31 +956,32 @@ struct BundleCommand: ErrorHandledCommand {
       }
 
       var bundlerContext = BundlerContext(
-        appName: appName,
-        packageName: manifest.name,
-        appConfiguration: appConfiguration,
-        packageDirectory: packageDirectory,
+        appName: context.appName,
+        packageName: context.manifest.name,
+        appConfiguration: context.appConfiguration,
+        packageDirectory: context.packageDirectory,
         productsDirectory: productsDirectory,
         outputDirectory: appOutputDirectory,
         packageGraph: SwiftPackageManager.PackageGraph.dummy,
         architectures: buildContext.genericContext.architectures,
-        platform: resolvedPlatform,
-        device: resolvedDevice,
+        platform: context.platform,
+        platformVersion: context.platformVersion,
+        device: context.device,
         darwinCodeSigningContext: resolvedDarwinCodeSigningContext,
-        windowsCodeSigningContext: resolveWindowsCodeSigningContext,
+        windowsCodeSigningContext: resolvedWindowsCodeSigningContext,
         builtDependencies: [:],
         executableArtifact: executableArtifact,
-        swiftToolchain: resolvedToolchain,
-        swiftSDK: resolvedSwiftSDK
+        swiftToolchain: context.toolchain,
+        swiftSDK: context.swiftSDK
       )
 
       // If the user has requested the bundle path, print it and exit.
       if showBundlePath {
         let output = try Self.intendedOutput(
-          of: resolvedBundler.bundler,
+          of: context.bundler.bundler,
           context: bundlerContext,
           command: self,
-          manifest: manifest
+          manifest: context.manifest
         )
         print(output.bundle.path)
         Foundation.exit(0)
@@ -977,18 +990,18 @@ struct BundleCommand: ErrorHandledCommand {
       // If this is a dry run, drop out just before we start actually do stuff.
       guard !dryRun else {
         return try Self.intendedOutput(
-          of: resolvedBundler.bundler,
+          of: context.bundler.bundler,
           context: bundlerContext,
           command: self,
-          manifest: manifest
+          manifest: context.manifest
         )
       }
 
       let packageGraph = try await RichError<SwiftBundlerError>.catch {
         try await SwiftPackageManager.loadPackageGraph(
-          packageDirectory: packageDirectory,
-          configurationContext: configurationFlattenerContext,
-          toolchain: resolvedToolchain
+          packageDirectory: context.packageDirectory,
+          configurationContext: context.configurationFlattenerContext,
+          toolchain: context.toolchain
         )
       }
       bundlerContext.packageGraph = packageGraph
@@ -999,12 +1012,12 @@ struct BundleCommand: ErrorHandledCommand {
       dependencyContext.scratchDirectory = dependenciesScratchDirectory
       let dependencies = try await RichError<SwiftBundlerError>.catch {
         try await ProjectBuilder.buildDependencies(
-          appConfiguration: appConfiguration,
-          packageConfiguration: configuration,
+          appConfiguration: context.appConfiguration,
+          packageConfiguration: context.configuration,
           packageGraph: packageGraph,
           context: dependencyContext,
-          swiftToolchain: resolvedToolchain,
-          appName: appName,
+          swiftToolchain: context.toolchain,
+          appName: context.appName,
           dryRun: skipBuild
         )
       }
@@ -1051,13 +1064,13 @@ struct BundleCommand: ErrorHandledCommand {
         log.info("Starting \(buildContext.genericContext.configuration.rawValue) build")
         try await RichError<SwiftBundlerError>.catch {
           if isUsingXcodebuild {
-            guard !resolvedBundler.bundler.requiresBuildAsDylib else {
+            guard !context.bundler.bundler.requiresBuildAsDylib else {
               throw SwiftBundlerError.xcodeCannotBuildAsDylib
             }
             try await Xcodebuild.build(
-              product: appConfiguration.product,
+              product: context.appConfiguration.product,
               buildContext: buildContext,
-              destination: resolvedDevice
+              destination: context.device
             )
           } else {
             // This function exists to unwrap the existential 'any Bundler.Type'
@@ -1070,14 +1083,14 @@ struct BundleCommand: ErrorHandledCommand {
                   try bundler.computeContext(
                     context: bundlerContext,
                     command: self,
-                    manifest: manifest
+                    manifest: context.manifest
                   ),
                   dryRun: dryRun
                 )
               }
             }
 
-            let bundler = resolvedBundler.bundler
+            let bundler = context.bundler.bundler
             let additionalArgumentsFromBundler = try await prepareArgumentsFromBundler(bundler)
 
             // These arguments only apply to the main executable, so we're safe to
@@ -1086,26 +1099,26 @@ struct BundleCommand: ErrorHandledCommand {
             var buildContext = buildContext
             buildContext.genericContext.additionalArguments += additionalArgumentsFromBundler
 
-            if resolvedBundler.bundler.requiresBuildAsDylib {
+            if context.bundler.bundler.requiresBuildAsDylib {
               _ = try await SwiftPackageManager.buildExecutableAsDylib(
-                product: appConfiguration.product,
+                product: context.appConfiguration.product,
                 buildContext: buildContext
               )
             } else {
               try await SwiftPackageManager.build(
-                product: appConfiguration.product,
+                product: context.appConfiguration.product,
                 buildContext: buildContext
               )
             }
           }
         }
 
-        var executable = productsDirectory.appendingPathComponent(appConfiguration.product)
-        if let fileExtension = resolvedPlatform.executableFileExtension {
+        var executable = productsDirectory / context.appConfiguration.product
+        if let fileExtension = context.platform.executableFileExtension {
           executable = executable.appendingPathExtension(fileExtension)
         }
 
-        if resolvedPlatform == .linux {
+        if context.platform == .linux {
           try await RichError<SwiftBundlerError>.catch {
             let debugInfoFile = originalExecutableArtifact.appendingPathExtension("debug")
             if debugInfoFile.exists() {
@@ -1135,10 +1148,10 @@ struct BundleCommand: ErrorHandledCommand {
       )
 
       return try await Self.bundle(
-        with: resolvedBundler.bundler,
+        with: context.bundler.bundler,
         context: bundlerContext,
         command: self,
-        manifest: manifest
+        manifest: context.manifest
       )
     }
 
