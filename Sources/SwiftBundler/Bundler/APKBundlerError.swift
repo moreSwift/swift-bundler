@@ -27,6 +27,7 @@ extension APKBundler {
     case failedToCopyAPK(_ source: URL, _ destination: URL)
     case failedToEnumerateJVMSources(_ directory: URL, SwiftPackageManager.TargetReference)
     case failedToCopyJVMSource(source: URL, destination: URL)
+    case cannotBundleAPKWithoutSwiftAndroidSDK
 
     var userFriendlyMessage: String {
       switch self {
@@ -90,6 +91,8 @@ extension APKBundler {
             Failed to copy Java/Kotlin source from '\(source.path)' to \
             '\(destination.path)'
             """
+        case .cannotBundleAPKWithoutSwiftAndroidSDK:
+          return "Cannot bundle APK without Swift Android SDK"
       }
     }
   }

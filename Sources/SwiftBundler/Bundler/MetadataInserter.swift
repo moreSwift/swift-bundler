@@ -46,6 +46,8 @@ enum MetadataInserter {
     for metadata: Metadata,
     architectures: [BuildArchitecture],
     platform: Platform,
+    swiftToolchain: URL?,
+    swiftSDK: SwiftSDK?,
     dryRun: Bool = false
   ) async throws(Error) -> CompiledMetadata {
     let codeFile = directory / "metadata.swift"
@@ -88,7 +90,9 @@ enum MetadataInserter {
           toUniversalStaticLibrary: universalStaticLibrary,
           scratchDirectory: directory,
           platform: platform,
-          architectures: architectures
+          architectures: architectures,
+          swiftToolchain: swiftToolchain,
+          swiftSDK: swiftSDK
         )
       }
       return .staticLibrary(universalStaticLibrary, name: name)
@@ -99,7 +103,9 @@ enum MetadataInserter {
           codeFile,
           to: objectFile,
           platform: platform,
-          architecture: architectures[0]
+          architecture: architectures[0],
+          swiftToolchain: swiftToolchain,
+          swiftSDK: swiftSDK
         )
       }
       return .objectFile(objectFile)
@@ -111,7 +117,9 @@ enum MetadataInserter {
     toUniversalStaticLibrary universalStaticLibrary: URL,
     scratchDirectory: URL,
     platform: Platform,
-    architectures: [BuildArchitecture]
+    architectures: [BuildArchitecture],
+    swiftToolchain: URL?,
+    swiftSDK: SwiftSDK?
   ) async throws(Error) {
     let objectFiles = architectures.map { architecture in
       scratchDirectory / "metadata-\(architecture).o"
@@ -122,7 +130,9 @@ enum MetadataInserter {
         codeFile,
         to: objectFile,
         platform: platform,
-        architecture: architecture
+        architecture: architecture,
+        swiftToolchain: swiftToolchain,
+        swiftSDK: swiftSDK
       )
     }
 
@@ -153,7 +163,9 @@ enum MetadataInserter {
     _ codeFile: URL,
     to objectFile: URL,
     platform: Platform,
-    architecture: BuildArchitecture
+    architecture: BuildArchitecture,
+    swiftToolchain: URL?,
+    swiftSDK: SwiftSDK?
   ) async throws(Error) {
     var platformArguments: [String] = []
 
@@ -173,9 +185,15 @@ enum MetadataInserter {
       platformArguments += ["-sdk", sdkPath]
     }
 
+    if let swiftSDK {
+      platformArguments += ["-sdk", swiftSDK.root.path]
+      platformArguments += ["-target", swiftSDK.triple]
+      platformArguments += ["-resource-dir", swiftSDK.resourcesDirectory.path]
+    }
+
     try await Error.catch(withMessage: .failedToCompileMetadataCodeFile) {
       try await Process.create(
-        "swiftc",
+        SwiftPackageManager.swiftcPath(toolchain: swiftToolchain),
         arguments: [
           "-parse-as-library", "-c",
           "-o", objectFile.path, codeFile.path,

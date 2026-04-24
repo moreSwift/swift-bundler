@@ -111,6 +111,7 @@
       product: String,
       buildContext: GenericBuildContext,
       swiftToolchain: URL?,
+      swiftSDK: SwiftSDK?,
       appConfiguration: AppConfiguration.Flat
     ) async throws(Error) {
       let connection = try await accept()
@@ -139,7 +140,9 @@
                     in: metadataDirectory,
                     for: MetadataInserter.metadata(for: appConfiguration),
                     architectures: buildContext.architectures,
-                    platform: buildContext.platform
+                    platform: buildContext.platform,
+                    swiftToolchain: buildContext.swiftToolchain,
+                    swiftSDK: swiftSDK
                   )
                 }
 
@@ -148,7 +151,8 @@
                   toolchain: swiftToolchain,
                   hotReloadingEnabled: true,
                   isGUIExecutable: true,
-                  compiledMetadata: compiledMetadata
+                  compiledMetadata: compiledMetadata,
+                  swiftSDK: swiftSDK
                 )
 
                 let dylibFile = try await SwiftPackageManager.buildExecutableAsDylib(
