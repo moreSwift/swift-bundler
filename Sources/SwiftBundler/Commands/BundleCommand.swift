@@ -853,7 +853,7 @@ struct BundleCommand: ErrorHandledCommand {
       let outputDirectory = Self.outputDirectory(for: scratchDirectory)
       let appOutputDirectory = outputDirectory / "apps" / context.appName
 
-      let metadataDirectory = outputDirectory / "metadata"
+      let metadataDirectory = appOutputDirectory / "metadata"
       if !metadataDirectory.exists() {
         try RichError<SwiftBundlerError>.catch {
           try FileManager.default.createDirectory(
