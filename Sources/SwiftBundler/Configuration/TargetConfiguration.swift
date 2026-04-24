@@ -11,7 +11,7 @@ struct TargetConfiguration: Codable, Sendable {
   var dependencies: [AppConfiguration.Dependency]?
 
   /// Android-specific configuration.
-  var android: Android
+  var android: Android?
 
   // TODO(stackotter): Make this config merge instead of replace, when partially
   //   supplied in an overlay
