@@ -126,6 +126,27 @@ enum APKBundler: Bundler {
       }
     }
 
+    guard let swiftSDK = context.swiftSDK else {
+      throw Error(.cannotBundleAPKWithoutSwiftAndroidSDK)
+    }
+
+    let ndk = try Error.catch {
+      guard let ndk = try SwiftSDKManager.getLinkedNDK(fromAndroidSDK: swiftSDK) else {
+         log.warning(
+          """
+          Failed to retrieve linked NDK from Swift Android SDK; falling back to latest NDK
+          """
+        )
+        return try AndroidSDKManager.getLatestNDK(availableIn: androidSDK)       
+      }
+
+      return ndk
+    }
+
+    let ndkVersion = try Error.catch {
+      try AndroidSDKManager.getVersion(ofNDKAt: ndk)
+    }
+
     // Create Gradle configuration files
     let packageIdentifier = computePackageIdentifier(
       forAppIdentifier: context.appConfiguration.identifier
@@ -138,7 +159,8 @@ enum APKBundler: Bundler {
       targetSDK: targetSDK,
       compileSDK: compileSDK,
       architectures: context.architectures,
-      projectStructure: project
+      projectStructure: project,
+      ndkVersion: ndkVersion
     )
     let gradleSettings = generateGradleSettings(forApp: context.appName)
     let gradleProperties = generateGradleProperties()
@@ -233,20 +255,12 @@ enum APKBundler: Bundler {
       throw Error(message, cause: error)
     }
 
-    let ndk = try Error.catch {
-      try AndroidSDKManager.getLatestNDK(availableIn: androidSDK)
-    }
-
     let readelfTool = try Error.catch {
       try AndroidSDKManager.locateReadelfTool(
         inNDK: ndk,
         hostPlatform: .hostPlatform,
         hostArchitecture: .host
       )
-    }
-
-    guard let sdk = context.swiftSDK else {
-      throw Error(.cannotBundleAPKWithoutSwiftAndroidSDK)
     }
 
     let subdirectory = switch architecture {
@@ -262,8 +276,8 @@ enum APKBundler: Bundler {
 
     let androidLibrarySearchDirectories = [
       DynamicLibrarySearchDirectory(context.productsDirectory),
-      DynamicLibrarySearchDirectory(sdk.resourcesDirectory / "android"),
-    ] + sdk.librarySearchDirectories.flatMap { searchDirectory in
+      DynamicLibrarySearchDirectory(swiftSDK.resourcesDirectory / "android"),
+    ] + swiftSDK.librarySearchDirectories.flatMap { searchDirectory in
       // TODO: Is this the standard way that Swift uses the library search
       //   directory? The directory itself is just a bunch of triple-specific
       //   subdirectories which seems a bit strange.
@@ -589,7 +603,8 @@ enum APKBundler: Bundler {
     targetSDK: Int,
     compileSDK: Int,
     architectures: [BuildArchitecture],
-    projectStructure: ProjectStructure
+    projectStructure: ProjectStructure,
+    ndkVersion: Version
   ) -> String {
     let architectureNames = architectures.map(\.androidABIName)
     let abiFilters = architectureNames.map { architecture in
@@ -600,6 +615,21 @@ enum APKBundler: Bundler {
     }.joined(separator: "\n")
 
     let cmakePath = projectStructure.cmakeLists.path(relativeTo: projectStructure.root)
+
+    let cmake16KBAlignmentFix: String
+    if ndkVersion.major == 27 {
+      // Support 16kb page sizes. This is supported by default for NDK >=28
+      cmake16KBAlignmentFix = """
+
+                externalNativeBuild {
+                    cmake {
+                        arguments.add("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+                    }
+                }
+        """
+    } else {
+      cmake16KBAlignmentFix = ""
+    }
 
     // TODO: Make JVM target configurable
     return """
@@ -623,7 +653,7 @@ enum APKBundler: Bundler {
 
               ndk {
                   abiFilters.addAll(setOf(\(abiFilters)))
-              }
+              }\(cmake16KBAlignmentFix)
           }
 
           externalNativeBuild {
