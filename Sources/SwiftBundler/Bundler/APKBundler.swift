@@ -55,7 +55,7 @@ enum APKBundler: Bundler {
       try AndroidSDKManager.locateAndroidSDK()
     }
 
-    let compilationSDKVersion = try Error.catch {
+    let defaultCompilationSDKVersion = try Error.catch {
       try AndroidSDKManager.getDefaultCompilationSDKVersion(forSDK: androidSDK)
     }
 
@@ -93,16 +93,50 @@ enum APKBundler: Bundler {
       )
     }
 
+    // We use the platform version instead of the minSDK from appConfiguration
+    // because it's more directly the value we want. E.g. if Swift manifests
+    // ever support specifying an Android API version, or if we ever support
+    // loading the Android API version from Android-specific configuration files,
+    // then the meanings of platformVersion and appConfiguration.android.minSDK
+    // would diverge, and platformVersion would be the one we want.
+    guard
+      let platformVersion = context.platformVersion,
+      let minSDK = Int(platformVersion)
+    else {
+      log.debug("platformVersion: \(context.platformVersion.debugDescription)")
+      throw Error(.cannotBuildAPKWithoutTargetAndroidPlatformVersion)
+    }
+
+    let compileSDK = context.appConfiguration.android?.compileSDK
+      ?? defaultCompilationSDKVersion.major
+    let targetSDK = context.appConfiguration.android?.targetSDK
+      ?? compileSDK
+
+    let versionCode: Int
+    if let providedVersionCode = context.appConfiguration.android?.versionCode {
+      versionCode = providedVersionCode
+    } else {
+      do {
+        let revision = try await Error.catch {
+          try await Git.countRevisions(context.packageDirectory)
+        }
+        versionCode = revision
+      } catch {
+        versionCode = 1
+      }
+    }
+
     // Create Gradle configuration files
     let packageIdentifier = computePackageIdentifier(
       forAppIdentifier: context.appConfiguration.identifier
     )
-    let targetAPI = 33
     let gradleBuildConfig = generateGradleBuildConfig(
       packageIdentifier: packageIdentifier,
       appVersion: context.appConfiguration.version,
-      targetAPI: targetAPI,
-      compileSDK: compilationSDKVersion.major,
+      versionCode: versionCode,
+      minSDK: minSDK,
+      targetSDK: targetSDK,
+      compileSDK: compileSDK,
       architectures: context.architectures,
       projectStructure: project
     )
@@ -114,7 +148,7 @@ enum APKBundler: Bundler {
     let parentTheme = "Theme.Material3.DayNight.NoActionBar"
     let appNameStringKey = "app_name"
     let androidManifest = generateAndroidManifest(
-      targetAPI: targetAPI,
+      targetAPI: targetSDK,
       themeName: themeName,
       appNameStringKey: appNameStringKey,
       projectStructure: project
@@ -180,8 +214,8 @@ enum APKBundler: Bundler {
       let architecture = context.architectures.first,
       context.architectures.count == 1
     else {
-      // TODO: Implement this before merging. Will require bundle context to support
-      //   having one product directory per architecture.
+      // TODO(stackotter): Will require bundle context to support having one
+      //   product directory per architecture.
       throw Error(.multiArchitectureBuildsNotSupported)
     }
 
@@ -211,7 +245,6 @@ enum APKBundler: Bundler {
       )
     }
 
-    let androidAPI = SwiftPackageManager.androidAPIVersion
     guard let sdk = context.swiftSDK else {
       throw Error(.cannotBundleAPKWithoutSwiftAndroidSDK)
     }
@@ -240,7 +273,7 @@ enum APKBundler: Bundler {
           requiresCopying: true
         ),
         DynamicLibrarySearchDirectory(
-          searchDirectory / subdirectory / androidAPI,
+          searchDirectory / subdirectory / String(minSDK),
           requiresCopying: false
         ),
       ]
@@ -551,7 +584,9 @@ enum APKBundler: Bundler {
   private static func generateGradleBuildConfig(
     packageIdentifier: String,
     appVersion: Version,
-    targetAPI: Int,
+    versionCode: Int,
+    minSDK: Int,
+    targetSDK: Int,
     compileSDK: Int,
     architectures: [BuildArchitecture],
     projectStructure: ProjectStructure
@@ -566,7 +601,7 @@ enum APKBundler: Bundler {
 
     let cmakePath = projectStructure.cmakeLists.path(relativeTo: projectStructure.root)
 
-    // TODO: Make version code configurable
+    // TODO: Make JVM target configurable
     return """
       import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -581,9 +616,9 @@ enum APKBundler: Bundler {
 
           defaultConfig {
               applicationId = "\(packageIdentifier)"
-              minSdk = \(targetAPI)
-              targetSdk = \(targetAPI)
-              versionCode = 1
+              minSdk = \(minSDK)
+              targetSdk = \(targetSDK)
+              versionCode = \(versionCode)
               versionName = "\(appVersion)"
 
               ndk {

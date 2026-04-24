@@ -24,6 +24,8 @@ struct BundlerContext {
 
   /// The target platform.
   var platform: Platform
+  /// The target platform version (e.g. iOS version or Android API version).
+  var platformVersion: String?
   /// The target device if any.
   var device: Device?
 

@@ -72,12 +72,6 @@ struct RunCommand: ErrorHandledCommand {
     let packageDirectory = arguments.packageDirectory ?? URL.currentDirectory
     let scratchDirectory = arguments.scratchDirectory ?? packageDirectory / ".build"
 
-    let device = try await BundleCommand.resolveDevice(
-      platform: arguments.platform,
-      deviceSpecifier: arguments.deviceSpecifier,
-      simulatorSpecifier: arguments.simulatorSpecifier
-    )
-
     let bundleCommand = BundleCommand(
       arguments: _arguments,
       skipBuild: false,
@@ -87,22 +81,12 @@ struct RunCommand: ErrorHandledCommand {
       verbose: verbose
     )
 
-    let architectures = try await bundleCommand.getArchitectures(
-      platform: device.platform,
-      device: device
-    )
-    let (toolchain, swiftSDK) = try await bundleCommand.resolveSwiftToolchain(
-      resolvedPlatform: device.platform,
-      architectures: architectures
-    )
+    let context = try await bundleCommand.resolveContext()
 
-    let resolvedBundler = arguments.bundler
-      ?? BundlerChoice.defaultForTargetPlatform(device.platform)
-
-    guard resolvedBundler.bundler.outputIsRunnable else {
+    guard context.bundler.bundler.outputIsRunnable else {
       log.error(
         """
-        The chosen bundler (\(resolvedBundler.rawValue)) is bundling-only \
+        The chosen bundler (\(context.bundler.rawValue)) is bundling-only \
         (i.e. it doesn't output a runnable bundle). Choose a different bundler \
         or stick to bundling and manually install the bundle on your system to \
         run your app.
@@ -111,27 +95,22 @@ struct RunCommand: ErrorHandledCommand {
       Foundation.exit(1)
     }
 
-    let (_, appConfiguration, _) = try await BundleCommand.getConfiguration(
-      arguments.appName,
-      packageDirectory: packageDirectory,
-      context: ConfigurationFlattener.Context(
-        platform: device.platform,
-        bundler: resolvedBundler,
-        architectures: bundleCommand.getArchitectures(platform: device.platform, device: device)
-      ),
-      customFile: arguments.configurationFileOverride
-    )
+    let device: Device
+    if let contextDevice = context.device {
+      device = contextDevice
+    } else {
+      device = try await BundleCommand.resolveDevice(
+        platform: context.platform,
+        deviceSpecifier: arguments.deviceSpecifier,
+        simulatorSpecifier: arguments.simulatorSpecifier
+      )
+    }
 
     // Perform bundling, or do a dry run if instructed to skip building (so
     // that we still know where the output bundle is located).
     let bundlerOutput = try await bundleCommand.doBundling(
-      dryRun: skipBuild,
-      resolvedPlatform: device.platform,
-      resolvedBundler: resolvedBundler,
-      resolvedDevice: device,
-      resolvedToolchain: toolchain,
-      resolvedSwiftSDK: swiftSDK,
-      resolvedArchitectures: architectures
+      context: context,
+      dryRun: skipBuild
     )
 
     let environmentVariables = try RichError<SwiftBundlerError>.catch {
@@ -140,17 +119,6 @@ struct RunCommand: ErrorHandledCommand {
       } ?? [:]
     }
 
-    // TODO: Avoid loading manifest twice
-    // TODO(stackotter): Use resolved toolchain rather than verbatim toolchain argument
-    let manifest = try await RichError<SwiftBundlerError>.catch {
-      try await SwiftPackageManager.loadPackageManifest(
-        from: packageDirectory,
-        toolchain: arguments.toolchain
-      )
-    }
-
-    let platformVersion = device.platform.platformVersion(from: manifest)
-
     let additionalEnvironmentVariables: [String: String]
     #if SUPPORT_HOT_RELOADING
       if hot {
@@ -158,9 +126,9 @@ struct RunCommand: ErrorHandledCommand {
           projectDirectory: packageDirectory,
           scratchDirectory: scratchDirectory,
           configuration: arguments.buildConfiguration,
-          architectures: architectures,
+          architectures: context.architectures,
           platform: device.platform,
-          platformVersion: platformVersion,
+          platformVersion: context.platformVersion,
           additionalArguments: arguments.additionalSwiftPMArguments
         )
 
@@ -172,11 +140,11 @@ struct RunCommand: ErrorHandledCommand {
         Task {
           do {
             try await server.start(
-              product: appConfiguration.product,
+              product: context.appConfiguration.product,
               buildContext: buildContext,
-              swiftToolchain: toolchain,
-              swiftSDK: swiftSDK,
-              appConfiguration: appConfiguration
+              swiftToolchain: context.toolchain,
+              swiftSDK: context.swiftSDK,
+              appConfiguration: context.appConfiguration
             )
           } catch {
             log.error(
@@ -199,7 +167,7 @@ struct RunCommand: ErrorHandledCommand {
     try await RichError<SwiftBundlerError>.catch {
       try await Runner.run(
         bundlerOutput: bundlerOutput,
-        bundleIdentifier: appConfiguration.identifier,
+        bundleIdentifier: context.appConfiguration.identifier,
         device: device,
         arguments: passThroughArguments,
         environmentVariables: environmentVariables.merging(

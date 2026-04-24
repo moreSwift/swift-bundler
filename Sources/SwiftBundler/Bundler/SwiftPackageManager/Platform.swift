@@ -356,12 +356,14 @@ enum Platform: String, Sendable, Hashable, CaseIterable, Comparable {
   }
 
   /// Gets the platform version corresponding to this platform.
-  func platformVersion(from manifest: PackageManifest) -> String? {
+  func platformVersion(
+    from manifest: PackageManifest,
+    appConfiguration: AppConfiguration.Flat
+  ) -> String? {
     if let platform = self.asApplePlatform {
       return manifest.platformVersion(for: platform)
     } else if self == .android {
-      // TODO: Make this configurable
-      return SwiftPackageManager.androidAPIVersion
+      return String(appConfiguration.androidMinSDKOrDefault)
     } else {
       return nil
     }
