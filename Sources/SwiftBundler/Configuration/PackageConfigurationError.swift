@@ -8,6 +8,7 @@ extension PackageConfiguration {
   /// An error message related to ``PackageConfiguration``.
   enum ErrorMessage: Throwable {
     case noSuchApp(String)
+    case noApps
     case multipleAppsAndNoneSpecified
     case failedToEvaluateVariables
     case failedToReadConfigurationFile(URL)
@@ -24,7 +25,9 @@ extension PackageConfiguration {
     var userFriendlyMessage: String {
       switch self {
         case .noSuchApp(let name):
-          return "There is no app called '\(name)'."
+          return "This package doesn't contain an app called '\(name)'"
+        case .noApps:
+          return "This package doesn't contain any apps"
         case .multipleAppsAndNoneSpecified:
           return "This package contains multiple apps. You must provide the 'app-name' argument"
         case .failedToEvaluateVariables:
