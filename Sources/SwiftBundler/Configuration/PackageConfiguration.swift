@@ -275,7 +275,12 @@ extension PackageConfiguration.Flat {
   ) throws(PackageConfiguration.Error) -> (name: String, app: AppConfiguration.Flat) {
     if let name = name {
       guard let selected = apps[name] else {
-        throw PackageConfiguration.Error(.noSuchApp(name))
+        throw PackageConfiguration.Error(
+          .noSuchApp(name),
+          hint: Output {
+            "Run `swift bundler config apps` to list available apps"
+          }.description
+        )
       }
       return (name: name, app: selected)
     } else if let first = apps.first, apps.count == 1 {
