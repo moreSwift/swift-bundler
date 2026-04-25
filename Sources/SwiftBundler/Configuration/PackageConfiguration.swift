@@ -157,7 +157,9 @@ struct PackageConfiguration: Codable, Sendable {
   ) async throws(Error) -> PackageConfiguration {
     if mode == .readOnly {
       log.warning("'\(configurationFile.relativePath)' is outdated.")
-      log.warning("Run 'swift bundler migrate' to migrate it to the latest config format.")
+      log.warning(
+        "Run 'swift bundler config migrate' to migrate it to the latest config format."
+      )
     }
 
     let contents: String
@@ -211,7 +213,9 @@ struct PackageConfiguration: Codable, Sendable {
   ) throws(Error) -> PackageConfiguration {
     log.warning("No 'Bundler.toml' file was found, but a 'Bundle.json' file was")
     if newConfigurationFile == nil {
-      log.warning("Use 'swift bundler migrate' to update your configuration to the latest format")
+      log.warning(
+        "Use 'swift bundler config migrate' to update your configuration to the latest format"
+      )
     } else {
       log.info("Migrating 'Bundle.json' to the new configuration format")
     }
