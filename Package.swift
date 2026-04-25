@@ -48,7 +48,7 @@ let package = Package(
     .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/tuist/XcodeProj", from: "8.16.0"),
     .package(url: "https://github.com/yonaskolb/XcodeGen", from: "2.42.0"),
-    .package(url: "https://github.com/swiftlang/swift-syntax", from: "601.0.0"),
+    .package(url: "https://github.com/swiftlang/swift-syntax", "601.0.0"..<"604.0.0"),
     .package(url: "https://github.com/swhitty/FlyingFox", from: "0.22.0"),
     .package(url: "https://github.com/jpsim/Yams", from: "5.1.2"),
     .package(url: "https://github.com/kylef/PathKit", from: "1.0.1"),
@@ -61,7 +61,7 @@ let package = Package(
     .package(url: "https://github.com/stackotter/ErrorKit", from: "1.2.2"),
     .package(
       url: "https://github.com/stackotter/swift-macro-toolkit",
-      .upToNextMinor(from: "0.7.1")
+      .upToNextMinor(from: "0.9.0")
     ),
     .package(url: "https://github.com/swhitty/swift-mutex", .upToNextMinor(from: "0.0.6")),
     .package(url: "https://github.com/stackotter/swift-ico", .upToNextMinor(from: "0.2.0")),
