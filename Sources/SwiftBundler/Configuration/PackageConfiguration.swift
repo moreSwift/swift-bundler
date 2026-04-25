@@ -268,7 +268,8 @@ extension PackageConfiguration.Flat {
   /// and there is only one app, that app is returned.
   /// - Parameter name: The name of the app to get.
   /// - Returns: The app's name and configuration.
-  /// - Throws: If no app is specified, and there is more than one app.
+  /// - Throws: If no app is specified, and there is more than one app, or if
+  ///   there are no apps.
   func getAppConfiguration(
     _ name: String?
   ) throws(PackageConfiguration.Error) -> (name: String, app: AppConfiguration.Flat) {
@@ -279,8 +280,10 @@ extension PackageConfiguration.Flat {
       return (name: name, app: selected)
     } else if let first = apps.first, apps.count == 1 {
       return (name: first.key, app: first.value)
-    } else {
+    } else if apps.count > 1 {
       throw PackageConfiguration.Error(.multipleAppsAndNoneSpecified)
+    } else { // apps.count == 0
+      throw PackageConfiguration.Error(.noApps)
     }
   }
 }
