@@ -22,8 +22,6 @@ extension ErrorHandledCommand {
 
 extension ErrorHandledCommand {
   func validate() {
-    // A bit of a hack to set the verbosity level whenever the verbose option is
-    // set on the root command
     if verbose {
       log.logLevel = .debug
     }
@@ -31,7 +29,7 @@ extension ErrorHandledCommand {
     do {
       try wrappedValidate()
     } catch {
-      log.error("\(chainDescription(for: error, verbose: verbose))")
+      displayError(error, verbose: verbose, displayHints: true)
       Foundation.exit(1)
     }
   }
@@ -40,7 +38,7 @@ extension ErrorHandledCommand {
     do {
       try await wrappedRun()
     } catch {
-      log.error("\(chainDescription(for: error, verbose: verbose))")
+      displayError(error, verbose: verbose, displayHints: true)
       Foundation.exit(1)
     }
   }
