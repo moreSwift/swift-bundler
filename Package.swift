@@ -37,7 +37,7 @@ let package = Package(
     .plugin(name: "SwiftBundlerCommandPlugin", targets: ["SwiftBundlerCommandPlugin"]),
   ],
   dependencies: [
-    .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
+    .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.7.1"),
     .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
     // This fork removes the dependency on swift-syntax (which was used for
     // features we don't use) to speed up Swift Bundler release builds
