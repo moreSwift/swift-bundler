@@ -23,6 +23,7 @@ struct Location: CustomStringConvertible {
 struct RichError<Message: Error>: Throwable, RichErrorProtocol {
   var message: Message?
   var cause: (any Error)?
+  var hint: String?
   var location: Location
 
   var erasedMessage: (any Error)? {
@@ -37,19 +38,28 @@ struct RichError<Message: Error>: Throwable, RichErrorProtocol {
   init(
     _ message: Message,
     cause: (any Error)? = nil,
+    hint: String? = nil,
     file: String = #file,
     line: Int = #line,
     column: Int = #column
   ) {
     self.message = message
     self.cause = cause
+    self.hint = hint
     self.location = Location(file: file, line: line, column: column)
   }
 
   /// Creates a rich error with an underlying cause but no message.
-  init(cause: any Error, file: String = #file, line: Int = #line, column: Int = #column) {
+  init(
+    cause: any Error,
+    hint: String? = nil,
+    file: String = #file,
+    line: Int = #line,
+    column: Int = #column
+  ) {
     self.message = nil
     self.cause = cause
+    self.hint = hint
     self.location = Location(file: file, line: line, column: column)
   }
 
@@ -60,12 +70,14 @@ struct RichError<Message: Error>: Throwable, RichErrorProtocol {
   init(
     _ message: Message?,
     cause: any Error,
+    hint: String? = nil,
     file: String = #file,
     line: Int = #line,
     column: Int = #column
   ) {
     self.message = message
     self.cause = cause
+    self.hint = hint
     self.location = Location(file: file, line: line, column: column)
   }
 
@@ -164,6 +176,7 @@ protocol RichErrorProtocol: Throwable {
   var erasedMessage: (any Error)? { get }
   var messageType: any Error.Type { get }
   var cause: (any Error)? { get }
+  var hint: String? { get }
   var location: Location { get }
 }
 
@@ -327,5 +340,29 @@ func chainDescription(for error: any Error, verbose: Bool) -> String {
     return output
   } else {
     return inlineErrorDescription(for: error, verbose: verbose)
+  }
+}
+
+func hints(containedIn error: any Error) -> [String] {
+  var currentError = error
+  var hints: [String] = []
+  while let richError = currentError as? RichErrorProtocol {
+    if let hint = richError.hint {
+      hints.append(hint)
+    }
+
+    guard let nextError = richError.cause else {
+      break
+    }
+    currentError = nextError
+  }
+  return hints
+}
+
+func displayError(_ error: any Error, verbose: Bool, displayHints: Bool) {
+  log.error("\(chainDescription(for: error, verbose: verbose))")
+  let hints = hints(containedIn: error)
+  for hint in hints {
+    log.info("\(hint)")
   }
 }
