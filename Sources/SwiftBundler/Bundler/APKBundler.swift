@@ -811,20 +811,6 @@ enum APKBundler: Bundler {
       public class MainActivity extends AppCompatActivity {
           private native void setup();
 
-          public int getWindowWidth() {
-              WindowMetrics windowMetrics = this.getWindowManager().getCurrentWindowMetrics();
-              Insets insets = windowMetrics.getWindowInsets()
-                      .getInsetsIgnoringVisibility(WindowInsets.Type.systemBars());
-              return windowMetrics.getBounds().width() - insets.left - insets.right;
-          }
-
-          public int getWindowHeight() {
-              WindowMetrics windowMetrics = this.getWindowManager().getCurrentWindowMetrics();
-              Insets insets = windowMetrics.getWindowInsets()
-                      .getInsetsIgnoringVisibility(WindowInsets.Type.systemBars());
-              return windowMetrics.getBounds().height() - insets.top - insets.bottom;
-          }
-
           @Override
           protected void onCreate(Bundle savedInstanceState) {
               super.onCreate(savedInstanceState);
