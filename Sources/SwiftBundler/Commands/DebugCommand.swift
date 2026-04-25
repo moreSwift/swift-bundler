@@ -70,7 +70,7 @@ struct DebugCommand: AsyncParsableCommand {
         try SwiftSDKManager.enumerateInstalledSwiftSDKs()
       }
 
-      try displayOutput(sdks, json: json) { sdk in
+      try displayKeyedOutputList(sdks, json: json) { sdk in
         let name = "\(sdk.artifactIdentifier):\(sdk.triple)"
         return KeyedList.Entry(name.bold) {
           sdk.artifactVariant.path
@@ -98,7 +98,7 @@ struct DebugCommand: AsyncParsableCommand {
         try await SwiftToolchainManager.locateSwiftToolchains()
       }
 
-      try DebugCommand.displayOutput(toolchains, json: json) { toolchain in
+      try DebugCommand.displayKeyedOutputList(toolchains, json: json) { toolchain in
         KeyedList.Entry(toolchain.displayName.bold, toolchain.root.path)
       }
     }
@@ -131,7 +131,7 @@ struct DebugCommand: AsyncParsableCommand {
         NDKVersion(ndk: ndk, version: version)
       }
 
-      try DebugCommand.displayOutput(ndkVersions, json: json) { ndkVersion in
+      try DebugCommand.displayKeyedOutputList(ndkVersions, json: json) { ndkVersion in
         KeyedList.Entry(ndkVersion.version.description.bold, ndkVersion.ndk.path)
       }
     }
@@ -152,7 +152,7 @@ struct DebugCommand: AsyncParsableCommand {
     print(string)
   }
 
-  static func displayOutput<Item: Encodable>(
+  static func displayKeyedOutputList<Item: Encodable>(
     _ items: [Item],
     json: Bool,
     entry: (Item) -> KeyedList.Entry
@@ -167,6 +167,19 @@ struct DebugCommand: AsyncParsableCommand {
       }
 
       print(output.description)
+    }
+  }
+
+  static func displayOutput<Item: Encodable>(
+    _ items: [Item],
+    json: Bool,
+    @OutputBuilder output: () -> String
+  ) throws(RichError<SwiftBundlerError>) {
+    if json {
+      try displayJSONOutput(items)
+    } else {
+      let output = output()
+      print(output)
     }
   }
 }
