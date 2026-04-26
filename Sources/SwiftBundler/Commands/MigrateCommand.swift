@@ -1,33 +1,32 @@
 import ArgumentParser
 import Foundation
 
-/// The command for migrating project config files to the latest format.
-struct MigrateCommand: ErrorHandledCommand {
+/// A deprecated and hidden copy of the 'swift bundler config migrate' subcommand.
+struct MigrateCommand: AsyncParsableCommand {
   static var configuration = CommandConfiguration(
     commandName: "migrate",
-    abstract: "Migrate a project's config file to the latest format."
+    abstract: """
+      Deprecated version of 'swift bundler config migrate' provided for backwards \
+      compatibility.
+      """,
+    shouldDisplay: false
   )
 
-  /// The directory containing the package to build.
-  @Option(
-    name: [.customShort("d"), .customLong("directory")],
-    help: "The directory containing the package to build.",
-    transform: URL.init(fileURLWithPath:))
-  var packageDirectory: URL?
+  @OptionGroup
+  var wrappedCommand: ConfigMigrateCommand
 
-  @Flag(
-    name: .shortAndLong,
-    help: "Print verbose error messages.")
-  public var verbose = false
+  func validate() throws {
+    log.warning(
+      """
+      'swift bundler migrate' has been deprecated; please use 'swift bundler \
+      config migrate' instead
+      """
+    )
+    print()
+    wrappedCommand.validate()
+  }
 
-  func wrappedRun() async throws(RichError<SwiftBundlerError>) {
-    _ = try await RichError<SwiftBundlerError>.catch {
-      try await PackageConfiguration.load(
-        fromDirectory: packageDirectory ?? URL(fileURLWithPath: "."),
-        migrateConfiguration: true
-      )
-    }
-
-    log.info("Successfully migrated configuration to the latest format.")
+  func run() async throws {
+    await wrappedCommand.run()
   }
 }

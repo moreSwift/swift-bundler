@@ -6,7 +6,7 @@ import TOMLKit
 struct ConvertCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "convert",
-    abstract: "Converts an xcodeproj to a Swift Bundler project."
+    abstract: "Convert an xcodeproj to a Swift Bundler project."
   )
 
   @Argument(
