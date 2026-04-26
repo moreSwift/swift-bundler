@@ -204,7 +204,7 @@ extension SwiftPackageManager {
     /// Determine transitive dependencies that are yet to be loaded and return
     /// them for further processing.
     var queuedDependencies: [PackageManifest.PackageDependency] = []
-    state.withLock { state in
+    try state.withLock { state throws(Error) in
       state.dependencyPackages[reference] = package.withReferences
 
       for transitiveDependency in package.dependencies {
@@ -218,7 +218,7 @@ extension SwiftPackageManager {
           continue
         }
 
-        let isUsed = dependencyIsPubliclyUsed(
+        let isUsed = try dependencyIsPubliclyUsed(
           dependency: transitiveDependency,
           package: package
         )
@@ -286,25 +286,55 @@ extension SwiftPackageManager {
   private static func dependencyIsPubliclyUsed(
     dependency: PackageManifest.PackageDependency,
     package: Package<PackageManifest.PackageDependency>
-  ) -> Bool {
+  ) throws(Error) -> Bool {
     // Only load a transitive dependency if it's used by a product, because
     // anything else gets counted as an internal detail by SwiftPM, which
     // leads to SwiftPM not checking out said dependency.
-    return package.products.contains { productName, product in
-      let productTargets = package.targets.filter { targetName, _ in
-        product.targets.contains(targetName)
-      }.values
 
-      return productTargets.contains { target in
-        target.dependencies.contains { targetDependency in
-          switch targetDependency {
-            case .product(let packageIdentity, _, _):
-              dependency.identity == packageIdentity
-            default:
-              false
-          }
+    let directlyUsedTargets = package.products
+      .filter { _, product in
+        switch product.productType {
+          case .executable, .library:
+            return true
+          case .macro, .plugin:
+            return false
+        }
+      }
+      .flatMap(\.value.targets)
+
+    var queue = Array(
+      package.targets.filter { targetName, _ in
+        directlyUsedTargets.contains(targetName)
+      }.values
+    )
+    var seen = Set(queue.map(\.name))
+
+    while let target = queue.popLast() {
+      for targetDependency in target.dependencies {
+        switch targetDependency {
+          case .product(let packageIdentity, _, _):
+            if dependency.identity == packageIdentity {
+              return true
+            }
+          case .target(let targetName, _):
+            if seen.insert(targetName).inserted {
+              guard let target = package.targets[targetName] else {
+                throw Error(.targetNotFoundInPackage(targetName, package.reference))
+              }
+
+              switch target.kind {
+                case .library, .executable, .systemTarget:
+                  break
+                case .binary, .macro, .plugin, .snippet, .test:
+                  continue
+              }
+
+              queue.append(target)
+            }
         }
       }
     }
+
+    return false
   }
 }
