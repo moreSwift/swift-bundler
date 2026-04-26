@@ -269,7 +269,7 @@ enum SwiftPackageManager {
         if buildContext.genericContext.configuration == .debug {
           debugArguments = [
             "-Xswiftc", "-g",
-            "-Xswiftc", "-debug-info-format=codeview",
+            "-debug-info-format", "codeview",
             "-Xlinker", "-debug",
           ]
         } else {
