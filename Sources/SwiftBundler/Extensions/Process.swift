@@ -339,14 +339,27 @@ extension Process {
     }
 
     do {
-      let path = try await Process.create(
-        "/bin/sh",
-        arguments: [
-          "-c",
-          "which \(tool)",
-        ],
-        runSilentlyWhenNotVerbose: false
-      ).getOutput()
+      let path: String
+      switch HostPlatform.hostPlatform {
+        case .linux, .macOS:
+          path = try await Process.create(
+            "/bin/sh",
+            arguments: [
+              "-c",
+              "which \(tool)",
+            ],
+            runSilentlyWhenNotVerbose: false
+          ).getOutput()
+        case .windows:
+          path = try await Process.create(
+            "C:\\Windows\\System32\\cmd.exe",
+            arguments: [
+              "/c",
+              "where \(tool)",
+            ],
+            runSilentlyWhenNotVerbose: false
+          ).getOutput()
+      }
 
       return path.trimmingCharacters(in: .whitespacesAndNewlines)
     } catch {
