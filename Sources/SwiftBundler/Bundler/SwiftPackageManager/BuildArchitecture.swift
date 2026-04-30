@@ -54,8 +54,22 @@ enum BuildArchitecture: String, CaseIterable, ExpressibleByArgument {
         "arm"
     }
   }
-}
 
+  /// The name that Windows tools use for the architecture. This is
+  /// different to the name that SwiftPM uses and Android.
+  var windowsName: String {
+    switch self {
+      case .arm64:
+        "arm64"
+      case .armv7:
+        "arm"
+      case .x86_64:
+        "x64"
+      case .x86:
+        "x86"
+    }
+  }
+}
 extension BuildArchitecture {
   init?(fromAndroidName androidName: String) {
     switch androidName {
