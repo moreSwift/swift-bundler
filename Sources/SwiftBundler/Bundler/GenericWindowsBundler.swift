@@ -130,7 +130,7 @@ enum GenericWindowsBundler: Bundler {
 
     let resourceFile = context.outputDirectory / "icon.res"
     return [
-      "-Xlinker", resourceFile.path
+      "-Xlinker", resourceFile.path,
     ]
   }
 
@@ -175,6 +175,39 @@ enum GenericWindowsBundler: Bundler {
     return icoFile
   }
 
+  static func prepareMSIXIcon(
+    iconPath: String?,
+    context: BundlerContext,
+    skipIfPresent: Bool = false,
+    outputURL: URL
+  ) throws(Error) {
+    if skipIfPresent && outputURL.exists() {
+      return
+    }
+
+    let image: Image<RGBA>
+    if let iconPath {
+      let icon = context.packageDirectory / iconPath
+      image = try Error.catch(withMessage: .failedToLoadIcon(icon)) {
+        let imageData = try Data(contentsOf: icon)
+        return try Image<RGBA>.load(from: Array(imageData))
+      }
+    } else {
+      image = Image<RGBA>.init(
+        width: 300, height: 300, pixels: Array(repeating: .init(0, 0, 0, 0), count: 300 * 300))
+    }
+
+    let scaledImage = image.linearlyDownscale(toWidth: 300, height: 300)
+
+    let pngData = try Error.catch(withMessage: .failedToEncodePng) {
+      try scaledImage.encodeToPNG()
+    }
+
+    try Error.catch {
+      try Data(pngData).write(to: outputURL)
+    }
+  }
+
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
@@ -201,6 +234,33 @@ enum GenericWindowsBundler: Bundler {
     try structure.createDirectories()
 
     try copyExecutable(at: executableArtifact, to: structure.mainExecutable)
+
+    if context.appConfiguration.msix != nil {
+      log.info("Creating appx manifest")
+      try structure.createAssetsDirectory()
+
+      let manifestURL = structure.root / "AppxManifest.xml"
+      let iconURL = structure.assets / "AppIcon.png"
+
+      try prepareMSIXIcon(
+        iconPath: context.appConfiguration.icon,
+        context: context,
+        skipIfPresent: true,
+        outputURL: iconURL
+      )
+
+      try Error.catch {
+        try AppxManifestCreator.createManifest(
+          for: context,
+          withIcons: .init(
+            square150x150: iconURL.windowsPath(relativeTo: structure.root),
+            square44x44: iconURL.windowsPath(relativeTo: structure.root)
+          ),
+          executablePath: structure.mainExecutable.windowsPath(relativeTo: structure.root),
+          outputURL: manifestURL
+        )
+      }
+    }
 
     if let codeSigningContext = context.windowsCodeSigningContext {
       log.info("Signing executable")
@@ -263,7 +323,7 @@ enum GenericWindowsBundler: Bundler {
         "-open", executable.path, "-save", executable.path,
         "-action", "addoverwrite",
         "-res", icoFile.path,
-        "-mask", "ICONGROUP,APP"
+        "-mask", "ICONGROUP,APP",
       ]
     )
 
@@ -359,7 +419,7 @@ enum GenericWindowsBundler: Bundler {
         }
       }
     }
-    
+
     log.info("Copying dynamic libraries (and Swift runtime)")
     try await copyDynamicLibraryDependencies(
       of: structure.mainExecutable,

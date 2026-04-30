@@ -11,6 +11,9 @@ extension GenericWindowsBundler {
     var resources: URL
     /// The main executable.
     var mainExecutable: URL
+    /// The assets directory for the MSIX bundle.
+    /// Only used if the app configuration contains MSIX fields.
+    var assets: URL
 
     /// Represents the bundle structure using the simple ``BundlerOutputStructure``
     /// data type.
@@ -30,9 +33,10 @@ extension GenericWindowsBundler {
       modules = root
       resources = root
       mainExecutable = modules / "\(appName).exe"
+      assets = root / "Assets"
     }
 
-    /// Creates all directories (including intermediate directories) required to
+    /// Creates all directories (excluding the assets directory) required to
     /// create this bundle structure.
     func createDirectories() throws(Error) {
       for directory in directories {
@@ -41,6 +45,14 @@ extension GenericWindowsBundler {
           errorMessage: ErrorMessage.failedToCreateDirectory
         )
       }
+    }
+
+    /// Creates the assets directory required for MSIX bundles.
+    func createAssetsDirectory() throws(Error) {
+      try FileManager.default.createDirectory(
+        at: assets,
+        errorMessage: ErrorMessage.failedToCreateDirectory
+      )
     }
   }
 }
