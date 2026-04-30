@@ -17,7 +17,7 @@ enum AppxManifestCreator {
     let identity: AppxIdentity
     let properties: AppxProperties
     let resources: AppxResources
-    let dependencies: [AppxDependencies]
+    let dependencies: AppxDependencies
     let capabilities: AppxCapabilities
     let applications: AppxApplications
   }
@@ -81,15 +81,52 @@ enum AppxManifestCreator {
 
   /// The `<Dependencies>` element, which contains the dependencies of the
   /// package, such as packages or device family dependencies.
-  enum AppxDependencies: Codable {
-    enum CodingKeys: String, CodingKey, XMLChoiceCodingKey {
+  struct AppxDependencies: Codable {
+    enum CodingKeys: String, CodingKey {
       case targetDeviceFamily = "TargetDeviceFamily"
       case packageDependency = "PackageDependency"
     }
 
-    enum TargetDeviceFamilyCodingKeys: String, CodingKey { case _0 = "" }
-    enum PackageDependencyCodingKeys: String, CodingKey { case _0 = "" }
+    let dependencies: [AppxDependency]
 
+    init(_ dependencies: [AppxDependency]) {
+      self.dependencies = dependencies
+    }
+
+    func encode(to encoder: Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      for dependency in dependencies {
+        switch dependency {
+          case .targetDeviceFamily(let value):
+            try container.encode(value, forKey: .targetDeviceFamily)
+          case .packageDependency(let value):
+            try container.encode(value, forKey: .packageDependency)
+        }
+      }
+    }
+
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      var result: [AppxDependency] = []
+      if let families = try container.decodeIfPresent(
+        [AppxTargetDeviceFamily].self,
+        forKey: .targetDeviceFamily
+      ) {
+        result.append(contentsOf: families.map(AppxDependency.targetDeviceFamily))
+      }
+      if let packages = try container.decodeIfPresent(
+        [AppxPackageDependency].self,
+        forKey: .packageDependency
+      ) {
+        result.append(contentsOf: packages.map(AppxDependency.packageDependency))
+      }
+      self.dependencies = result
+    }
+  }
+
+  /// A single dependency entry inside `<Dependencies>` — either a target
+  /// device family or a package dependency.
+  enum AppxDependency: Codable {
     case targetDeviceFamily(AppxTargetDeviceFamily)
     case packageDependency(AppxPackageDependency)
   }
@@ -511,15 +548,26 @@ enum AppxManifestCreator {
       resources: AppxResources(
         resource: [AppxResource(language: "en-US")]  // todo: configure languages
       ),
-      dependencies: [
-        .targetDeviceFamily(
-          AppxTargetDeviceFamily(
-            name: "Windows.Desktop",
-            minVersion: "10.0.19041.0",
-            maxVersionTested: "10.0.19041.0"
+      dependencies: AppxDependencies(
+        [
+          .targetDeviceFamily(
+            AppxTargetDeviceFamily(
+              name: "Windows.Desktop",
+              minVersion: "10.0.19041.0",
+              maxVersionTested: "10.0.19041.0"
+            )
           )
-        )
-      ],
+        ]
+          + msixConfig.dependencies.map { dependency in
+            AppxDependency.packageDependency(
+              AppxPackageDependency(
+                name: dependency.name,
+                publisher: dependency.publisher,
+                minVersion: dependency.minimumVersion.stringValue
+              )
+            )
+          }
+      ),
       capabilities: AppxCapabilities(
         capability: [
           AppxCapability(name: "runFullTrust")

@@ -1,6 +1,6 @@
 import Foundation
 
-/// MSI bundler related configuration properties.
+/// MSIX bundler related configuration properties.
 @Configuration(overlayable: false)
 struct MSIXBundlerConfiguration: Codable, Sendable {
   var displayName: String
@@ -8,4 +8,5 @@ struct MSIXBundlerConfiguration: Codable, Sendable {
   var backgroundColor: String
   var publisher: String
   var publisherDisplayName: String
+  var dependencies: [MSIXDependency]?
 }
