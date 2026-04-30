@@ -46,6 +46,52 @@ extension URL {
     return relComponents.joined(separator: "/")
   }
 
+  /// Gets the Windows-style path of this URL relative to another URL.
+  ///
+  /// This is like ``URL/path(relativeTo:)``, but using `\` as a separator.
+  /// - Parameters:
+  ///   - base: The base for the relative path.
+  ///   - includeLeadingDot: Whether to include `.\` at the start when the
+  ///     relative path has no parent-directory traversal. Defaults to `false`.
+  /// - Returns: The relative path if both this URL and the base URL are files,
+  ///   otherwise the result is undefined. It used to return `nil` in that case,
+  ///   but since I know I'll be moving to a proper file path type soon, I won't
+  ///   clog up new code with the issues of `URL`.
+  func windowsPath(relativeTo base: URL, includeLeadingDot: Bool = false) -> String {
+    let destComponents = self.pathComponents
+    let baseComponents = base.pathComponents
+
+    // If we're on Windows and the URLs point to two different drives,
+    // just return the full absolute path.
+    if HostPlatform.hostPlatform == .windows,
+      destComponents.count >= 2,
+      baseComponents.count >= 2,
+      destComponents[0] == "/",
+      baseComponents[0] == "/",
+      // The drive letters follow the `/` component.
+      destComponents[1] != baseComponents[1]
+    {
+      return self.path.replacingOccurrences(of: "/", with: "\\")
+    }
+
+    // Find number of common path components:
+    var commonComponentCount = 0
+    while commonComponentCount < destComponents.count
+      && commonComponentCount < baseComponents.count
+      && destComponents[commonComponentCount] == baseComponents[commonComponentCount]
+    {
+      commonComponentCount += 1
+    }
+
+    // Build relative path:
+    var relComponents = Array(repeating: "..", count: baseComponents.count - commonComponentCount)
+    if relComponents.isEmpty && includeLeadingDot {
+      relComponents.append(".")
+    }
+    relComponents.append(contentsOf: destComponents[commonComponentCount...])
+    return relComponents.joined(separator: "\\")
+  }
+
   /// The date at which the underlying file or directory was last modified, if
   /// the file exists and the date can be retrieved.
   var lastModified: Date? {
