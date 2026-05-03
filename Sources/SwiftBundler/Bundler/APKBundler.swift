@@ -132,11 +132,11 @@ enum APKBundler: Bundler {
 
     let ndk = try Error.catch {
       guard let ndk = try SwiftSDKManager.getLinkedNDK(fromAndroidSDK: swiftSDK) else {
-         log.warning(
+        log.warning(
           """
           Failed to retrieve linked NDK from Swift Android SDK; falling back to latest NDK
           """
-         )
+        )
         return try AndroidSDKManager.getLatestNDK(availableIn: androidSDK)       
       }
 

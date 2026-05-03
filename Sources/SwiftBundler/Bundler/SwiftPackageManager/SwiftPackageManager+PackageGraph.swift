@@ -212,8 +212,7 @@ extension SwiftPackageManager {
         let dependencyReference = PackageReference(identity: transitiveDependency.identity)
         guard
           !state.coveredDependencies.contains(
-            where: { $0.identity == transitiveDependency.identity
-          }
+            where: { $0.identity == transitiveDependency.identity }
           )
         else {
           continue
