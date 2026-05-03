@@ -22,6 +22,13 @@ Contributions of all kinds are very welcome! Just make sure to follow the [guide
 9. Catch blocks should attach the underlying error to the thrown rich error via the `cause` parameter to form an error chain.
 10. Errors should provide as much context as you think a user would need to understand what happened (if possible)
 
+## Code formatting
+
+We use Nick Lockwood's [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) tool
+with the configuration file at [.swiftformat](./.swiftformat). This tool should cover
+most of our formatting preferences, and we will improve the config over time to catch
+more undesirable patterns automatically. 
+
 ## Creating tests
 
 ### Creating and using test fixtures

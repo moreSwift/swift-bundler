@@ -1,1 +1,4 @@
-swift format --in-place --recursive --configuration .swift-format Sources Plugins Package.swift
+#!/bin/bash
+
+# This requires https://github.com/nicklockwood/SwiftFormat
+swiftformat .
