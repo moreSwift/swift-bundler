@@ -420,7 +420,7 @@ enum GenericLinuxBundler: Bundler {
       .replacingOccurrences(of: " ", with: "\\ ")
     var properties = [
       ("Type", "Application"),
-      ("Version", "1.0"),  // The version of the target desktop spec, not the app
+      ("Version", "1.0"), // The version of the target desktop spec, not the app
       ("Name", appName),
       ("Comment", appConfiguration.appDescriptionOrDefault),
       ("Exec", "\(escapedExecPath) %U"),

@@ -162,7 +162,8 @@
 
       static let none = EventFlags(rawValue: kFSEventStreamEventFlagNone)
       static let mustScanSubDirs = EventFlags(
-        rawValue: kFSEventStreamEventFlagMustScanSubDirs)
+        rawValue: kFSEventStreamEventFlagMustScanSubDirs
+      )
       static let userDropped = EventFlags(rawValue: kFSEventStreamEventFlagUserDropped)
       static let kernelDropped = EventFlags(rawValue: kFSEventStreamEventFlagKernelDropped)
       static let idsWrapped = EventFlags(rawValue: kFSEventStreamEventFlagEventIdsWrapped)
@@ -174,13 +175,16 @@
       static let itemCreated = EventFlags(rawValue: kFSEventStreamEventFlagItemCreated)
       static let itemRemoved = EventFlags(rawValue: kFSEventStreamEventFlagItemRemoved)
       static let itemInodeMetaMod = EventFlags(
-        rawValue: kFSEventStreamEventFlagItemInodeMetaMod)
+        rawValue: kFSEventStreamEventFlagItemInodeMetaMod
+      )
       static let itemRenamed = EventFlags(rawValue: kFSEventStreamEventFlagItemRenamed)
       static let itemModified = EventFlags(rawValue: kFSEventStreamEventFlagItemModified)
       static let itemFinderInfoMod = EventFlags(
-        rawValue: kFSEventStreamEventFlagItemFinderInfoMod)
+        rawValue: kFSEventStreamEventFlagItemFinderInfoMod
+      )
       static let itemChangeOwner = EventFlags(
-        rawValue: kFSEventStreamEventFlagItemChangeOwner)
+        rawValue: kFSEventStreamEventFlagItemChangeOwner
+      )
       static let itemXattrMod = EventFlags(rawValue: kFSEventStreamEventFlagItemXattrMod)
       static let itemIsFile = EventFlags(rawValue: kFSEventStreamEventFlagItemIsFile)
       static let itemIsDir = EventFlags(rawValue: kFSEventStreamEventFlagItemIsDir)
@@ -188,7 +192,8 @@
       static let ownEvent = EventFlags(rawValue: kFSEventStreamEventFlagOwnEvent)
       static let itemIsHardlink = EventFlags(rawValue: kFSEventStreamEventFlagItemIsHardlink)
       static let itemIsLastHardlink = EventFlags(
-        rawValue: kFSEventStreamEventFlagItemIsLastHardlink)
+        rawValue: kFSEventStreamEventFlagItemIsLastHardlink
+      )
 
       var hashValue: Int {
         return rawValue.hashValue
@@ -266,7 +271,8 @@
             else {
               throw CriticalError(
                 code: .unexpectedPathValueType,
-                message: "Cannot convert `\(eventPaths1)` into [String].")
+                message: "Cannot convert `\(eventPaths1)` into [String]."
+              )
             }
 
             guard numEvents == eventPaths2.count else {
@@ -281,7 +287,8 @@
               let eventPath = eventPaths2[index]
               let eventFlag = eventFlags[index]
               let eventFlag1 = CoreServicesFileSystemWatcher.EventFlags(
-                rawValue: eventFlag)
+                rawValue: eventFlag
+              )
               let eventId = eventIds[index]
               let eventId1 = CoreServicesFileSystemWatcher.EventID(rawValue: eventId)
               let event = CoreServicesFileSystemWatcher.Event(

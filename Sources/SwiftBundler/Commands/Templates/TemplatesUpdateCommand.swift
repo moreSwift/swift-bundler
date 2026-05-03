@@ -10,7 +10,8 @@ struct TemplatesUpdateCommand: ErrorHandledCommand {
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {

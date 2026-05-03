@@ -11,19 +11,22 @@ struct TemplatesInfoCommand: ErrorHandledCommand {
 
   /// The template to get info about.
   @Argument(
-    help: "The template to get info about.")
+    help: "The template to get info about."
+  )
   var template: String
 
   /// The directory to search for templates in.
   @Option(
     name: .long,
     help: "An alternate directory to search for the template in.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var templateRepository: URL?
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {

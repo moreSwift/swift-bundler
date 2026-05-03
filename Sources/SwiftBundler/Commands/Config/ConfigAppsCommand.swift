@@ -7,7 +7,7 @@ struct ConfigAppsCommand: AsyncParsableCommand {
     commandName: "apps",
     abstract: "View and manage app configuration.",
     subcommands: [
-        ConfigAppsListCommand.self,
+      ConfigAppsListCommand.self,
     ],
     defaultSubcommand: ConfigAppsListCommand.self
   )

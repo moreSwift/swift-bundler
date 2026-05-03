@@ -113,7 +113,7 @@ enum MetalCompiler {
       "-sdk", platform.sdkName, "metal",
       "-o", outputFile.path,
       "-c", shader.path,
-      "-gline-tables-only",  // TODO: disable these in distribution builds
+      "-gline-tables-only", // TODO: disable these in distribution builds
       "-frecord-sources",
     ]
 

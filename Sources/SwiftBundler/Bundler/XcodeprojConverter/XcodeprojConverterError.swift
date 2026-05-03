@@ -52,7 +52,6 @@ extension XcodeprojConverter {
           return "Failed to load xcworkspace from '\(file.relativePath)'"
         case .failedToCreateAppConfiguration(let target):
           return "Failed to create app configuration for '\(target)'"
-
         #if SUPPORT_XCODEPROJ
           case .unsupportedFilePathType(let pathType):
             return "Unsupported file path type '\(pathType.description)'"

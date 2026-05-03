@@ -26,12 +26,14 @@ struct DebugCommand: AsyncParsableCommand {
     /// An alternative Swift toolchain to use.
     @Option(
       help: "An alternative Swift toolchain to use",
-      transform: URL.init(fileURLWithPath:))
+      transform: URL.init(fileURLWithPath:)
+    )
     var toolchain: URL?
 
     @Flag(
       name: .shortAndLong,
-      help: "Print verbose error messages.")
+      help: "Print verbose error messages."
+    )
     var verbose = false
 
     func wrappedRun() async throws(RichError<SwiftBundlerError>) {
@@ -59,7 +61,8 @@ struct DebugCommand: AsyncParsableCommand {
 
     @Flag(
       name: .shortAndLong,
-      help: "Print verbose error messages.")
+      help: "Print verbose error messages."
+    )
     var verbose = false
 
     @Flag(help: "Display the output as JSON (includes more information)")
@@ -87,7 +90,8 @@ struct DebugCommand: AsyncParsableCommand {
 
     @Flag(
       name: .shortAndLong,
-      help: "Print verbose error messages.")
+      help: "Print verbose error messages."
+    )
     var verbose = false
 
     @Flag(help: "Display the output as JSON (includes more information)")
@@ -112,7 +116,8 @@ struct DebugCommand: AsyncParsableCommand {
 
     @Flag(
       name: .shortAndLong,
-      help: "Print verbose error messages.")
+      help: "Print verbose error messages."
+    )
     var verbose = false
 
     @Flag(help: "Display the output as JSON (includes more information)")

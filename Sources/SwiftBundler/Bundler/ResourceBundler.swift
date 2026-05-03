@@ -36,7 +36,7 @@ enum ResourceBundler {
           "--minimum-deployment-target", platformVersion,
           "--output-partial-info-plist", "/dev/null",
         ] + targetDeviceArguments
-          + assetCatalogs.map { $0.path }
+          + assetCatalogs.map(\.path)
       ).runAndWait()
     }
   }
@@ -188,7 +188,8 @@ enum ResourceBundler {
     if let iconURL, iconURL.pathExtension.lowercased() == "icon", isMainBundle {
       let tempIconURL = destinationBundleResources.appendingPathComponent("AppIcon.icon")
       try FileManager.default.copyItem(
-        at: iconURL, to: tempIconURL, errorMessage: ErrorMessage.failedToCopyResource)
+        at: iconURL, to: tempIconURL, errorMessage: ErrorMessage.failedToCopyResource
+      )
       layeredIcon = [tempIconURL]
     } else {
       layeredIcon = []

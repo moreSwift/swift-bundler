@@ -13,22 +13,26 @@ struct SimulatorsSimctlBootCommand: ErrorHandledCommand {
     help: """
       The id or name of the simulator to start. Substring matching is used \
       when filtering simulator names.
-      """)
+      """
+  )
   var idOrName: String
 
   @Argument(
     parsing: .postTerminator,
-    help: "Additional arguments to pass through to simctl.")
+    help: "Additional arguments to pass through to simctl."
+  )
   var simctlArguments: [String] = []
 
   @Option(
     name: .customLong("arch"),
-    help: "Architecture for the simulator.")
+    help: "Architecture for the simulator."
+  )
   var architecture: BuildArchitecture?
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedValidate() throws(RichError<SwiftBundlerError>) {

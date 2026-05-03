@@ -9,7 +9,7 @@ enum SimulatorManager {
     var simulators: [Simulator] = []
 
     let oses = oses ?? SimulatorOS.allCases
-    if HostPlatform.hostPlatform == .macOS && oses.contains(where: { $0.isAppleOS }) {
+    if HostPlatform.hostPlatform == .macOS && oses.contains(where: \.isAppleOS) {
       log.debug("Enumerating Apple simulators")
       let appleSimulators = try await Error.catch {
         try await AppleSimulatorManager.listAvailableSimulators()

@@ -300,7 +300,8 @@ enum DarwinCodeSigner {
         The certificate with SHA-1 hash '\(identity.id)' corresponding to \
         identity '\(identity.name)' expires soon; not valid after \
         \(certificate.notValidAfter)
-        """)
+        """
+      )
     }
 
     return certificate

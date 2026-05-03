@@ -9,7 +9,8 @@ struct SimulatorsListCommand: ErrorHandledCommand {
   )
 
   @Option(
-    help: "A search term to filter simulators with.")
+    help: "A search term to filter simulators with."
+  )
   var filter: String?
 
   @Option(
@@ -21,27 +22,32 @@ struct SimulatorsListCommand: ErrorHandledCommand {
       }
 
       return os
-    })
+    }
+  )
   public var oses: [SimulatorOS] = []
 
   @Flag(
     name: .customLong("booted"),
-    help: "Only show booted simulators.")
+    help: "Only show booted simulators."
+  )
   public var filterBooted = false
 
   @Flag(
     name: .customLong("not-booted"),
-    help: "Only show simulators that aren't booted.")
+    help: "Only show simulators that aren't booted."
+  )
   public var filterNotBooted = false
 
   @Flag(
     name: .customLong("apple"),
-    help: "Only show Apple device simulators.")
+    help: "Only show Apple device simulators."
+  )
   public var filterApple = false
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedValidate() throws(RichError<SwiftBundlerError>) {
@@ -82,11 +88,11 @@ struct SimulatorsListCommand: ErrorHandledCommand {
       }
     }
 
-    let filteredAppleSimulators = filteredSimulators.filter { $0.os.isAppleOS }
+    let filteredAppleSimulators = filteredSimulators.filter(\.os.isAppleOS)
     let filteredAndroidSimulators = filteredSimulators.filter { $0.os == .android }
 
     Output {
-      if oses.contains(where: { $0.isAppleOS }) {
+      if oses.contains(where: \.isAppleOS) {
         Section("Apple simulators (iOS, tvOS, visionOS)") {
           if filteredAppleSimulators.isEmpty {
             "None found".italic

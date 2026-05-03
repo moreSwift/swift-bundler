@@ -13,12 +13,14 @@ struct SimulatorsBootCommand: ErrorHandledCommand {
     help: """
       The id or name of the simulator to start. Supports partial substring \
       matching.
-      """)
+      """
+  )
   var idOrName: String
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {

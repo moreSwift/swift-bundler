@@ -9,7 +9,8 @@ struct DevicesListCommand: ErrorHandledCommand {
   )
 
   @Option(
-    help: "A search term to filter devices with.")
+    help: "A search term to filter devices with."
+  )
   var filter: String?
 
   @Option(
@@ -21,17 +22,20 @@ struct DevicesListCommand: ErrorHandledCommand {
       }
 
       return os
-    })
+    }
+  )
   public var oses: [OS] = []
 
   @Flag(
     name: .customLong("apple"),
-    help: "Only show Apple device simulators.")
+    help: "Only show Apple device simulators."
+  )
   public var filterApple = false
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedValidate() throws(RichError<SwiftBundlerError>) {

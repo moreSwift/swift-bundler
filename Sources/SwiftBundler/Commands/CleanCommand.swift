@@ -12,25 +12,29 @@ struct CleanCommand: ErrorHandledCommand {
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "The directory containing the package to build.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var packageDirectory: URL?
 
   /// A custom scratch directory to clean. Defaults to `.build`.
   @Option(
     name: .customLong("scratch-path"),
     help: "A custom scratch directory path (default: .build)",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var scratchDirectory: URL?
 
   /// An alternative Swift toolchain to use.
   @Option(
     help: "An alternative Swift toolchain to use",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var toolchain: URL?
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
@@ -61,4 +65,3 @@ struct CleanCommand: ErrorHandledCommand {
     }
   }
 }
-

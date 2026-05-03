@@ -386,7 +386,8 @@ enum DarwinBundler: Bundler {
       }
     } else if inputIconFile.pathExtension == "icon" {
       log.info(
-        "Creating '\(outputIconFile.lastPathComponent)' from '\(inputIconFile.lastPathComponent)'")
+        "Creating '\(outputIconFile.lastPathComponent)' from '\(inputIconFile.lastPathComponent)'"
+      )
 
       partialInfoPlist = try await Error.catch(withMessage: .failedToCreateIcon) {
         return try await LayeredIconCompiler.createIcon(

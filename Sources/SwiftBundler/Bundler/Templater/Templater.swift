@@ -432,7 +432,8 @@ enum Templater {
 
     guard
       let enumerator = FileManager.default.enumerator(
-        at: templateDirectory, includingPropertiesForKeys: nil)
+        at: templateDirectory, includingPropertiesForKeys: nil
+      )
     else {
       let template = templateDirectory.lastPathComponent
       throw Error(.failedToEnumerateTemplateContents(template: template))

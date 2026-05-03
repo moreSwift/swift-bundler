@@ -136,7 +136,7 @@ enum APKBundler: Bundler {
           """
           Failed to retrieve linked NDK from Swift Android SDK; falling back to latest NDK
           """
-        )
+         )
         return try AndroidSDKManager.getLatestNDK(availableIn: androidSDK)       
       }
 
@@ -421,7 +421,6 @@ enum APKBundler: Bundler {
       ) else {
         throw Error(.failedToEnumerateJVMSources(directory, target))
       }
-
 
       var files: [URL] = []
       for item in enumerator {

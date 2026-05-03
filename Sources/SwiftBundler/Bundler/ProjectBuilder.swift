@@ -515,7 +515,6 @@ enum ProjectBuilder {
     }
   }
 
-
   static func checkoutLocalSource(
     destination: URL,
     destinationExists: Bool,

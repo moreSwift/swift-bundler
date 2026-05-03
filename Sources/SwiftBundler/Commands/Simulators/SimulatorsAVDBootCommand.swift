@@ -11,27 +11,32 @@ struct SimulatorsAVDBootCommand: ErrorHandledCommand {
   @Argument(
     help: """
       The name of the emulator to start. Supports partial substring matching.
-      """)
+      """
+  )
   var name: String
 
   @Argument(
     parsing: .postTerminator,
-    help: "Additional arguments for the 'emulator' CLI.")
+    help: "Additional arguments for the 'emulator' CLI."
+  )
   var emulatorArguments: [String] = []
 
   @Option(
     name: .customLong("arch"),
-    help: "Architecture to boot the emulator with.")
+    help: "Architecture to boot the emulator with."
+  )
   var architecture: BuildArchitecture
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   @Flag(
     name: .long,
-    help: "Attach to 'emulator' CLI after booting the emulator.")
+    help: "Attach to 'emulator' CLI after booting the emulator."
+  )
   var attach = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {

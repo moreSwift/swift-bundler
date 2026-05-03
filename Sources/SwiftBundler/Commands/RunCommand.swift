@@ -23,13 +23,15 @@ struct RunCommand: ErrorHandledCommand {
   @Option(
     name: [.customLong("env")],
     help: "A file containing environment variables to pass to the app.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var environmentFile: URL?
 
   /// If `true`, the building and bundling step is skipped.
   @Flag(
     name: .long,
-    help: "Skips the building and bundling steps.")
+    help: "Skips the building and bundling steps."
+  )
   var skipBuild = false
 
   /// If `true`, the app gets rebuilt whenever code changes occur, and a hot reloading server is
@@ -39,13 +41,15 @@ struct RunCommand: ErrorHandledCommand {
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   /// Command line arguments that get passed through to the app.
   @Argument(
     parsing: .postTerminator,
-    help: "Command line arguments to pass through to the app.")
+    help: "Command line arguments to pass through to the app."
+  )
   var passThroughArguments: [String] = []
 
   // MARK: Methods

@@ -1,0 +1,24 @@
+--swift-version 5.10
+--max-width 100
+--indent-case true
+--indent 2
+--no-space-operators ...,..<
+--pattern-let inline
+--semicolons never
+--strip-unused-args closure-only
+--wrap-parameters before-first
+--single-line-for-each convert
+--allow-partial-wrapping false
+--wrap-arguments before-first
+--wrap-parameters before-first
+--wrap-collections before-first
+--allow-partial-wrapping true
+--wrap-string-interpolation preserve
+--exclude Tests/SwiftBundlerTests/Fixtures
+--rules blockComments,consecutiveBlankLines, \
+        consecutiveSpaces,consistentSwitchCaseSpacing, \
+        docCommentsBeforeModifiers,duplicateImports, \
+        lineBreakAtEndOfFile,preferKeyPath, \
+        singlePropertyPerLine,spaceInsideComments, \
+        blankLinesAtEndOfScope,blankLinesAtStartOfScope, \
+        wrapArguments

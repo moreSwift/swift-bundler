@@ -4,7 +4,8 @@ import Foundation
 struct BundleArguments: ParsableArguments {
   /// The name of the app to build.
   @Argument(
-    help: "The name of the app to build.")
+    help: "The name of the app to build."
+  )
   var appName: String?
 
   /// The bundler to use.
@@ -15,13 +16,15 @@ struct BundleArguments: ParsableArguments {
         throw SwiftBundlerError.invalidBundlerChoice($0)
       }
       return choice
-    })
+    }
+  )
   var bundler: BundlerChoice?
 
   /// An alternative Swift toolchain to use.
   @Option(
     help: "An alternative Swift toolchain to use",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var toolchain: URL?
 
   /// The directory containing the package to build.
@@ -32,14 +35,16 @@ struct BundleArguments: ParsableArguments {
       The directory containing the package to build. This changes the working \
       directory before any other operation
       """,
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var packageDirectory: URL?
 
   /// Overrides the default configuration file location.
   @Option(
     name: [.customLong("config-file")],
     help: "Overrides the default configuration file location",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var configurationFileOverride: URL?
 
   /// The directory to copy the built app bundle to on success.
@@ -49,7 +54,8 @@ struct BundleArguments: ParsableArguments {
       "The directory to copy the built app bundle to on success.",
       visibility: .hidden
     ),
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var copyOutDirectory: URL?
 
   /// The directory containing the built products. Can only be set when
@@ -61,7 +67,8 @@ struct BundleArguments: ParsableArguments {
       The directory containing the built products. Can only be set when \
       `--skip-build` is supplied.
       """,
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var productsDirectory: URL?
 
   /// The build configuration to use.
@@ -73,7 +80,8 @@ struct BundleArguments: ParsableArguments {
         throw SwiftBundlerError.invalidBuildConfiguration($0)
       }
       return configuration
-    })
+    }
+  )
   var buildConfiguration = BuildConfiguration.debug
 
   /// The architectures to build for.
@@ -90,28 +98,32 @@ struct BundleArguments: ParsableArguments {
         throw SwiftBundlerError.invalidArchitecture(string)
       }
       return arch
-    })
+    }
+  )
   var architectures: [BuildArchitecture] = []
 
   /// A custom scratch directory to use. Defaults to `.build`.
   @Option(
     name: .customLong("scratch-path"),
     help: "A custom scratch directory path (default: .build)",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var scratchDirectory: URL?
 
   /// Additional arguments to pass to SwiftPM when building.
   @Option(
     name: .customLong("Xswiftpm"),
     parsing: .unconditionalSingleValue,
-    help: "Additional arguments to pass to the SwiftPM builder when building.")
+    help: "Additional arguments to pass to the SwiftPM builder when building."
+  )
   var additionalSwiftPMArguments: [String] = []
 
   /// Additional arguments to pass to xcodebuild when building.
   @Option(
     name: .customLong("Xxcodebuild"),
     parsing: .unconditionalSingleValue,
-    help: "Additional arguments to pass to the xcodebuild builder when building.")
+    help: "Additional arguments to pass to the xcodebuild builder when building."
+  )
   var additionalXcodeBuildArguments: [String] = []
 
   /// The platform to build for.
@@ -131,7 +143,8 @@ struct BundleArguments: ParsableArguments {
         throw SwiftBundlerError.invalidPlatform(string)
       }
       return platform
-    })
+    }
+  )
   var platform: Platform?
 
   /// The device to build for (or run on).
@@ -154,14 +167,16 @@ struct BundleArguments: ParsableArguments {
       help: """
         A simulator name, id or search term to select the target simulator (e.g. \
         'iPhone 8' or 'Apple Vision Pro').
-        """)
+        """
+    )
   #endif
   var simulatorSpecifier: String?
 
   /// A codesigning identity to use.
   #if os(macOS) || os(Windows)
     @Option(
-      help: "The identity to use for codesigning")
+      help: "The identity to use for codesigning"
+    )
   #endif
   var identity: String?
 
@@ -173,7 +188,8 @@ struct BundleArguments: ParsableArguments {
         The path to an Azure Artifact Signing metadata file. Refer to \
         https://learn.microsoft.com/en-us/azure/artifact-signing/how-to-signing-integrations#create-a-json-file
         """,
-      transform: URL.init(fileURLWithPath:))
+      transform: URL.init(fileURLWithPath:)
+    )
   #endif
   var azureArtifactSigningMetadata: URL?
 
@@ -185,7 +201,8 @@ struct BundleArguments: ParsableArguments {
         The provisioning profile to embed in the app (only applicable when \
         targeting non-macOS physical Apple devices).
         """,
-      transform: URL.init(fileURLWithPath:))
+      transform: URL.init(fileURLWithPath:)
+    )
   #endif
   var provisioningProfile: URL?
 
@@ -197,7 +214,8 @@ struct BundleArguments: ParsableArguments {
       help: """
         Codesign the application. Defaults to false on macOS, Linux and \
         simulators, and true on non-macOS Apple devices.
-        """)
+        """
+    )
   #endif
   var codesign: Bool?
 
@@ -206,7 +224,8 @@ struct BundleArguments: ParsableArguments {
     @Option(
       name: .customLong("entitlements"),
       help: "Provide an entitlements file to use when codesigning.",
-      transform: URL.init(fileURLWithPath:))
+      transform: URL.init(fileURLWithPath:)
+    )
   #endif
   var entitlements: URL?
 
@@ -214,7 +233,8 @@ struct BundleArguments: ParsableArguments {
   #if os(macOS)
     @Flag(
       name: .shortAndLong,
-      help: "Build a universal application. Equivalent to '--arch arm64 --arch x86_64'.")
+      help: "Build a universal application. Equivalent to '--arch arm64 --arch x86_64'."
+    )
   #endif
   var universal = false
 

@@ -55,7 +55,8 @@ extension Templater {
         case .failedToReadTemplateManifest(let template, _):
           return "Failed to read the contents of the manifest for the '\(template)' template"
         case .templateDoesNotSupportInstalledSwiftVersion(
-          let template, let version, let minimumSupportedVersion):
+          let template, let version, let minimumSupportedVersion
+        ):
           let tip = "Provide the '-f' flag to create the package anyway"
           let version = version.description
           let minimumVersion = minimumSupportedVersion.description

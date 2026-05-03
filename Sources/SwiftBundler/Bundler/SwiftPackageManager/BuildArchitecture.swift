@@ -3,7 +3,7 @@ import Foundation
 
 /// An architecture to build for.
 enum BuildArchitecture: String, CaseIterable, ExpressibleByArgument {
-  case x86_64  // swiftlint:disable:this identifier_name
+  case x86_64 // swiftlint:disable:this identifier_name
   case x86
   case arm64
   case armv7
