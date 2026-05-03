@@ -175,7 +175,7 @@ enum PlistValue: Codable, Equatable, VariableEvaluatable, Sendable {
   ///   "value": "2022-05-18T00:54:55Z"
   /// }
   /// ```
-  static func decodeExplicitlyTypedValue(  // swiftlint:disable:this cyclomatic_complexity
+  static func decodeExplicitlyTypedValue( // swiftlint:disable:this cyclomatic_complexity
     from container: KeyedDecodingContainer<CodingKeys>
   ) throws -> PlistValue? {
     let type: String

@@ -12,7 +12,8 @@ struct ConfigAppsListCommand: ErrorHandledCommand {
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "The directory containing the package to inspect.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var packageDirectory: URL?
 
   @Flag(help: "Format command output as JSON.")
@@ -20,7 +21,8 @@ struct ConfigAppsListCommand: ErrorHandledCommand {
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {

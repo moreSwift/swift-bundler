@@ -43,13 +43,15 @@ struct BundleCommand: ErrorHandledCommand {
           by Xcode (which is the same as universal builds by SwiftPM). Can \
           only be set when `--skip-build` is supplied.
           """
-      ))
+      )
+    )
   #endif
   var builtWithXcode = false
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   var hotReloadingEnabled = false
@@ -184,7 +186,9 @@ struct BundleCommand: ErrorHandledCommand {
     }
 
     if platform != .macOS && arguments.standAlone {
-      log.error("'--experimental-stand-alone' only works when targeting macOS (and that excludes Mac Catalyst)")
+      log.error(
+        "'--experimental-stand-alone' only works when targeting macOS (and that excludes Mac Catalyst)"
+      )
       return false
     }
 
@@ -275,7 +279,7 @@ struct BundleCommand: ErrorHandledCommand {
           ("--identity", identityArgument != nil),
           ("--entitlements", entitlements != nil),
           ("--provisioning-profile", provisioningProfile != nil),
-        ].filter { $0.1 }.map { $0.0 }
+        ].filter(\.1).map(\.0)
 
         guard invalidArguments.count == 0 else {
           let list = invalidArguments.map { "'\($0)'" }
@@ -383,7 +387,7 @@ struct BundleCommand: ErrorHandledCommand {
         ("--identity", identityArgument != nil),
         ("--entitlements", entitlements != nil),
         ("--provisioning-profile", provisioningProfile != nil),
-      ].filter { $0.1 }.map { $0.0 }
+      ].filter(\.1).map(\.0)
       guard invalidArguments.count == 0 else {
         let list = invalidArguments.map { "'\($0)'" }
           .joinedGrammatically(withTrailingVerb: .be)
@@ -805,7 +809,9 @@ struct BundleCommand: ErrorHandledCommand {
     }
 
     // Time execution so that we can report it to the user.
-    let (elapsed, bundlerOutputStructure) = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
+    let (elapsed, bundlerOutputStructure) = try await Stopwatch.time { () async throws(
+      RichError<SwiftBundlerError>
+    ) in
       // Load configuration
       let scratchDirectory =
         arguments.scratchDirectory ?? (context.packageDirectory / ".build")
@@ -921,7 +927,7 @@ struct BundleCommand: ErrorHandledCommand {
           }
         }
       } else {
-        let archString = context.architectures.compactMap({ $0.rawValue })
+        let archString = context.architectures.compactMap(\.rawValue)
           .joined(separator: "_")
 
         // xcodebuild adds a platform suffix to the products directory for

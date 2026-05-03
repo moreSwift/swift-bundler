@@ -11,23 +11,27 @@ struct ConvertCommand: ErrorHandledCommand {
 
   @Argument(
     help: "Xcodeproj to convert.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var xcodeFile: URL
 
   @Option(
     name: [.customShort("o"), .customLong("out")],
     help: "The output directory.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var outputDirectory: URL
 
   @Flag(
     name: [.customLong("dont-warn")],
-    help: "Disables the experimental feature warning")
+    help: "Disables the experimental feature warning"
+  )
   var dontWarn = false
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {

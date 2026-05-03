@@ -115,7 +115,8 @@ enum LayeredIconCompiler {
       return plist
     } else {
       let fileEnumerator = FileManager.default.enumerator(
-        at: workPath, includingPropertiesForKeys: nil)
+        at: workPath, includingPropertiesForKeys: nil
+      )
       let pngFiles =
         fileEnumerator?.allObjects.compactMap { $0 as? URL }
         .filter { $0.pathExtension.lowercased() == "png" } ?? []

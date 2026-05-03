@@ -61,14 +61,14 @@ enum MachOEditor {
       case other(type: UInt32, remainingBytes: [UInt8])
 
       struct SegmentLoad64 {
-        //swiftlint:disable large_tuple
+        // swiftlint:disable large_tuple
         typealias SegmentName = (
           UInt8, UInt8, UInt8, UInt8,
           UInt8, UInt8, UInt8, UInt8,
           UInt8, UInt8, UInt8, UInt8,
           UInt8, UInt8, UInt8, UInt8
         )
-        //swiftlint:enable large_tuple
+        // swiftlint:enable large_tuple
 
         /// The Mach-O load command type of this load command.
         static let commandType: UInt32 = 0x0000_0019

@@ -41,7 +41,9 @@ extension GenericLinuxBundler {
     init(at root: URL, forApp appName: String, withIdentifier appIdentifier: String) {
       self.root = root
       bin = root.appendingPathComponent("usr/bin")
-      mainExecutable = bin.appendingPathComponent(appName.replacingOccurrences(of: " ", with: "-").lowercased())
+      mainExecutable = bin.appendingPathComponent(
+        appName.replacingOccurrences(of: " ", with: "-").lowercased()
+      )
       lib = root.appendingPathComponent("usr/lib")
       resources = bin
       // TODO: Resize the icon to 512x512, 1024x1024 isn't supported by xdg stuff

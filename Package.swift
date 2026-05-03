@@ -244,7 +244,8 @@ let package = Package(
         ),
         permissions: [
           .writeToPackageDirectory(
-            reason: "Creating an app bundle requires writing to the package directory.")
+            reason: "Creating an app bundle requires writing to the package directory."
+          )
         ]
       ),
       dependencies: [

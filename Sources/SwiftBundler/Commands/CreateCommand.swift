@@ -11,13 +11,15 @@ struct CreateCommand: ErrorHandledCommand {
 
   /// The app's name. Must only contain characters from the English alphabet.
   @Argument(
-    help: "The app's name. Must only contain characters from the English alphabet.")
+    help: "The app's name. Must only contain characters from the English alphabet."
+  )
   var appName: String
 
   /// The app's identifier. Should use reverse domain name notation.
   @Option(
     name: .shortAndLong,
-    help: "The app's identifier. (e.g. 'com.example.ExampleApp')")
+    help: "The app's identifier. (e.g. 'com.example.ExampleApp')"
+  )
   var identifier: String?
 
   /// The app's initial version.
@@ -29,59 +31,68 @@ struct CreateCommand: ErrorHandledCommand {
         throw SwiftBundlerError.invalidVersionString(versionString)
       }
       return version
-    })
+    }
+  )
   var version: Version?
 
   /// The app's category.
   @Option(
     name: .long,
-    help: "The app's category.")
+    help: "The app's category."
+  )
   var category: String?
 
   /// The app's icon file (1024x1024 png or icns file).
   @Option(
     name: [.customLong("icon")],
     help: "The app's icon file (1024x1024 png or icns file).",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var iconFile: URL?
 
   /// An Info.plist file containing entries to add to the app's configuration.
   @Option(
     name: [.customLong("info-plist")],
     help: "An Info.plist file containing entries to add to the app's configuration.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var infoPlistFile: URL?
 
   /// A custom directory to create the app in. Default: create a new directory at './[app-name]'.
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "Directory to create the app in. Default: create a new directory at './[app-name]'.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var packageDirectory: URL?
 
   /// Template to create the app from.
   @Option(
     name: [.customShort("t"), .customLong("template")],
-    help: "Template to create the app from.")
+    help: "Template to create the app from."
+  )
   var templateName: String?
 
   /// A directory to search for the template in.
   @Option(
     name: .long,
     help: "A directory to search for the template in.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var templateRepository: URL?
 
   /// An alternative Swift toolchain to use.
   @Option(
     help: "An alternative Swift toolchain to use",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var toolchain: URL?
 
   /// The indentation style to create the package with.
   @Option(
     name: .long,
-    help: "Custom indentation style: either 'tabs' or 'spaces=[count]'.")
+    help: "Custom indentation style: either 'tabs' or 'spaces=[count]'."
+  )
   var indentation: IndentationStyle = .spaces(4)
 
   /// If `true`, force creation of the package even if the template does not support the current OS and installed Swift version.
@@ -94,12 +105,14 @@ struct CreateCommand: ErrorHandledCommand {
 
   @Flag(
     name: .customLong("vscode"),
-    help: "Add vscode configuration files necessary to enable ergonomic debugging.")
+    help: "Add vscode configuration files necessary to enable ergonomic debugging."
+  )
   var addVSCodeOverlay = false
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedValidate() throws(RichError<SwiftBundlerError>) {
@@ -181,7 +194,8 @@ struct CreateCommand: ErrorHandledCommand {
     }
 
     log.info(
-      "Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'")
+      "Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'"
+    )
 
     Self.printNextSteps(packageDirectory: packageDirectory, template: template)
   }

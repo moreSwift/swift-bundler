@@ -154,7 +154,8 @@ enum AndroidSDKManager {
   /// relaxed parsing and only understands the features that we
   /// need to parse for our purposes (getting the versions of NDKs).
   private static func parsePropertiesFileContent(
-    _ content: String) throws(Error) -> [String: String] {
+    _ content: String
+  ) throws(Error) -> [String: String] {
     let lines = content.split(separator: "\n")
     var values: [String: String] = [:]
     for line in lines {

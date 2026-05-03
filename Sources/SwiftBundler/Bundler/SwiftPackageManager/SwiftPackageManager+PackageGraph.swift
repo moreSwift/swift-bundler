@@ -213,7 +213,8 @@ extension SwiftPackageManager {
         guard
           !state.coveredDependencies.contains(
             where: { $0.identity == transitiveDependency.identity
-          })
+          }
+          )
         else {
           continue
         }

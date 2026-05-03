@@ -40,7 +40,8 @@ struct ProjectConfiguration: Codable, Sendable {
       throw ConfigurationFlattener.Error(.sourceAndBuilderMustHaveSameNilness)
     }
 
-    return try source?.flatten( withRevision: revision,
+    return try source?.flatten( 
+      withRevision: revision,
       revisionField: context.codingPath.appendingKey(ProjectConfiguration.CodingKeys.revision)
     )
   }

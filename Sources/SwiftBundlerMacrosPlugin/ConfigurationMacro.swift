@@ -88,7 +88,9 @@ extension ConfigurationMacro: MemberMacro {
     var members: [DeclSyntax] = [
       DeclSyntax(try EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
         for property in properties where property.condition == nil {
-          try EnumCaseDeclSyntax("case \(raw: property.identifier) = \(StringLiteralExprSyntax(content: property.key))")
+          try EnumCaseDeclSyntax(
+            "case \(raw: property.identifier) = \(StringLiteralExprSyntax(content: property.key))"
+          )
         }
         if overlayable {
           try EnumCaseDeclSyntax("case overlays")
@@ -131,7 +133,9 @@ extension ConfigurationMacro {
         return (property: property.identifier, validation: validation)
       }
 
-    return try FunctionDeclSyntax("func flatten(with context: ConfigurationFlattener.Context) throws(ConfigurationFlattener.Error) -> Self.Flat") {
+    return try FunctionDeclSyntax(
+      "func flatten(with context: ConfigurationFlattener.Context) throws(ConfigurationFlattener.Error) -> Self.Flat"
+    ) {
       if overlayable {
         StmtSyntax(
           """
@@ -164,7 +168,9 @@ extension ConfigurationMacro {
           arguments: LabeledExprListSyntax {
             for property in properties {
               let expression = if let defaultValue = property.flatTypeDefaultValue {
-                ExprSyntax("try configuration.\(raw: property.identifier)?.flatten(with: context) ?? \(defaultValue)")
+                ExprSyntax(
+                  "try configuration.\(raw: property.identifier)?.flatten(with: context) ?? \(defaultValue)"
+                )
               } else {
                 ExprSyntax("try configuration.\(raw: property.identifier).flatten(with: context)")
               }
@@ -256,7 +262,9 @@ extension ConfigurationMacro {
         try EnumCaseDeclSyntax("case condition")
 
         for property in properties {
-          try EnumCaseDeclSyntax("case \(raw: property.identifier) = \(StringLiteralExprSyntax(content: property.key))")
+          try EnumCaseDeclSyntax(
+            "case \(raw: property.identifier) = \(StringLiteralExprSyntax(content: property.key))"
+          )
         }
       }
 

@@ -48,7 +48,7 @@ func readLineAsync(strippingNewline: Bool = true) async throws -> String {
   for await data in readBytesStream.stream {
     accumulatedData.append(data)
     if let stringData = String(data: accumulatedData, encoding: .utf8),
-      stringData.contains(where: { $0.isNewline }),
+      stringData.contains(where: \.isNewline),
       let firstLine = stringData.components(separatedBy: .newlines).first
     {
       readBytesStream.continuation.finish()

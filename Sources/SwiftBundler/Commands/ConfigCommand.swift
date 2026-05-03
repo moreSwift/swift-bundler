@@ -7,8 +7,8 @@ struct ConfigCommand: AsyncParsableCommand {
     commandName: "config",
     abstract: "View and manage Swift Bundler configuration.",
     subcommands: [
-        ConfigAppsCommand.self,
-        ConfigMigrateCommand.self,
+      ConfigAppsCommand.self,
+      ConfigMigrateCommand.self,
     ]
   )
 }

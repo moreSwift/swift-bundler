@@ -12,12 +12,14 @@ struct ConfigMigrateCommand: ErrorHandledCommand {
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "The directory containing the package to migrate.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var packageDirectory: URL?
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {

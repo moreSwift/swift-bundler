@@ -13,19 +13,22 @@ struct GenerateXcodeSupportCommand: ErrorHandledCommand {
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "The root directory of the package to generate Xcode support files for.",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var packageDirectory: URL?
 
   /// Overrides the default configuration file location.
   @Option(
     name: [.customLong("config-file")],
     help: "Overrides the default configuration file location",
-    transform: URL.init(fileURLWithPath:))
+    transform: URL.init(fileURLWithPath:)
+  )
   var configurationFileOverride: URL?
 
   @Flag(
     name: .shortAndLong,
-    help: "Print verbose error messages.")
+    help: "Print verbose error messages."
+  )
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
