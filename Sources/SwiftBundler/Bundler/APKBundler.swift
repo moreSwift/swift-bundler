@@ -169,11 +169,12 @@ enum APKBundler: Bundler {
     let themeName = "AppTheme"
     let parentTheme = "Theme.Material3.DayNight.NoActionBar"
     let appNameStringKey = "app_name"
-    let androidManifest = generateAndroidManifest(
+    let androidManifest = try generateAndroidManifest(
       targetAPI: targetSDK,
       themeName: themeName,
       appNameStringKey: appNameStringKey,
-      projectStructure: project
+      projectStructure: project,
+      permissions: context.appConfiguration.android?.permissions ?? []
     )
 
     let cmakeLists = generateCMakeLists(product: context.appConfiguration.product)
@@ -749,32 +750,52 @@ enum APKBundler: Bundler {
     targetAPI: Int,
     themeName: String,
     appNameStringKey: String,
-    projectStructure: ProjectStructure
-  ) -> String {
+    projectStructure: ProjectStructure,
+    permissions: [AndroidConfiguration.Permission.Flat]
+  ) throws(Error) -> Data {
     let iconName = projectStructure.icon.deletingPathExtension().lastPathComponent
-    return """
-      <?xml version="1.0" encoding="utf-8"?>
-      <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          xmlns:tools="http://schemas.android.com/tools">
+    let manifest = AndroidManifest(
+      AndroidManifest.Application(
+        allowBackup: true,
+        icon: "@mipmap/\(iconName)",
+        label: "@string/\(appNameStringKey)",
+        theme: "@style/Theme.\(themeName)",
+        targetAPI: targetAPI,
+        activities: [
+          AndroidManifest.Activity(
+            name: ".\(projectStructure.mainActivityName)",
+            exported: true,
+            intentFilters: [
+              AndroidManifest.IntentFilter(
+                action: AndroidManifest.IntentFilter.Action(
+                  name: "android.intent.action.MAIN"
+                ),
+                category: AndroidManifest.IntentFilter.Category(
+                  name: "android.intent.category.LAUNCHER"
+                )
+              )
+            ]
+          )
+        ]
+      ),
+      permissions: permissions.map { permission in
+        let name: String
+        if permission.name.contains(".") {
+          name = permission.name
+        } else {
+          name = "android.permission.\(permission.name)"
+        }
 
-          <application
-              android:allowBackup="true"
-              android:icon="@mipmap/\(iconName)"
-              android:label="@string/\(appNameStringKey)"
-              android:theme="@style/Theme.\(themeName)"
-              tools:targetApi="\(targetAPI)">
-              <activity
-                  android:name=".\(projectStructure.mainActivityName)"
-                  android:exported="true">
-                  <intent-filter>
-                      <action android:name="android.intent.action.MAIN" />
-                      <category android:name="android.intent.category.LAUNCHER" />
-                  </intent-filter>
-              </activity>
-          </application>
-      </manifest>
+        return AndroidManifest.Permission(
+          name: name,
+          maxSDKVersion: permission.maxSDKVersion
+        )
+      }
+    )
 
-      """
+    return try Error.catch {
+      try manifest.encode()
+    }
   }
 
   private static func generateCMakeLists(product: String) -> String {
