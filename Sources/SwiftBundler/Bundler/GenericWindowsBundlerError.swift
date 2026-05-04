@@ -1,5 +1,5 @@
-import Foundation
 import ErrorKit
+import Foundation
 
 extension GenericWindowsBundler {
   typealias Error = RichError<ErrorMessage>
@@ -8,6 +8,7 @@ extension GenericWindowsBundler {
     case failedToCreateDirectory(URL)
     case failedToCopyExecutableDependency(ProjectBuilder.ProductReference)
     case failedToInsertMetadata
+    case failedToCreateAppxManifest(AppxManifestCreator.Error)
     case failedToEnumerateResourceBundles(URL)
     case failedToCopyResourceBundle(source: URL, destination: URL)
     case failedToCopyExecutable(source: URL, destination: URL)
@@ -18,6 +19,7 @@ extension GenericWindowsBundler {
     case failedToCopyPDB(source: URL, destination: URL)
     case failedToLoadIcon(URL)
     case failedToEncodeIco
+    case failedToEncodePng
     case failedToDownloadResourceHacker
     case failedToRunResourceHacker
     case failedToLocateResourceHackerExecutable(expectedLocation: URL)
@@ -33,6 +35,8 @@ extension GenericWindowsBundler {
           return "Failed to copy dependency '\(product)' to output bundle"
         case .failedToInsertMetadata:
           return "Failed to insert metadata into main executable"
+        case .failedToCreateAppxManifest(let appxManifestError):
+          return "Failed to create AppX manifest: \(appxManifestError.userFriendlyMessage)"
         case .failedToEnumerateResourceBundles(let directory):
           return """
             Failed to enumerate resource bundles in \
@@ -72,6 +76,8 @@ extension GenericWindowsBundler {
           return "Failed to load icon at '\(icon.path(relativeTo: .currentDirectory))'"
         case .failedToEncodeIco:
           return "Failed to encode ico file"
+        case .failedToEncodePng:
+          return "Failed to encode png file"
         case .failedToDownloadResourceHacker:
           return "Failed to download Resource Hacker"
         case .failedToRunResourceHacker:
