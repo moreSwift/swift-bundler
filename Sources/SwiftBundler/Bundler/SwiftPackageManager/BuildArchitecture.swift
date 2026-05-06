@@ -66,6 +66,20 @@ enum BuildArchitecture: String, CaseIterable, ExpressibleByArgument {
         "amd64"
     }
   }
+
+  /// The name that MSIX/AppX packages use for architectures.
+  var msixName: String {
+    switch self {
+      case .arm64:
+        "arm64"
+      case .armv7:
+        "arm"
+      case .x86_64:
+        "x64"
+      case .x86:
+        "x86"
+    }
+  }
 }
 
 extension BuildArchitecture {
