@@ -2,6 +2,7 @@ import Testing
 import TOMLKit
 import XMLCoder
 import Foundation
+import Version
 
 @testable import SwiftBundler
 
@@ -86,7 +87,7 @@ struct Tests {
     WindowsManifestTool.generateApplicationManifest(
       for: URL(fileURLWithPath: "helper-tool.exe"),
       name: "helper-tool",
-      version: "1.0.0",
+      version: Version(1, 0, 0),
       description: nil,
       architecture: .arm64,
       overlay: WindowsApplicationManifest(
