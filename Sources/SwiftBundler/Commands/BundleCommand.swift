@@ -1022,6 +1022,7 @@ struct BundleCommand: ErrorHandledCommand {
           packageConfiguration: context.configuration,
           packageGraph: packageGraph,
           context: dependencyContext,
+          rootPackageScratchDirectory: buildContext.genericContext.scratchDirectory,
           swiftToolchain: context.toolchain,
           appName: context.appName,
           dryRun: skipBuild

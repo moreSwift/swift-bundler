@@ -74,12 +74,22 @@ enum ConfigurationFlattener {
       )
     } ?? [:]
 
+    let flattenedProducts = try configuration.products?.mapValues {
+        (name, product) throws(Error) -> ProductConfiguration.Flat in
+      try product.flatten(
+        with: context
+          .appendingCodingKey(PackageConfiguration.CodingKeys.products)
+          .appendingCodingKey(name)
+      )
+    } ?? [:]
+
     return PackageConfiguration.Flat(
       formatVersion: configuration.formatVersion,
       apps: flattenedApps,
       projects: flattenedProjects,
       builders: flattenedBuilders,
-      targets: flattenedTargets
+      targets: flattenedTargets,
+      products: flattenedProducts
     )
   }
 

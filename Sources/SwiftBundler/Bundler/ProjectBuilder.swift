@@ -83,6 +83,7 @@ enum ProjectBuilder {
     packageConfiguration: PackageConfiguration.Flat,
     packageGraph: SwiftPackageManager.PackageGraph,
     context: GenericBuildContext,
+    rootPackageScratchDirectory: URL,
     swiftToolchain: URL?,
     appName: String,
     dryRun: Bool
@@ -101,6 +102,7 @@ enum ProjectBuilder {
         packageConfiguration: packageConfiguration,
         packageGraph: packageGraph,
         context: context,
+        rootPackageScratchDirectory: rootPackageScratchDirectory,
         swiftToolchain: swiftToolchain,
         appName: appName,
         dryRun: dryRun,
@@ -192,6 +194,7 @@ enum ProjectBuilder {
     packageConfiguration: PackageConfiguration.Flat,
     packageGraph: SwiftPackageManager.PackageGraph,
     context: GenericBuildContext,
+    rootPackageScratchDirectory: URL,
     swiftToolchain: URL?,
     appName: String,
     dryRun: Bool,
@@ -211,6 +214,8 @@ enum ProjectBuilder {
         )
       }
 
+      var context = context
+      context.scratchDirectory = rootPackageScratchDirectory
       let builtProduct = try await buildRootProjectProduct(
         dependency.product.name,
         package: dependency.package,
@@ -390,10 +395,10 @@ enum ProjectBuilder {
     swiftToolchain: URL?,
     dryRun: Bool
   ) async throws(Error) -> BuiltProduct {
-    // Locate product in manifest
+    // Locate product in package graph
     let product: SwiftPackageManager.Product
     do {
-      product = try packageGraph.product(named: productName)
+      product = try packageGraph.product(named: productName).product
     } catch {
       throw Error(.noSuchRootProjectProduct(package: package, product: productName))
     }
@@ -442,10 +447,43 @@ enum ProjectBuilder {
       whenNamed: productName,
       platform: context.platform
     )
+    let artifactLocation = productsDirectory / artifactPath
     let artifacts = [
-      ProjectBuilder.Artifact(location: productsDirectory / artifactPath)
+      ProjectBuilder.Artifact(location: artifactLocation)
     ]
     let builtProduct = BuiltProduct(product: productConfiguration, artifacts: artifacts)
+
+    // Insert Windows application manifest
+    if context.platform == .windows {
+      guard
+        let architecture = context.architectures.first,
+        context.architectures.count == 1
+      else {
+        throw Error(.expectedExactlyOneArchitecture(context.architectures))
+      }
+
+      let productConfiguration = try Error.catch {
+        try packageGraph.configuration(ofProductNamed: productName)
+      }
+
+      let executableName = artifactLocation.deletingPathExtension().lastPathComponent
+      let manifest = context.scratchDirectory / "\(executableName).manifest"
+      try await Error.catch {
+        try WindowsManifestTool.createApplicationManifest(
+          at: manifest,
+          for: artifactLocation,
+          name: executableName,
+          version: nil,
+          description: nil,
+          architecture: architecture,
+          overlay: productConfiguration?.windows?.manifest
+        )
+        try await WindowsManifestTool.insertApplicationManifest(
+          manifest,
+          into: artifactLocation
+        )
+      }
+    }
 
     return builtProduct
   }

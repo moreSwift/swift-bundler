@@ -35,6 +35,12 @@ extension SwiftPackageManager {
     case productNotFoundInGraph(String)
     case cannotBuildForMultipleAndroidArchitecturesAtOnce
     case cannotBuildForAndroidWithoutSwiftSDK
+    case expectedExecutableProduct(_ productName: String)
+    case expectedExecutableProductToContainExecutableTarget(
+      PackageReference,
+      String,
+      [String]
+    )
 
     var userFriendlyMessage: String {
       switch self {
@@ -132,6 +138,18 @@ extension SwiftPackageManager {
           return "Cannot build for multiple Android architectures at once"
         case .cannotBuildForAndroidWithoutSwiftSDK:
           return "Cannot build for Android without a Swift Android SDK"
+        case .expectedExecutableProduct(let product):
+          return "Expected executable product, got '\(product)'"
+        case .expectedExecutableProductToContainExecutableTarget(
+          let package,
+          let product,
+          let targets
+        ):
+          return """
+            Expected executable product '\(product)' (in package '\(package)') \
+            to contain an executable target, but \(targets.joinedGrammatically()) \
+            aren't executable
+            """
       }
     }
   }

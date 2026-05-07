@@ -54,6 +54,18 @@ enum BuildArchitecture: String, CaseIterable, ExpressibleByArgument {
         "arm"
     }
   }
+
+  /// The name that Windows application manifests use for the architecture.
+  var windowsApplicationManifestName: String {
+    switch self {
+      case .arm64, .x86:
+        rawValue
+      case .armv7:
+        "arm"
+      case .x86_64:
+        "amd64"
+    }
+  }
 }
 
 extension BuildArchitecture {
