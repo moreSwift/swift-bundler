@@ -2,7 +2,11 @@ import Foundation
 
 #if canImport(Darwin)
   import Darwin
+#elseif canImport(Glibc)
+  import Glibc
+#endif
 
+#if canImport(Darwin) || canImport(Glibc)
   /// A dynamic library.
   public struct Dylib {
     private var dylib: UnsafeMutableRawPointer
