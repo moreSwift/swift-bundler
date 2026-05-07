@@ -183,16 +183,26 @@ enum SwiftPackageManager {
       // Swift versions before 6.0 or so named commands differently in the build plan.
       // We check for the newer format (with triple) then the older format (no triple).
       let configuration = buildContext.genericContext.configuration
-      let commandName = "C.\(product)-\(triple)-\(configuration).exe"
-      let oldCommandName = "C.\(product)-\(configuration).exe"
+      var commandNames = [
+        "C.\(product)-\(triple)-\(configuration).exe",
+        "C.\(product)-\(configuration).exe",
+      ]
+      if buildContext.genericContext.platform == .macOS {
+        // The triple sometimes seems to not have the platform version (e.g. 26.0).
+        // Maybe that's something that changed around Swift 6.3?
+        let architecture = buildContext.genericContext.architectures[0]
+        commandNames.append(
+          "C.\(product)-\(architecture.rawValue)-apple-macosx-\(configuration).exe"
+        )
+      }
       guard
-        let linkCommand = buildPlan.commands[commandName] ?? buildPlan.commands[oldCommandName],
+        let linkCommand = commandNames.compactMap({ buildPlan.commands[$0] }).first,
         linkCommand.tool == "shell",
         let commandExecutable = linkCommand.arguments?.first,
         let arguments = linkCommand.arguments?.dropFirst()
       else {
         let message = ErrorMessage.failedToComputeLinkingCommand(
-          details: "Couldn't find valid command for \(commandName)"
+          details: "Couldn't find valid command for \(commandNames[0])"
         )
         throw Error(message)
       }

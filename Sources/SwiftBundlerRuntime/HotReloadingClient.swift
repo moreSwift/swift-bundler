@@ -35,7 +35,7 @@ public struct HotReloadingClient: Sendable {
     server = try await AsyncSocket.connected(to: .inet(ip4: address, port: port))
   }
 
-  #if canImport(Darwin)
+  #if canImport(Darwin) || canImport(Glibc)
     public mutating func handlePackets(handleDylib: (sending Dylib) -> Void) async throws {
       while true {
         let packet = try await Packet.read(from: &server)
