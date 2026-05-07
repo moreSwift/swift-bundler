@@ -177,7 +177,8 @@ struct RunCommand: ErrorHandledCommand {
         device: device,
         arguments: passThroughArguments,
         environmentVariables: environmentVariables.merging(
-          additionalEnvironmentVariables, uniquingKeysWith: { key, _ in key }
+          additionalEnvironmentVariables,
+          uniquingKeysWith: { key, _ in key }
         )
       )
     }
