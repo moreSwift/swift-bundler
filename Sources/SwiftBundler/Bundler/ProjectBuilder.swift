@@ -474,6 +474,7 @@ enum ProjectBuilder {
           for: artifactLocation,
           name: executableName,
           version: nil,
+          description: nil,
           architecture: architecture,
           overlay: productConfiguration?.windows?.manifest
         )

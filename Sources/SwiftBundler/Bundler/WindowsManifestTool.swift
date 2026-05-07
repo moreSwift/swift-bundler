@@ -10,6 +10,7 @@ enum WindowsManifestTool {
     for executable: URL,
     name: String,
     version: Version?,
+    description: String?,
     architecture: BuildArchitecture,
     overlay: WindowsApplicationManifest?
   ) throws(Error) {
@@ -17,6 +18,7 @@ enum WindowsManifestTool {
       for: executable,
       name: name,
       version: version,
+      description: description,
       architecture: architecture,
       overlay: overlay
     )
@@ -38,11 +40,13 @@ enum WindowsManifestTool {
     for executable: URL,
     name: String,
     version: Version?,
+    description: String?,
     architecture: BuildArchitecture,
     overlay: WindowsApplicationManifest?
   ) -> WindowsApplicationManifest {
     var manifest = overlay ?? WindowsApplicationManifest()
     manifest.manifestVersion ??= "1.0"
+    manifest.description ??= description
 
     let version = version ?? Version(1, 0, 0)
     var assemblyIdentity = manifest.assemblyIdentity

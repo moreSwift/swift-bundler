@@ -243,6 +243,7 @@ enum GenericWindowsBundler: Bundler {
         for: structure.mainExecutable,
         name: context.appName,
         version: context.appConfiguration.version,
+        description: context.appConfiguration.appDescription,
         architecture: architecture,
         overlay: manifestOverlay
       )

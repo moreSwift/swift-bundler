@@ -87,6 +87,7 @@ struct Tests {
       for: URL(fileURLWithPath: "helper-tool.exe"),
       name: "helper-tool",
       version: "1.0.0",
+      description: nil,
       architecture: .arm64,
       overlay: WindowsApplicationManifest(
         assemblyIdentity: WindowsApplicationManifest.AssemblyIdentity(version: "1.0.0.1"),
