@@ -55,6 +55,9 @@ struct AppConfiguration: Codable, Sendable {
   /// Android related configuration properties.
   var android: AndroidConfiguration?
 
+  /// Windows related configuration properties.
+  var windows: WindowsConfiguration?
+
   /// Only available in overlays with `platform(linux)` or stronger. Sets whether
   /// Swift Bundler generates a D-Bus service file for the application or not.
   @Available(.platform("linux"))

@@ -1,5 +1,4 @@
 import Foundation
-import XMLCoder
 
 /// Android related configuration properties.
 @Configuration(overlayable: false)

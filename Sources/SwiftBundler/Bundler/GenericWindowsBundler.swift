@@ -216,6 +216,25 @@ enum GenericWindowsBundler: Bundler {
         ofProductNamed: context.appConfiguration.product
       )
     }
+
+    let appManifestOverlay = context.appConfiguration.windows?.manifest
+    let productManifestOVerlay = productConfiguration?.windows?.manifest
+    let manifestOverlay = appManifestOverlay ?? productManifestOVerlay
+    if appManifestOverlay != nil && productManifestOVerlay != nil {
+      // TODO(stackotter): Support merging Windows application manifests properly.
+      //   We'll want to use a macro for that, the alternative will become more
+      //   and more tedious as we support more of the application manifest format.
+      log.warning(
+        """
+        \(context.appName) has two Windows application manifest overlays, one \
+        specified in the app's main configuration, and one specified in the app's \
+        executable product's configuration; Swift Bundler does not support merging \
+        such overlays at this time and will use the overlay specified in the app's \
+        configuration
+        """
+      )
+    }
+
     let executableName = structure.mainExecutable.deletingPathExtension().lastPathComponent
     let manifest = context.outputDirectory / "\(executableName).manifest"
     try await Error.catch {
@@ -225,7 +244,7 @@ enum GenericWindowsBundler: Bundler {
         name: context.appName,
         version: context.appConfiguration.version,
         architecture: architecture,
-        overlay: productConfiguration?.windows?.manifest
+        overlay: manifestOverlay
       )
       try await WindowsManifestTool.insertApplicationManifest(
         manifest,
