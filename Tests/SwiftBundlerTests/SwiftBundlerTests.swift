@@ -1,4 +1,6 @@
 import Testing
+import TOMLKit
+import XMLCoder
 import Foundation
 
 @testable import SwiftBundler
@@ -76,6 +78,92 @@ struct Tests {
       #expect(version.shortVersion == testCase.expected.shortVersion)
       #expect(version.exactVersion == testCase.expected.exactVersion)
     }
+  }
+
+  /// Generates a Windows application manifest for use in other tests. Exercises
+  /// WindowsManifestTool's manifest merging capability.
+  private func generateWindowsManifest() -> WindowsApplicationManifest {
+    WindowsManifestTool.generateApplicationManifest(
+      for: URL(fileURLWithPath: "helper-tool.exe"),
+      name: "helper-tool",
+      version: "1.0.0",
+      architecture: .arm64,
+      overlay: WindowsApplicationManifest(
+        assemblyIdentity: WindowsApplicationManifest.AssemblyIdentity(version: "1.0.0.1"),
+        trustInfo: WindowsApplicationManifest.TrustInfo(
+          xmlns: nil,
+          security: WindowsApplicationManifest.TrustInfo.Security(
+            requestedPrivileges: [
+              .requestedExecutionLevel(level: Attribute(.some("requireAdministrator")), uiAccess: Attribute(.some(false)))
+            ]
+          )
+        )
+      )
+    )
+  }
+
+  @Test(
+    """
+    Ensures that we correctly merge Windows application manifests, and that we \
+    encode them correctly
+    """
+  )
+  func testWindowsManifestGeneration() throws {
+    let manifest = generateWindowsManifest()
+    let data = try manifest.encode()
+    let string = try #require(String(data: data, encoding: .utf8))
+
+    let expected = """
+      <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+          <assemblyIdentity version="1.0.0.1" processorArchitecture="arm64" name="helper-tool" type="win32" />
+          <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+              <security>
+                  <requestedPrivileges>
+                      <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+                  </requestedPrivileges>
+              </security>
+          </trustInfo>
+          <file name="helper-tool.exe" />
+      </assembly>
+      """
+
+    #expect(string == expected)
+  }
+
+  @Test(
+    """
+    Ensures that we correctly decode TOML-formatted partial Windows application manifests
+    """
+  )
+  func testWindowsManifestTOMLDecoding() throws {
+    let partialManifest = """
+      manifestVersion = '1.0'
+
+      [assemblyIdentity]
+      name = 'helper-tool'
+      processorArchitecture = 'arm64'
+      type = 'win32'
+      version = '1.0.0.1'
+
+      [file]
+      name = 'helper-tool.exe'
+
+      [trustInfo]
+      xmlns = 'urn:schemas-microsoft-com:asm.v2'
+      security.requestedPrivileges = [
+        {
+          requestedExecutionLevel = { level = 'requireAdministrator', uiAccess = false }
+        }
+      ]
+      """
+
+    let manifest = try TOMLDecoder().decode(
+      WindowsApplicationManifest.self,
+      from: partialManifest
+    )
+
+    #expect(manifest == generateWindowsManifest())
   }
 
   @Test func testCreationWorkflow() async throws {

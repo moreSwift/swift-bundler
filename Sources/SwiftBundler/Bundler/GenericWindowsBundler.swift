@@ -1,3 +1,4 @@
+import Version
 import Foundation
 import Ico
 import ImageFormats
@@ -200,7 +201,37 @@ enum GenericWindowsBundler: Bundler {
     )
     try structure.createDirectories()
 
+    guard
+      let architecture = context.architectures.first,
+      context.architectures.count == 1
+    else {
+      throw Error(.expectedExactlyOneArchitecture(context.architectures))
+    }
+
     try copyExecutable(at: executableArtifact, to: structure.mainExecutable)
+
+    // Generate and insert application manifest
+    let productConfiguration = try Error.catch {
+      try context.packageGraph.configuration(
+        ofProductNamed: context.appConfiguration.product
+      )
+    }
+    let executableName = structure.mainExecutable.deletingPathExtension().lastPathComponent
+    let manifest = context.outputDirectory / "\(executableName).manifest"
+    try await Error.catch {
+      try WindowsManifestTool.createApplicationManifest(
+        at: manifest,
+        for: structure.mainExecutable,
+        name: context.appName,
+        version: context.appConfiguration.version,
+        architecture: architecture,
+        overlay: productConfiguration?.windows?.manifest
+      )
+      try await WindowsManifestTool.insertApplicationManifest(
+        manifest,
+        into: structure.mainExecutable
+      )
+    }
 
     if let codeSigningContext = context.windowsCodeSigningContext {
       log.info("Signing executable")
@@ -347,9 +378,8 @@ enum GenericWindowsBundler: Bundler {
           throw Error(.failedToCopyExecutableDependency(reference), cause: error)
         }
 
-        if artifact.location.pathExtension == "exe",
-          let codeSigningContext = context.windowsCodeSigningContext
-        {
+        let isExecutable = artifact.location.pathExtension == "exe"
+        if isExecutable, let codeSigningContext = context.windowsCodeSigningContext {
           try await Error.catch {
             try await WindowsCodeSigner.signFile(
               destination,

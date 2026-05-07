@@ -45,6 +45,38 @@ extension SwiftPackageManager {
       return target
     }
 
+    /// Gets the executable target corresponding to the given executable product.
+    ///
+    /// This relies on SwiftPM's current behaviour, which guarantees that each
+    /// executable product contains exactly one executable target. We do not forsee
+    /// that changing, but it seems strange that an executable product contain more
+    /// than one target in the first place; it's unclear what it means to add
+    /// additional non-executable targets to an executable product.
+    func executableTarget(
+      correspondingToExecutableProduct productName: String
+    ) throws(Error) -> TargetReference {
+      let (package, product) = try product(named: productName)
+      guard product.productType == .executable else {
+        throw Error(.expectedExecutableProduct(productName))
+      }
+
+      for targetName in product.targets {
+        let targetReference = TargetReference(name: targetName, package: package)
+        let target = try target(referredToBy: targetReference)
+        if target.kind == .executable {
+          return targetReference
+        }
+      }
+
+      throw Error(
+        .expectedExecutableProductToContainExecutableTarget(
+          package,
+          productName,
+          product.targets
+        )
+      )
+    }
+
     /// Gets the Swift Bundler configuration of the given package, if it has any.
     /// - Parameter packageReference: The package to get the configuration of.
     /// - Throws: If the package cannot be found.
@@ -54,6 +86,27 @@ extension SwiftPackageManager {
     ) throws(Error) -> PackageConfiguration.Flat? {
       let package = try package(referredToBy: packageReference)
       return package.configuration
+    }
+
+    /// Gets the Swift Bundler configuration of the given product, if it has any.
+    ///
+    /// This relies on potentially undocumented SwiftPM behaviour so it should
+    /// remain internal even if we make the rest of this API public. That is,
+    /// we assume that each product name appears at most once. We make that
+    /// assumption because if we don't make that assumption then there's still
+    /// nothing that we can do differently in our product handling due to SwiftPM
+    /// not allowing you to disambiguate products when building them from the
+    /// command line.
+    ///
+    /// - Parameter productName: The product to get the configuration of.
+    /// - Throws: If the product cannot be found.
+    /// - Returns: The product's configuration if it has any, otherwise `nil`.
+    internal func configuration(
+      ofProductNamed productName: String
+    ) throws(Error) -> ProductConfiguration.Flat? {
+      let (package, _) = try product(named: productName)
+      let packageConfiguration = try configuration(ofPackage: package)
+      return packageConfiguration?.products[productName]
     }
 
     /// Gets the Swift Bundler configuration of the given target, if it has any.
@@ -77,11 +130,11 @@ extension SwiftPackageManager {
     /// nothing that we can do differently in our product handling due to SwiftPM
     /// not allowing you to disambiguate products when building them from the
     /// command line.
-    internal func allProducts() -> [String: Product] {
+    internal func allProducts() -> [String: (PackageReference, Product)] {
       // blame is used when producing duplicate product name warnings
       var blame: [String: PackageReference] = [:]
 
-      var allProducts = rootPackage.products
+      var allProducts = rootPackage.products.mapValues { (rootPackage.reference, $0) }
       for name in rootPackage.products.keys {
         blame[name] = rootPackage.reference
       }
@@ -99,12 +152,8 @@ extension SwiftPackageManager {
               if there's an identically-named product present in a dependency package
               """
             )
-            log.warning(
-              """
-              """
-            )
           }
-          allProducts[name] = product
+          allProducts[name] = (package.reference, product)
           blame[name] = package.reference
         }
       }
@@ -121,11 +170,13 @@ extension SwiftPackageManager {
     /// nothing that we can do differently in our product handling due to SwiftPM
     /// not allowing you to disambiguate products when building them from the
     /// command line.
-    internal func product(named name: String) throws(Error) -> Product {
-      guard let product = allProducts()[name] else {
+    internal func product(named name: String) throws(Error)
+      -> (package: PackageReference, product: Product)
+    {
+      guard let (package, product) = allProducts()[name] else {
         throw Error(.productNotFoundInGraph(name))
       }
-      return product
+      return (package, product)
     }
 
     /// Gets the targets directly contained within a product.

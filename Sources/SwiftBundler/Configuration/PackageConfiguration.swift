@@ -17,35 +17,48 @@ struct PackageConfiguration: Codable, Sendable {
 
   /// The configuration format version.
   var formatVersion: Int
+
   /// The configuration for each app in the package (packages can contain
   /// multiple apps). Maps app name to app configuration.
   var apps: [String: AppConfiguration]?
+
   /// The configuration for each project in the package. Maps project name to
   /// project configuration. Generally used when integrating libraries built
   /// with different build systems such as CMake.
   var projects: [String: ProjectConfiguration]?
+
   /// The configuration for each project builder defined within this package.
   /// Maps builder name to builder configuration.
   var builders: [String: BuilderConfiguration]?
+
   /// Optional configuration for each target in the package. Maps target name
   /// to target configuration.
   var targets: [String: TargetConfiguration]?
 
+  /// Optional configuration for each product in the package. Maps product name
+  /// to product configuration.
+  var products: [String: ProductConfiguration]?
+
   /// Creates a new package configuration.
-  /// - Parameter apps: The package's apps.
-  /// - Parameter projects: The package's subprojects.
-  /// - Parameter builders: The package's project builders.
+  /// - Parameters
+  ///   - apps: The package's apps.
+  ///   - projects: The package's subprojects.
+  ///   - builders: The package's project builders.
+  ///   - targets: The package's optional target configuration.
+  ///   - products: The package's optional product configuration.
   init(
     apps: [String: AppConfiguration]? = nil,
     projects: [String: ProjectConfiguration]? = nil,
     builders: [String: BuilderConfiguration]? = nil,
-    targets: [String: TargetConfiguration]? = nil
+    targets: [String: TargetConfiguration]? = nil,
+    products: [String: ProductConfiguration]? = nil
   ) {
     formatVersion = Self.currentFormatVersion
     self.apps = apps
     self.projects = projects
     self.builders = builders
     self.targets = targets
+    self.products = products
   }
 
   // MARK: Static methods

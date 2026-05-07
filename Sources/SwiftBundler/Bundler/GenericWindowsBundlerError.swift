@@ -21,6 +21,7 @@ extension GenericWindowsBundler {
     case failedToDownloadResourceHacker
     case failedToRunResourceHacker
     case failedToLocateResourceHackerExecutable(expectedLocation: URL)
+    case expectedExactlyOneArchitecture([BuildArchitecture])
 
     var userFriendlyMessage: String {
       switch self {
@@ -81,6 +82,9 @@ extension GenericWindowsBundler {
             Failed to locate Resource Hacker executable in downloaded zip archive. \
             Expected to find it at '\(expectedLocation.path)'
             """
+        case .expectedExactlyOneArchitecture(let architectures):
+          return ProjectBuilder.ErrorMessage.expectedExactlyOneArchitecture(architectures)
+            .userFriendlyMessage
       }
     }
   }

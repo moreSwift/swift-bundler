@@ -24,6 +24,7 @@ struct TargetConfiguration: Codable, Sendable {
     /// directory structure. E.g. `<javaDirectory>/com/example/mypackage/MyClass.java`.
     /// If not provided, Swift Bundler will not search for Java sources.
     var javaDirectory: String?
+
     /// The directory to find Kotlin source files in.
     ///
     /// Defaults to the value of ``javaDirectory``.

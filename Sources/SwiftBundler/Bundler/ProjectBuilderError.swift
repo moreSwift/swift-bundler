@@ -1,5 +1,5 @@
-import Foundation
 import ErrorKit
+import Foundation
 
 extension ProjectBuilder {
   typealias Error = RichError<ErrorMessage>
@@ -28,6 +28,7 @@ extension ProjectBuilder {
     case projectMissingSource(DependencyReference)
     case projectMissingBuilder(DependencyReference)
     case projectMissingSourceForPathBasedPrebuilt(DependencyReference, _ path: String)
+    case expectedExactlyOneArchitecture([BuildArchitecture])
 
     /// An internal error used in control flow.
     case mismatchedGitURL(_ actual: URL, expected: URL)
@@ -105,6 +106,16 @@ extension ProjectBuilder {
             The product \(dependency) supplies a path-based prebuilt \
             ('path(\(prebuiltPath))'), but its containing project doesn't provide \
             a source directory/repository
+            """
+        case .expectedExactlyOneArchitecture(let architectures):
+          let architecturesString = architectures.map(\.rawValue).joinedGrammatically(
+            singular: "architecture",
+            plural: "architectures",
+            withTrailingVerb: nil
+          )
+          return """
+            Expected exactly one architecture when building for Windows, but got \
+            \(architecturesString)
             """
       }
     }
