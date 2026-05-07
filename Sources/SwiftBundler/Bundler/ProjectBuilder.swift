@@ -83,6 +83,7 @@ enum ProjectBuilder {
     packageConfiguration: PackageConfiguration.Flat,
     packageGraph: SwiftPackageManager.PackageGraph,
     context: GenericBuildContext,
+    rootPackageScratchDirectory: URL,
     swiftToolchain: URL?,
     appName: String,
     dryRun: Bool
@@ -101,6 +102,7 @@ enum ProjectBuilder {
         packageConfiguration: packageConfiguration,
         packageGraph: packageGraph,
         context: context,
+        rootPackageScratchDirectory: rootPackageScratchDirectory,
         swiftToolchain: swiftToolchain,
         appName: appName,
         dryRun: dryRun,
@@ -192,6 +194,7 @@ enum ProjectBuilder {
     packageConfiguration: PackageConfiguration.Flat,
     packageGraph: SwiftPackageManager.PackageGraph,
     context: GenericBuildContext,
+    rootPackageScratchDirectory: URL,
     swiftToolchain: URL?,
     appName: String,
     dryRun: Bool,
@@ -211,6 +214,8 @@ enum ProjectBuilder {
         )
       }
 
+      var context = context
+      context.scratchDirectory = rootPackageScratchDirectory
       let builtProduct = try await buildRootProjectProduct(
         dependency.product.name,
         package: dependency.package,
