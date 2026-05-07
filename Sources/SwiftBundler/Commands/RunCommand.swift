@@ -145,10 +145,12 @@ struct RunCommand: ErrorHandledCommand {
           do {
             try await server.start(
               product: context.appConfiguration.product,
+              appName: context.appName,
               buildContext: buildContext,
               swiftToolchain: context.toolchain,
               swiftSDK: context.swiftSDK,
-              appConfiguration: context.appConfiguration
+              appConfiguration: context.appConfiguration,
+              verbose: verbose
             )
           } catch {
             log.error(
