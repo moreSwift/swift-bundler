@@ -139,13 +139,13 @@ enum SwiftPackageManager {
     product: String,
     buildContext: BuildContext
   ) async throws(Error) -> URL {
-    #if os(macOS)
+    #if os(macOS) || os(Linux)
       let productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext)
       let dylibExtension: String
       switch buildContext.genericContext.platform {
         case .macOS:
           dylibExtension = "dylib"
-        case .android:
+        case .android, .linux:
           dylibExtension = "so"
         case let platform:
           throw Error(.cannotCompileExecutableAsDylibForPlatform(platform))
@@ -164,7 +164,7 @@ enum SwiftPackageManager {
       log.info("Relinking main executable as a dynamic library")
       let triple: String
       switch buildContext.genericContext.platform {
-        case .macOS:
+        case .macOS, .linux:
           let targetInfo = try await getHostTargetInfo(toolchain: buildContext.toolchain)
           triple = targetInfo.target.triple
         case .android:
@@ -226,6 +226,9 @@ enum SwiftPackageManager {
             "-Xcc",
             "-dynamiclib",
           ])
+        case .linux:
+          modifiedArguments.removeAll { $0 == "-emit-executable" }
+          modifiedArguments.append("-emit-library")
         case .android:
           modifiedArguments.removeAll { $0 == "-emit-executable" }
           modifiedArguments.append("-emit-library")

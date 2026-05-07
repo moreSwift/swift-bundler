@@ -178,10 +178,13 @@ enum Runner {
     arguments: [String],
     environmentVariables: [String: String]
   ) async throws(Error) {
-    // runAppImage is a workaround required to run certain app images, but it
-    // works for regular executable too so we just use it in all cases.
     try await Error.catch(withMessage: .failedToRunExecutable) {
-      try await Process.runAppImage(bundlerOutput.executable.path, arguments: arguments)
+      try await Process.create(
+        bundlerOutput.executable.path,
+        arguments: arguments,
+        environment: environmentVariables,
+        runSilentlyWhenNotVerbose: false
+      ).runAndWait()
     }
   }
 
@@ -200,7 +203,8 @@ enum Runner {
       try await Process.create(
         bundlerOutput.executable.path,
         arguments: arguments,
-        environment: environmentVariables
+        environment: environmentVariables,
+        runSilentlyWhenNotVerbose: false
       ).runAndWait()
     }
   }
