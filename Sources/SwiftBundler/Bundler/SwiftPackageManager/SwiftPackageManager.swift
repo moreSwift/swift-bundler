@@ -474,7 +474,8 @@ enum SwiftPackageManager {
       try await Process.create(
         swiftPath(toolchain: toolchain),
         arguments: ["package", "resolve"],
-        directory: packageDirectory
+        directory: packageDirectory,
+        runSilentlyWhenNotVerbose: false
       ).runAndWait()
     }
   }
