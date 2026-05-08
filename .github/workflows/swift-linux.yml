@@ -2,7 +2,11 @@ name: Build Linux
 
 on:
   push:
+    branches:
+      - 'main'
   pull_request:
+    branches-ignore:
+      - 'gh-pages'
   workflow_dispatch:
 
 jobs:
