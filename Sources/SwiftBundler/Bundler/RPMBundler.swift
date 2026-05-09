@@ -101,12 +101,31 @@ enum RPMBundler: Bundler {
       throw Error(.failedToWriteSpecFile(rpmBuildDirectory.appSpec), cause: error)
     }
 
+    // We now construct a symlink to the RPM buildroot and use that when invoking
+    // rpmbuild, because rpmbuild doesn't handle paths with spaces, and our paths
+    // may have spaces
+    let noSpacesAppName = context.appName.replacingOccurrences(of: " ", with: "-")
+    let symlink = FileManager.default.temporaryDirectory
+      / "\(noSpacesAppName)-\(UUID().uuidString)"
+    try Error.catch {
+      try FileManager.default.createSymbolicLink(
+        at: symlink,
+        withDestinationURL: rpmBuildDirectory.root
+      )
+    }
+
+    let symlinkedBuildDirectory = RPMBuildDirectory(
+      at: symlink,
+      escapedAppName: escapedAppName,
+      appVersion: appVersion
+    )
+
     // Build the actual RPM.
     log.info("Running rpmbuild")
     let command = "rpmbuild"
     let arguments = [
-      "--define", "_topdir \(rpmBuildDirectory.root.path)",
-      "-v", "-bb", rpmBuildDirectory.appSpec.path,
+      "--define", "_topdir \(symlinkedBuildDirectory.root.path)",
+      "-v", "-bb", symlinkedBuildDirectory.appSpec.path,
     ]
 
     do {
@@ -177,7 +196,7 @@ enum RPMBundler: Bundler {
       return """
         FILE_SRC=$INSTALL_ROOT/\(quotedPath)
         FILE_DEST=$RPM_BUILD_ROOT/\(quotedPath)
-        mkdir -p $(dirname "$FILE_DEST")
+        mkdir -p "$(dirname "$FILE_DEST")"
         cp "$FILE_SRC" "$FILE_DEST"
         """
     }
