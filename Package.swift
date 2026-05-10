@@ -58,7 +58,7 @@ let package = Package(
     .package(url: "https://github.com/CoreOffice/XMLCoder", from: "0.17.1"),
     .package(url: "https://github.com/adam-fowler/async-collections.git", from: "0.1.0"),
     .package(url: "https://github.com/gregcotten/AsyncProcess", from: "0.0.5"),
-    .package(url: "https://github.com/stackotter/ErrorKit", from: "2.0.0"),
+    .package(url: "https://github.com/stackotter/ErrorKit", from: "2.1.0"),
     .package(
       url: "https://github.com/stackotter/swift-macro-toolkit",
       .upToNextMinor(from: "0.9.0")
