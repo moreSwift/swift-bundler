@@ -52,6 +52,9 @@ struct AppConfiguration: Codable, Sendable {
   /// MSI bundler related configuration properties.
   var msi: MSIBundlerConfiguration?
 
+  /// MSIX and APPX bundler related configuration properties.
+  var msix: MSIXBundlerConfiguration?
+
   /// Android related configuration properties.
   var android: AndroidConfiguration?
 
@@ -174,15 +177,15 @@ struct AppConfiguration: Codable, Sendable {
         throw Error(.failedToLoadInfoPlistEntries(file: infoPlistFile), cause: error)
       }
 
-      if version == nil, case let .string(versionString) = plist["CFBundleShortVersionString"] {
+      if version == nil, case .string(let versionString) = plist["CFBundleShortVersionString"] {
         version = Version(tolerant: versionString)
       }
 
-      if identifier == nil, case let .string(identifierString) = plist["CFBundleIdentifier"] {
+      if identifier == nil, case .string(let identifierString) = plist["CFBundleIdentifier"] {
         identifier = identifierString
       }
 
-      if category == nil, case let .string(categoryString) = plist["LSApplicationCategoryType"] {
+      if category == nil, case .string(let categoryString) = plist["LSApplicationCategoryType"] {
         category = categoryString
       }
     } else {

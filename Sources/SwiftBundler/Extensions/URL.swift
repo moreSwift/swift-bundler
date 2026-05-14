@@ -6,12 +6,21 @@ import Foundation
 
 extension URL {
   /// Gets the path of this URL relative to another URL.
-  /// - Parameter base: The base for the relative path.
+  /// - Parameters:
+  ///   - base: The base for the relative path.
+  ///   - pathSeparator: The separator to use in the relative path.
+  ///   - includingRelativePathPrefix: Whether to include the relative path
+  ///     prefix (e.g. `./`) when the relative path has no parent-directory
+  ///     traversal.
   /// - Returns: The relative path if both this URL and the base URL are files,
   ///   otherwise the result is undefined. It used to return `nil` in that case,
   ///   but since I know I'll be moving to a proper file path type soon, I won't
   ///   clog up new code with the issues of `URL`.
-  func path(relativeTo base: URL) -> String {
+  func path(
+    relativeTo base: URL,
+    withPathSeparator pathSeparator: String = "/",
+    includingRelativePathPrefix: Bool = true
+  ) -> String {
     let destComponents = self.pathComponents
     let baseComponents = base.pathComponents
 
@@ -39,11 +48,11 @@ extension URL {
 
     // Build relative path:
     var relComponents = Array(repeating: "..", count: baseComponents.count - commonComponentCount)
-    if relComponents.isEmpty {
+    if relComponents.isEmpty && includingRelativePathPrefix {
       relComponents.append(".")
     }
     relComponents.append(contentsOf: destComponents[commonComponentCount...])
-    return relComponents.joined(separator: "/")
+    return relComponents.joined(separator: pathSeparator)
   }
 
   /// The date at which the underlying file or directory was last modified, if

@@ -6,6 +6,7 @@ enum BundlerChoice: String, CaseIterable {
   case linuxRPM
   case windowsGeneric
   case windowsMSI
+  case windowsMSIX
   case androidAPK
 
   /// The bundler this choice corresponds to.
@@ -23,6 +24,8 @@ enum BundlerChoice: String, CaseIterable {
         return GenericWindowsBundler.self
       case .windowsMSI:
         return MSIBundler.self
+      case .windowsMSIX:
+        return MSIXBundler.self
       case .androidAPK:
         return APKBundler.self
     }
@@ -80,7 +83,7 @@ enum BundlerChoice: String, CaseIterable {
         ]
       case .linuxGeneric, .linuxAppImage, .linuxRPM:
         return [.linux]
-      case .windowsGeneric, .windowsMSI:
+      case .windowsGeneric, .windowsMSI, .windowsMSIX:
         return [.windows]
       case .androidAPK:
         return [.android]
@@ -94,7 +97,7 @@ enum BundlerChoice: String, CaseIterable {
         return [.macOS]
       case .linuxGeneric, .linuxAppImage, .linuxRPM:
         return [.linux]
-      case .windowsGeneric, .windowsMSI:
+      case .windowsGeneric, .windowsMSI, .windowsMSIX:
         return [.windows]
       case .androidAPK:
         return [.macOS, .linux, .windows]
