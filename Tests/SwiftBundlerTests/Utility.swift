@@ -34,7 +34,7 @@ func withFixture(_ name: String, do action: (URL) async throws -> Void) async th
 
   // Create a copy of the fixture
   let fixture = Bundle.module.bundleURL / "Fixtures" / name
-  let fixtureCopy = temp / name
+  let fixtureCopy = temp / name.replacingOccurrences(of: "/", with: "_")
   let buildDirectory = fixtureCopy / ".build"
   let savedBuildDirectory: URL?
   if fixtureCopy.exists() {

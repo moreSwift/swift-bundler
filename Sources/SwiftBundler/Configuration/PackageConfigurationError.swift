@@ -1,6 +1,7 @@
 import Foundation
 import TOMLKit
 import ErrorKit
+import Version
 
 extension PackageConfiguration {
   typealias Error = RichError<ErrorMessage>
@@ -21,6 +22,10 @@ extension PackageConfiguration {
     case failedToDeserializeV2Configuration
     case unsupportedFormatVersion(Int)
     case configurationIsAlreadyUpToDate
+    case invalidFormatVersion(any TOMLValueConvertible & Sendable)
+    case invalidCompatibility(any TOMLValueConvertible & Sendable)
+    case compatibilityTooLow(Version)
+    case unsupportedConfigCompatibility(Version)
 
     var userFriendlyMessage: String {
       switch self {
@@ -55,6 +60,40 @@ extension PackageConfiguration {
             + " be automatically migrated. The latest format version is '\(PackageConfiguration.currentFormatVersion)'"
         case .configurationIsAlreadyUpToDate:
           return "Configuration file is already up-to-date"
+        case .invalidFormatVersion(let formatVersion):
+          return "Invalid format_version; got '\(formatVersion)', expected an integer"
+        case .invalidCompatibility(let compatibility):
+          return """
+            Invalid compatibility; got '\(compatibility)', expected a semantic \
+            version (encoded as a string)
+            """
+        case .compatibilityTooLow(let compatibility):
+          let compat = PackageConfiguration.minimumCompatibilityVersion
+          if SwiftBundler.version < compat {
+            return """
+              The compatibility field will be enabled in \(compat), so a \
+              compatibility of \(compatibility) is not allowed; omit the \
+              compatibility field in favor of the format_version field to support \
+              Swift Bundler 3.0.0, or if Swift Bundler \(compat) has been released \
+              increase your compatibility to at least \(compat) and update your Swift \
+              Bundler installation
+              """
+          } else {
+            return """
+              The compatibility field was introduced in \(compat), so a \
+              compatibility of \(compatibility) is not allowed; either \
+              bump your compatibility to at least \(compat), or omit the \
+              compatibility field in favor of the old format_version field to \
+              support Swift Bundler 3.0.0 (which uses a format_version of \
+              \(PackageConfiguration.currentFormatVersion))
+              """
+          }
+        case .unsupportedConfigCompatibility(let compatibility):
+          return """
+            The target project states a compatibility of \(compatibility); update \
+            your Swift Bundler CLI to at least version \(compatibility) to work \
+            with this project
+            """
       }
     }
   }

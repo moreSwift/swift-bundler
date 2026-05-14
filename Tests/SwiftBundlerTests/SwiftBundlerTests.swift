@@ -7,7 +7,7 @@ import Version
 @testable import SwiftBundler
 
 @Suite(.serialized)
-struct Tests {
+struct SwiftBundlerTests {
   @Test func testCommandLineParsing() throws {
     let commandLine = CommandLine.lenientParse(
       "./path/to/my\\ command arg1 'arg2 with spaces' \"arg3 with spaces\" arg4\\ with\\ spaces"
