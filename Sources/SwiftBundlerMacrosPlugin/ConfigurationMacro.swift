@@ -243,7 +243,15 @@ extension ConfigurationMacro {
       }
     )
 
-    return try StructDeclSyntax("struct Overlay: Codable, ConfigurationOverlay") {
+    var conformances = ["Codable, ConfigurationOverlay"]
+    let inheritedTypes = type.inheritedTypes.map(\.description)
+    for inheritableConformance in ["Hashable", "Equatable", "Sendable"] {
+      if inheritedTypes.contains(inheritableConformance) {
+        conformances.append(inheritableConformance)
+      }
+    }
+
+    return try StructDeclSyntax("struct Overlay: \(raw: conformances.joined(separator: ", "))") {
       try TypeAliasDeclSyntax("typealias Base = \(raw: type.identifier)")
 
       DeclSyntax(

@@ -3,7 +3,7 @@ import XMLCoder
 
 /// MSI bundler related configuration properties.
 @Configuration(overlayable: false)
-struct MSIBundlerConfiguration: Codable, Sendable {
+struct MSIBundlerConfiguration: Codable, Hashable, Sendable {
   /// Additional entries to add to the app's WXS configuration file before
   /// invoking the WiX CLI to produce the final MSI.
   ///

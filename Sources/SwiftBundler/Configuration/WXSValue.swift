@@ -1,11 +1,11 @@
-struct WXSValue: TriviallyFlattenable, Sendable {
+struct WXSValue: TriviallyFlattenable, Hashable, Sendable {
   var tag: String
   var attributes: [String: String]
   var children: [WXSValue]
 }
 
 extension WXSValue: Codable {
-  struct Key: OpenCodingKey, Equatable {
+  struct Key: OpenCodingKey, Hashable, Sendable {
     var stringValue: String
 
     var intValue: Int? { nil}

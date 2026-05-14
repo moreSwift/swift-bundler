@@ -9,7 +9,7 @@ import XMLCoder
 ///
 /// See https://learn.microsoft.com/en-us/windows/win32/sbscs/application-manifests.
 struct WindowsApplicationManifest:
-  Codable, DynamicNodeEncoding, TriviallyFlattenable, Equatable, Sendable
+  Codable, DynamicNodeEncoding, TriviallyFlattenable, Hashable, Sendable
 {
   /// This is a required field.
   var manifestVersion: String?
@@ -41,7 +41,7 @@ struct WindowsApplicationManifest:
     )
   }
 
-  struct AssemblyIdentity: Codable, DynamicNodeEncoding, Equatable, Sendable {
+  struct AssemblyIdentity: Codable, DynamicNodeEncoding, Hashable, Sendable {
     /// This is a required field.
     var version: String?
     var processorArchitecture: String?
@@ -67,7 +67,7 @@ struct WindowsApplicationManifest:
     }
   }
 
-  struct TrustInfo: Codable, DynamicNodeEncoding, Equatable, Sendable {
+  struct TrustInfo: Codable, DynamicNodeEncoding, Hashable, Sendable {
     static let xmlns = "urn:schemas-microsoft-com:asm.v2"
 
     /// This is a required field.
@@ -86,7 +86,7 @@ struct WindowsApplicationManifest:
       }
     }
 
-    struct Security: Codable, DynamicNodeEncoding, Equatable, Sendable {
+    struct Security: Codable, DynamicNodeEncoding, Hashable, Sendable {
       var requestedPrivileges: [PrivilegeRequest]?
 
       static func nodeEncoding(for key: any CodingKey) -> XMLEncoder.NodeEncoding {
@@ -94,7 +94,7 @@ struct WindowsApplicationManifest:
       }
     }
 
-    enum PrivilegeRequest: Codable, Equatable, Sendable {
+    enum PrivilegeRequest: Codable, Hashable, Sendable {
       case requestedExecutionLevel(level: Attribute<String?>, uiAccess: Attribute<Bool?>)
 
       enum CodingKeys: String, CodingKey, XMLChoiceCodingKey {
@@ -102,7 +102,7 @@ struct WindowsApplicationManifest:
       }
     }
 
-    struct RequestedExecutionLevel: Codable, DynamicNodeEncoding, Equatable, Sendable {
+    struct RequestedExecutionLevel: Codable, DynamicNodeEncoding, Hashable, Sendable {
       var level: String?
       var uiAccess: Bool?
 
@@ -112,7 +112,7 @@ struct WindowsApplicationManifest:
     }
   }
 
-  struct File: Codable, DynamicNodeEncoding, Equatable, Sendable {
+  struct File: Codable, DynamicNodeEncoding, Hashable, Sendable {
     var name: String?
 
     static func nodeEncoding(for key: any CodingKey) -> XMLEncoder.NodeEncoding {

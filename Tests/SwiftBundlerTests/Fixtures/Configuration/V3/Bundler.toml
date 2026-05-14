@@ -1,0 +1,13 @@
+format_version = 2
+
+[apps.DeltaClient]
+product = 'DeltaClient'
+version = 'v0.1.0-alpha.1'
+identifier = 'dev.stackotter.delta-client'
+category = 'public.app-category.games'
+icon = 'AppIcon.icns'
+
+[apps.DeltaClient.plist]
+CFBundleShortVersionString = "$(VERSION)-release"
+GCSupportsControllerUserInteraction = "True"
+MetalCaptureEnabled = true

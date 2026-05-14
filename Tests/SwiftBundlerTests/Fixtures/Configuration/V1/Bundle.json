@@ -1,0 +1,11 @@
+{
+  "target": "HelloWorld",
+  "bundleIdentifier": "com.example.HelloWorld",
+  "versionString": "0.1.0",
+  "buildNumber": 1,
+  "category": "public.app-category.games",
+  "minOSVersion": "10.15",
+  "extraInfoPlistEntries": {
+    "Key": "Value"
+  }
+}

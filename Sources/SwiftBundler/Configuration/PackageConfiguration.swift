@@ -4,19 +4,32 @@ import Version
 
 /// The configuration for a package.
 @Configuration(overlayable: false)
-struct PackageConfiguration: Codable, Sendable {
+struct PackageConfiguration: Codable, Hashable, Sendable {
   /// The current configuration format version.
-  static let currentFormatVersion = 3
+  static let currentFormatVersion = 2
 
-  /// Configuration format versions that are trivial to migrate to from the
-  /// previous format version.
-  static let trivialMigrations: [Int] = [3]
+  /// The lower bound for the ``compatibility`` field. This doesn't mean that
+  /// Swift Bundler doesn't support older configuration file formats (it still
+  /// does), just that the ``compatibility`` field doesn't make sense for config
+  /// files that are to be parsed by Swift Bundler versions before 3.1.0 (which
+  /// is when we plan to enable the 'compatibility' field; enabling it sooner
+  /// would lead to confusion when a file states 3.0.0 compatibility and a CLI
+  /// that outputs its version as 3.0.0 fails to parse it, due to being a build
+  /// from before the official 3.0.0 release).
+  static let minimumCompatibilityVersion = Version(3, 1, 0)
 
   /// The file name for Swift Bundler configuration files.
   static let configurationFileName = "Bundler.toml"
 
   /// The configuration format version.
-  var formatVersion: Int
+  var formatVersion: Int?
+
+  /// The configuration file's Swift Bundler compatibility. In 4.0.0 this field
+  /// will replace ``formatVersion``. We will support it from 3.1.0 to ease the
+  /// transition to 4.0.0, and we will at the very least 'understand' the field
+  /// in 3.0.0 to throw sensible errors (for users with new enough 3.0.0 builds
+  /// that contain this code).
+  var compatibility: Version?
 
   /// The configuration for each app in the package (packages can contain
   /// multiple apps). Maps app name to app configuration.
@@ -76,23 +89,23 @@ struct PackageConfiguration: Codable, Sendable {
     customFile: URL? = nil,
     migrateConfiguration: Bool = false
   ) async throws(Error) -> PackageConfiguration {
-    let configurationFile = customFile
-      ?? standardConfigurationFileLocation(for: packageDirectory)
+    let standardConfigurationFile = standardConfigurationFileLocation(for: packageDirectory)
 
-    // Migrate old configuration if no new configuration exists
-    let shouldAttemptJSONMigration = customFile == nil
+    // Migrate old JSON configuration file if no new configuration exists
+    let shouldAttemptJSONMigration = customFile == nil || customFile?.pathExtension == "json"
     if shouldAttemptJSONMigration {
-      let oldConfigurationFile = packageDirectory / "Bundle.json"
-      let configurationExists = configurationFile.exists(withType: .file)
+      let oldConfigurationFile = customFile ?? packageDirectory / "Bundle.json"
+      let configurationExists = standardConfigurationFile.exists(withType: .file)
       let oldConfigurationExists = oldConfigurationFile.exists(withType: .file)
       if oldConfigurationExists && !configurationExists {
         return try migrateV1Configuration(
           from: oldConfigurationFile,
-          to: migrateConfiguration ? configurationFile : nil
+          to: migrateConfiguration ? standardConfigurationFile : nil
         )
       }
     }
 
+    let configurationFile = customFile ?? standardConfigurationFile
     let contents: String
     do {
       contents = try String(contentsOf: configurationFile)
@@ -100,53 +113,92 @@ struct PackageConfiguration: Codable, Sendable {
       throw Error(.failedToReadConfigurationFile(configurationFile), cause: error)
     }
 
+    return try await loadTOMLConfiguration(
+      configurationFile,
+      contents: contents,
+      fromDirectory: packageDirectory,
+      migrateConfiguration: migrateConfiguration
+    )
+  }
+
+  static func loadTOMLConfiguration(
+    _ location: URL,
+    contents: String,
+    fromDirectory packageDirectory: URL,
+    migrateConfiguration: Bool
+  ) async throws(Error) -> PackageConfiguration {
+    let table = try Error.catch {
+      try TOMLTable(string: contents)
+    }
+
+    let formatVersion: Int?
+    if let formatVersionValue = table[CodingKeys.formatVersion.rawValue] {
+      guard let formatVersionInt = formatVersionValue.int else {
+        throw Error(.invalidFormatVersion(formatVersionValue))
+      }
+
+      // For a month or so, the format_version was bumped to version 3. We now
+      // consider both format versions to be equivalent even though format version
+      // 3 contained some additive, because treating them as separate (and generating
+      // new Bundler.toml files with a format_version of 3), causes pre-release
+      // Swift Bundler 3.0.0 builds to spit out cryptic errors (due to Swift Bundler
+      // previously not checking the format_version field properly...)
+      guard formatVersionInt == 2 || formatVersionInt == 3 else {
+        throw Error(.unsupportedFormatVersion(formatVersionInt))
+      }
+
+      formatVersion = formatVersionInt
+    } else {
+      formatVersion = nil
+    }
+
+    let compatibility: Version?
+    if let compatibilityValue = table[CodingKeys.compatibility.rawValue] {
+      guard
+        let compatibilityString = compatibilityValue.string,
+        let compatibilityVersion = Version(compatibilityString)
+      else {
+        throw Error(.invalidCompatibility(compatibilityValue))
+      }
+
+      guard compatibilityVersion >= Self.minimumCompatibilityVersion else {
+        throw Error(.compatibilityTooLow(compatibilityVersion))
+      }
+
+      guard compatibilityVersion <= SwiftBundler.version else {
+        throw Error(.unsupportedConfigCompatibility(compatibilityVersion))
+      }
+
+      compatibility = compatibilityVersion
+    } else {
+      compatibility = nil
+    }
+
+    // If we're missing the format_version or compatibility fields then we
+    // assume we're working with a Swift Bundler 2.x configuration (not to
+    // be confused with a 'format_version = 2' configuration...)
     let configuration: PackageConfiguration
-    do {
+    if formatVersion == nil && compatibility == nil {
+      configuration = try await migrateV2Configuration(
+        location,
+        contents: contents,
+        mode: migrateConfiguration ? .writeChanges(backup: true) : .readOnly
+      )
+    } else {
+      // Parse the config file as a post-v2 configuration
       configuration = try Error.catch(withMessage: .failedToDeserializeConfiguration) {
         var decoder = TOMLDecoder(strictDecoding: true)
         // Tolerant version parsing
         decoder.userInfo[.decodingMethod] = DecodingMethod.tolerant
         return try decoder.decode(
           PackageConfiguration.self,
-          from: contents
+          from: table
         )
       }
 
       if migrateConfiguration {
         throw Error(.configurationIsAlreadyUpToDate)
       }
-    } catch {
-      if case .configurationIsAlreadyUpToDate = (error as? Error)?.message {
-        // TODO: See if full typed throws fixes this
-        // swiftlint:disable:next force_cast
-        throw error as! Error
-      }
-
-      // Maybe the configuration is a Swift Bundler v2 configuration.
-      // Attempt to migrate it.
-      let table = try Error.catch(withMessage: .failedToDeserializeConfiguration) {
-        try TOMLTable(string: contents)
-      }
-
-      guard !table.contains(key: CodingKeys.formatVersion.rawValue) else {
-        // TODO: See if full typed throws fixes this
-        // swiftlint:disable:next force_cast
-        throw error as! Error
-      }
-
-      return try await migrateV2Configuration(
-        configurationFile,
-        mode: migrateConfiguration ? .writeChanges(backup: true) : .readOnly
-      )
-    }
-
-    var formatVersion = configuration.formatVersion
-    while trivialMigrations.contains(formatVersion + 1) {
-      formatVersion += 1
-    }
-
-    guard formatVersion == PackageConfiguration.currentFormatVersion else {
-      throw Error(.unsupportedFormatVersion(configuration.formatVersion))
     }
 
     return try await Error.catch(withMessage: .failedToEvaluateVariables) {
@@ -161,32 +213,27 @@ struct PackageConfiguration: Codable, Sendable {
   ///
   /// Mutates the contents of the given configuration file.
   /// - Parameters:
-  ///   - configurationFile: The configuration file to migrate.
+  ///   - location: The configuration file to migrate.
+  ///   - contents: The contents of the configuration file.
   ///   - mode: The migration mode to use.
   /// - Returns: The migrated configuration.
   static func migrateV2Configuration(
-    _ configurationFile: URL,
+    _ location: URL,
+    contents: String,
     mode: MigrationMode
   ) async throws(Error) -> PackageConfiguration {
     if mode == .readOnly {
-      log.warning("'\(configurationFile.relativePath)' is outdated.")
+      log.warning("'\(location.relativePath)' is outdated.")
       log.warning(
         "Run 'swift bundler config migrate' to migrate it to the latest config format."
       )
     }
 
-    let contents: String
-    do {
-      contents = try String(contentsOf: configurationFile)
-    } catch {
-      throw Error(.failedToReadConfigurationFile(configurationFile), cause: error)
-    }
-
     // Back up the file if requested.
     if mode == .writeChanges(backup: true) {
-      let backupFile = configurationFile.appendingPathExtension("orig")
+      let backupFile = location.appendingPathExtension("orig")
       try Error.catch(withMessage: .failedToCreateConfigurationBackup) {
-        try contents.write(to: configurationFile)
+        try contents.write(to: location)
       }
 
       log.info(
@@ -208,7 +255,7 @@ struct PackageConfiguration: Codable, Sendable {
     // Write the changes if requested
     if case .writeChanges = mode {
       log.info("Writing migrated config to disk.")
-      try writeConfiguration(configuration, to: configurationFile)
+      try writeConfiguration(configuration, to: location)
     }
 
     return configuration

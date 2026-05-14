@@ -2,7 +2,7 @@ import Foundation
 
 /// The Swift Bundler specific configuration of a SwiftPM target.
 @Configuration(overlayable: true)
-struct TargetConfiguration: Codable, Sendable {
+struct TargetConfiguration: Codable, Hashable, Sendable {
   /// Dependency identifiers of dependencies built by Swift Bundler before this
   /// build is invoked. Allows for integration with non-SwiftPM build tools, and
   /// applications pulling other applications (e.g. helper applications) into
@@ -17,7 +17,7 @@ struct TargetConfiguration: Codable, Sendable {
   //   supplied in an overlay
   /// Android-specific target configuration.
   @Configuration(overlayable: false)
-  struct Android: Codable, Sendable {
+  struct Android: Codable, Hashable, Sendable {
     /// The directory to find Java source files in.
     ///
     /// The source files are expected to be within a Java-style package
