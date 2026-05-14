@@ -2,7 +2,7 @@ import Foundation
 
 /// Android related configuration properties.
 @Configuration(overlayable: false)
-struct AndroidConfiguration: Codable, Sendable {
+struct AndroidConfiguration: Codable, Hashable, Sendable {
   /// The default value to use in place of ``minSDK`` when it isn't set.
   static let defaultMinSDK = 28
 
@@ -40,7 +40,7 @@ struct AndroidConfiguration: Codable, Sendable {
   var permissions: [Permission]?
 
   /// An Android manifest permission request.
-  struct Permission: Codable, TriviallyFlattenable {
+  struct Permission: Codable, TriviallyFlattenable, Hashable, Sendable {
     var name: String
     var maxSDKVersion: Int?
 

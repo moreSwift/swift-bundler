@@ -7,7 +7,7 @@ extension ProjectConfiguration {
   /// kept around support for them. This lives in a separate file to keep it
   /// separate from the actual up-to-date configuration format definitions.
   @Configuration(overlayable: false)
-  struct InlineBuilder: Codable {
+  struct InlineBuilder: Codable, Hashable, Sendable {
     var name: String
     var type: BuilderType
     @ExcludeFromFlat
@@ -15,7 +15,7 @@ extension ProjectConfiguration {
     @ExcludeFromFlat
     var api: APIRequirement?
 
-    enum BuilderType: String, Codable, TriviallyFlattenable {
+    enum BuilderType: String, Codable, TriviallyFlattenable, Hashable, Sendable {
       case wholeProject
     }
 

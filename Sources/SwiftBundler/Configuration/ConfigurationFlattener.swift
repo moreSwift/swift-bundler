@@ -1,4 +1,5 @@
 import Foundation
+import Version
 
 /// Evaluates a configuration's overlays and performs any other useful
 /// transformations or validations at the same time.
@@ -85,6 +86,7 @@ enum ConfigurationFlattener {
 
     return PackageConfiguration.Flat(
       formatVersion: configuration.formatVersion,
+      compatibility: configuration.compatibility,
       apps: flattenedApps,
       projects: flattenedProjects,
       builders: flattenedBuilders,

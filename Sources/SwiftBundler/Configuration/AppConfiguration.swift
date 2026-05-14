@@ -4,7 +4,7 @@ import Version
 
 /// The configuration for an app.
 @Configuration(overlayable: true)
-struct AppConfiguration: Codable, Sendable {
+struct AppConfiguration: Codable, Hashable, Sendable {
   /// The app's identifier (e.g. `com.example.ExampleApp`).
   var identifier: String
 
@@ -137,7 +137,7 @@ struct AppConfiguration: Codable, Sendable {
   }
 
   /// The interface idiom to be used by Catalyst apps.
-  enum MacCatalystInterfaceIdiom: String, Codable, TriviallyFlattenable {
+  enum MacCatalystInterfaceIdiom: String, Codable, TriviallyFlattenable, Hashable {
     case ipad
     case mac
   }
