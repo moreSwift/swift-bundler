@@ -39,28 +39,55 @@ extension ConfigurationMacro: ExtensionMacro {
       throw MacroError("@Configuration must be attached to a struct")
     }
 
-    guard
-      let overlayableParameter = destructureSingle(MacroAttribute(node).arguments),
-      overlayableParameter.label == "overlayable",
-      let overlayable = overlayableParameter.expr.asBooleanLiteral?.value
-    else {
-      throw MacroError("usage: @Configuration(overlayable: <Bool>)")
+    let arguments = MacroAttribute(node).arguments
+    let overlayable: Bool
+    if arguments.isEmpty {
+      overlayable = false
+    } else {
+      guard
+        let overlayableParameter = destructureSingle(arguments),
+        overlayableParameter.label == "overlayable",
+        let overlayableValue = overlayableParameter.expr.asBooleanLiteral?.value
+      else {
+        throw MacroError("usage: @Configuration(overlayable: <Bool>)")
+      }
+
+      overlayable = overlayableValue
     }
 
     let properties = try extractConfigurationProperties(structDecl)
     let aggregateProperties = try extractAggregateProperties(structDecl)
 
-    return [
-      try ExtensionDeclSyntax("extension \(type): Flattenable") {
-        DeclSyntax(try generateFlattenMethod(
-          structDecl,
-          properties,
-          aggregateProperties,
-          overlayable: overlayable
-        ))
-        DeclSyntax(try generateFlatStruct(structDecl, properties, aggregateProperties))
-      }
-    ]
+    var extensions: [ExtensionDeclSyntax] = []
+
+    let implementedProtocols = structDecl.inheritedTypes.map(\.normalizedDescription)
+    if !implementedProtocols.contains("Flattenable") && !implementedProtocols.contains(
+      "TriviallyFlattenable"
+    ) {
+      extensions.append(
+        try ExtensionDeclSyntax("extension \(type): Flattenable") {
+          DeclSyntax(try generateFlattenMethod(
+            structDecl,
+            properties,
+            aggregateProperties,
+            overlayable: overlayable
+          ))
+          DeclSyntax(try generateFlatStruct(structDecl, properties, aggregateProperties))
+        }
+      )
+    }
+
+    if !implementedProtocols.contains("Mergeable") {
+      extensions.append(
+        try MergeableMacro.generateMergeableExtension(
+          type: type,
+          structDecl: structDecl,
+          properties: properties
+        )
+      )
+    }
+
+    return extensions
   }
 }
 
@@ -75,12 +102,20 @@ extension ConfigurationMacro: MemberMacro {
       throw MacroError("@Configuration must be attached to a struct")
     }
 
-    guard
-      let overlayableParameter = destructureSingle(MacroAttribute(node).arguments),
-      overlayableParameter.label == "overlayable",
-      let overlayable = overlayableParameter.expr.asBooleanLiteral?.value
-    else {
-      throw MacroError("usage: @Configuration(overlayable: <Bool>)")
+    let arguments = MacroAttribute(node).arguments
+    let overlayable: Bool
+    if arguments.isEmpty {
+      overlayable = false
+    } else {
+      guard
+        let overlayableParameter = destructureSingle(arguments),
+        overlayableParameter.label == "overlayable",
+        let overlayableValue = overlayableParameter.expr.asBooleanLiteral?.value
+      else {
+        throw MacroError("usage: @Configuration(overlayable: <Bool>)")
+      }
+
+      overlayable = overlayableValue
     }
 
     let properties = try extractConfigurationProperties(type)
@@ -203,7 +238,22 @@ extension ConfigurationMacro {
       !property.excludeFromFlat
     }
 
-    return try StructDeclSyntax("struct Flat") {
+    var conformances: [String] = []
+    let inheritedTypes = type.inheritedTypes.map(\.description)
+    for inheritableConformance in ["Hashable", "Equatable", "Sendable"] {
+      if inheritedTypes.contains(inheritableConformance) {
+        conformances.append(inheritableConformance)
+      }
+    }
+
+    var conformanceClause: String
+    if conformances.isEmpty {
+      conformanceClause = ""
+    } else {
+      conformanceClause = ": \(conformances.joined(separator: ", "))"
+    }
+
+    return try StructDeclSyntax("struct Flat\(raw: conformanceClause)") {
       for property in properties {
         try VariableDeclSyntax("var \(raw: property.identifier): \(raw: property.flatType)")
       }
@@ -279,7 +329,7 @@ extension ConfigurationMacro {
       try FunctionDeclSyntax("func merge(into base: inout Base)") {
         for property in properties {
           StmtSyntax(
-            "Self.merge(&base.\(raw: property.identifier), \(raw: property.identifier))\n"
+            "ConfigurationHelpers.merge(&base.\(raw: property.identifier), \(raw: property.identifier))\n"
           )
         }
       }

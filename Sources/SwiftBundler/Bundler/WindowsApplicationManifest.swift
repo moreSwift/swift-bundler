@@ -2,12 +2,13 @@ import Foundation
 import XMLCoder
 
 /// A Windows application manifest. Fields not marked as required in their
-/// documentation optional. We have not modelled required fields as
+/// documentation are optional. We have not modelled required fields as
 /// non-optional types, because we want to be able to reuse this type as a
 /// manifest overlay type as well, allowing users to specify partial manifests
 /// that then get merged with our generated manifests.
 ///
 /// See https://learn.microsoft.com/en-us/windows/win32/sbscs/application-manifests.
+@Mergeable
 struct WindowsApplicationManifest:
   Codable, DynamicNodeEncoding, TriviallyFlattenable, Hashable, Sendable
 {
@@ -41,6 +42,7 @@ struct WindowsApplicationManifest:
     )
   }
 
+  @Mergeable
   struct AssemblyIdentity: Codable, DynamicNodeEncoding, Hashable, Sendable {
     /// This is a required field.
     var version: String?
@@ -67,6 +69,7 @@ struct WindowsApplicationManifest:
     }
   }
 
+  @Mergeable
   struct TrustInfo: Codable, DynamicNodeEncoding, Hashable, Sendable {
     static let xmlns = "urn:schemas-microsoft-com:asm.v2"
 
@@ -86,6 +89,7 @@ struct WindowsApplicationManifest:
       }
     }
 
+    @Mergeable
     struct Security: Codable, DynamicNodeEncoding, Hashable, Sendable {
       var requestedPrivileges: [PrivilegeRequest]?
 
@@ -102,6 +106,7 @@ struct WindowsApplicationManifest:
       }
     }
 
+    @Mergeable
     struct RequestedExecutionLevel: Codable, DynamicNodeEncoding, Hashable, Sendable {
       var level: String?
       var uiAccess: Bool?
@@ -112,6 +117,7 @@ struct WindowsApplicationManifest:
     }
   }
 
+  @Mergeable
   struct File: Codable, DynamicNodeEncoding, Hashable, Sendable {
     var name: String?
 

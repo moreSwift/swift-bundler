@@ -67,7 +67,23 @@ struct CodingIndex: CodingKey {
   }
 }
 
-extension ConfigurationOverlay {
+/// A protocol for structured types that support merging. Types with hidden
+/// or no internal structure (such as `Int` or `String`) don't need to
+/// conform to this protocol, because they can be merged trivially by
+/// replacing the underlying value with the overlayed value.
+protocol Mergeable {
+  static func merge(_ base: Self, _ overlay: Self) -> Self
+}
+
+enum ConfigurationHelpers {
+  static func merge<T: Mergeable>(_ current: inout T?, _ overlay: T?) {
+    if let currentValue = current, let overlay {
+      current = T.merge(currentValue, overlay)
+    } else {
+      current = overlay ?? current
+    }
+  }
+
   static func merge<T>(_ current: inout T?, _ overlay: T?) {
     current = overlay ?? current
   }

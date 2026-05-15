@@ -74,7 +74,7 @@ struct ProjectConfiguration: Codable, Hashable, Sendable {
       }
     }
 
-    enum Flat {
+    enum Flat: Sendable, Hashable {
       case named(String)
       case inline(InlineBuilder.Flat)
     }
@@ -101,7 +101,7 @@ struct ProjectConfiguration: Codable, Hashable, Sendable {
     case git(URL)
     case local(String)
 
-    enum Flat {
+    enum Flat: Sendable, Hashable {
       case local(_ path: String)
       case git(URL, requirement: APIRequirement)
     }
@@ -109,7 +109,7 @@ struct ProjectConfiguration: Codable, Hashable, Sendable {
     /// A flattened version of source for usecases where there's a sensible
     /// default git repository (e.g. the stackotter/swift-bundler repository
     /// is the default if no builder API source is explicitly provided).
-    enum FlatWithDefaultRepository {
+    enum FlatWithDefaultRepository: Sendable, Hashable {
       case local(_ path: String)
       case git(URL?, requirement: APIRequirement)
 
