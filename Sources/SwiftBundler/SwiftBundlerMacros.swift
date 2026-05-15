@@ -1,8 +1,22 @@
 @attached(member, names: named(Overlay), named(CodingKeys), named(overlays))
-@attached(extension, conformances: Flattenable, names: named(Flat), named(flatten))
-macro Configuration(overlayable: Bool) = #externalMacro(
+@attached(
+  extension,
+  conformances: Flattenable, Mergeable,
+  names: named(Flat), named(flatten), named(merge)
+)
+macro Configuration(overlayable: Bool = false) = #externalMacro(
   module: "SwiftBundlerMacrosPlugin",
   type: "ConfigurationMacro"
+)
+
+@attached(
+  extension,
+  conformances: Mergeable,
+  names: named(merge)
+)
+macro Mergeable() = #externalMacro(
+  module: "SwiftBundlerMacrosPlugin",
+  type: "MergeableMacro"
 )
 
 @attached(peer)

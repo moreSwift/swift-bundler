@@ -5,6 +5,7 @@ import SwiftSyntaxMacros
 struct SwiftBundlerMacrosPlugin: CompilerPlugin {
   let providingMacros: [Macro.Type] = [
     ConfigurationMacro.self,
+    MergeableMacro.self,
     ConfigurationKeyMacro.self,
     AvailableMacro.self,
     AggregateMacro.self,
