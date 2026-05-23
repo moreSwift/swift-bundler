@@ -24,7 +24,7 @@ enum GenericWindowsBundler: Bundler {
   private static let resourceHackerDownloadURL =
     URL(string: "https://www.angusj.com/resourcehacker/resource_hacker.zip")!
 
-  private static let dllBundlingAllowList: [String] = [
+  static let dllBundlingAllowList: [String] = [
     "swiftCore",
     "swiftCRT",
     "swiftDispatch",
@@ -50,13 +50,17 @@ enum GenericWindowsBundler: Bundler {
     "swift_Differentiation",
     "concrt140",
     "msvcp140",
+    "msvcp140d",
     "msvcp140_1",
     "msvcp140_2",
     "msvcp140_atomic_wait",
     "msvcp140_codecvt_ids",
     "vccorlib140",
     "vcruntime140",
+    "vcruntime140d",
     "vcruntime140_1",
+    "vcruntime140_1d",
+    "ucrtbased",
     "vcruntime140_threads",
     "dispatch",
   ].map { "\($0).dll".lowercased() }
@@ -433,7 +437,8 @@ enum GenericWindowsBundler: Bundler {
 
     let dlls = try await enumerateDynamicLibraryDependencies(
       module: module,
-      productsDirectory: productsDirectory
+      productsDirectory: productsDirectory,
+      systemDLLNameAllowList: dllBundlingAllowList
     )
 
     for dll in dlls {
@@ -480,9 +485,13 @@ enum GenericWindowsBundler: Bundler {
   }
 
   /// Enumerates the non-system DLLs depended on by the given module.
-  private static func enumerateDynamicLibraryDependencies(
+  /// - Parameter dllNameAllowList: A list of allowed dll names, in lowercase.
+  ///   When not present, system DLLs depended upon by the module are
+  ///   unconditionally discovered.
+  static func enumerateDynamicLibraryDependencies(
     module: URL,
-    productsDirectory: URL
+    productsDirectory: URL,
+    systemDLLNameAllowList: [String]?
   ) async throws(Error) -> [URL] {
     let output: String
     do {
@@ -526,7 +535,18 @@ enum GenericWindowsBundler: Bundler {
       return try resolveDLL(dllName, productsDirectory: productsDirectory)
     }
 
-    return dlls
+    if let systemDLLNameAllowList {
+      // If the dll isn't a product of the SwiftPM build, we should only
+      // copy it across if it's known (cause there are many DLLs, such as
+      // ones shipped with Windows, that we shouldn't be distributing with
+      // apps).
+      return dlls.filter { dll in
+        dll.isContained(in: productsDirectory)
+        || systemDLLNameAllowList.contains(dll.lastPathComponent.lowercased())
+      }
+    } else {
+      return dlls
+    }
   }
 
   private static func resolveDLL(
@@ -540,11 +560,9 @@ enum GenericWindowsBundler: Bundler {
       return guess
     }
 
-    // If the dll isn't a product of the SwiftPM build, we should only
-    // copy it across if it's known (cause there are many DLLs, such as
-    // ones shipped with Windows, that we shouldn't be distributing with
-    // apps).
-    guard dllBundlingAllowList.contains(name.lowercased()) else {
+    if name.starts(with: "api-") || name.starts(with: "ext-") {
+      // https://learn.microsoft.com/en-us/windows/win32/apiindex/windows-apisets
+      log.debug("Ignoring virtual DLL '\(name)'")
       return nil
     }
 

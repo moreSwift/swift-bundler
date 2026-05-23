@@ -1,5 +1,5 @@
 {
-  "originHash" : "bebdc48e3b5a35e8fe1f66fb1419ab3b37534de5927cd42fae8fee9f897240e1",
+  "originHash" : "a5d781507088a0ab0eae81f6d27c4e630e057e532441317066c8fd257bd115fd",
   "pins" : [
     {
       "identity" : "aexml",
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/stackotter/ErrorKit",
       "state" : {
-        "revision" : "09fa11c7f7dfd45d8b85e73b7ddb7afabb1ff01b",
-        "version" : "2.0.0"
+        "revision" : "8144f39785e845f9a4048bdf67825f8ae53c54ac",
+        "version" : "2.1.0"
       }
     },
     {
