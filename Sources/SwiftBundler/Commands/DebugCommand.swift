@@ -1,4 +1,5 @@
 import ArgumentParser
+import ErrorKit
 import Foundation
 import Version
 
@@ -14,6 +15,7 @@ struct DebugCommand: AsyncParsableCommand {
       ListSDKs.self,
       ListToolchains.self,
       ListAndroidNDKs.self,
+      ListWindowsDynamicDependencies.self,
     ]
   )
 
@@ -139,6 +141,77 @@ struct DebugCommand: AsyncParsableCommand {
       try DebugCommand.displayKeyedOutputList(ndkVersions, json: json) { ndkVersion in
         KeyedList.Entry(ndkVersion.version.description.bold, ndkVersion.ndk.path)
       }
+    }
+  }
+
+  struct ListWindowsDynamicDependencies: ErrorHandledCommand {
+    static var configuration = CommandConfiguration(
+      commandName: "list-windows-dynamic-dependencies",
+      abstract: """
+        List all dynamic dependencies of a Windows exe or dll file. Only \
+        supported on Windows hosts
+        """
+    )
+
+    @Argument(
+      help: "The exe or dll file to enumerate dependencies of",
+      transform: URL.init(fileURLWithPath:)
+    )
+    var module: URL
+
+    @Flag(name: .shortAndLong, help: "Print verbose error messages.")
+    var verbose = false
+
+    @Flag(name: .customLong("include-system-dlls"), help: "Include system DLLs")
+    var includeSystemDLLs = false
+
+    @Flag(help: "Display the output as JSON (includes more information)")
+    var json = false
+
+    func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+      #if !os(Windows)
+        log.error("list-windows-dynamic-dependencies is only supported on Windows hosts")
+        Foundation.exit(1)
+      #else
+        let productsDirectory = module.deletingLastPathComponent()
+
+        let dependencies = try await RichError<SwiftBundlerError>.catch {
+          var queue = [module]
+          var dependencies: [URL] = []
+
+          while !queue.isEmpty {
+            let item = queue.removeFirst()
+            do {
+              let newDependencies = try await GenericWindowsBundler
+                .enumerateDynamicLibraryDependencies(
+                  module: item,
+                  productsDirectory: productsDirectory,
+                  systemDLLNameAllowList: includeSystemDLLs
+                    ? nil
+                    : GenericWindowsBundler.dllBundlingAllowList
+                )
+            
+              for dependency in newDependencies where !dependencies.contains(dependency) {
+                queue.append(dependency)
+                dependencies.append(dependency)
+              }
+            } catch {
+              log.error("Failed to resolve dependencies of \(item.path)")
+              displayError(error, verbose: verbose, displayHints: false)
+            }
+          }
+
+          return dependencies
+        }
+
+        try DebugCommand.displayOutput(dependencies.map(\.path), json: json) {
+          List {
+            for dependency in dependencies {
+              List.Entry(dependency.path)
+            }
+          }
+        }
+      #endif
     }
   }
 
