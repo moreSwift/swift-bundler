@@ -23,9 +23,9 @@ extension PackageConfiguration {
     case unsupportedFormatVersion(Int)
     case configurationIsAlreadyUpToDate
     case invalidFormatVersion(any TOMLValueConvertible & Sendable)
-    case invalidCompatibility(any TOMLValueConvertible & Sendable)
-    case compatibilityTooLow(Version)
-    case unsupportedConfigCompatibility(Version)
+    case invalidConfigVersion(any TOMLValueConvertible & Sendable)
+    case configVersionTooLow(Version)
+    case unsupportedConfigVersion(Version)
 
     var userFriendlyMessage: String {
       switch self {
@@ -62,37 +62,36 @@ extension PackageConfiguration {
           return "Configuration file is already up-to-date"
         case .invalidFormatVersion(let formatVersion):
           return "Invalid format_version; got '\(formatVersion)', expected an integer"
-        case .invalidCompatibility(let compatibility):
+        case .invalidConfigVersion(let configVersion):
           return """
-            Invalid compatibility; got '\(compatibility)', expected a semantic \
+            Invalid config_version; got '\(configVersion)', expected a semantic \
             version (encoded as a string)
             """
-        case .compatibilityTooLow(let compatibility):
-          let compat = PackageConfiguration.minimumCompatibilityVersion
+        case .configVersionTooLow(let configVersion):
+          let compat = PackageConfiguration.minimumConfigVersion
           if SwiftBundler.version < compat {
             return """
-              The compatibility field will be enabled in \(compat), so a \
-              compatibility of \(compatibility) is not allowed; omit the \
-              compatibility field in favor of the format_version field to support \
+              The config_version field will be enabled in \(compat), so a \
+              config_version of \(configVersion) does not make sense; either omit the \
+              config_version field in favor of the format_version field to support \
               Swift Bundler 3.0.0, or if Swift Bundler \(compat) has been released \
-              increase your compatibility to at least \(compat) and update your Swift \
+              increase your config_version to at least \(compat) and update your Swift \
               Bundler installation
               """
           } else {
             return """
-              The compatibility field was introduced in \(compat), so a \
-              compatibility of \(compatibility) is not allowed; either \
-              bump your compatibility to at least \(compat), or omit the \
-              compatibility field in favor of the old format_version field to \
+              The config_version field was introduced in \(compat), so a \
+              config_version of \(configVersion) is not allowed; either \
+              bump your config_version to at least \(compat), or omit the \
+              config_version field in favor of the old format_version field to \
               support Swift Bundler 3.0.0 (which uses a format_version of \
               \(PackageConfiguration.currentFormatVersion))
               """
           }
-        case .unsupportedConfigCompatibility(let compatibility):
+        case .unsupportedConfigVersion(let configVersion):
           return """
-            The target project states a compatibility of \(compatibility); update \
-            your Swift Bundler CLI to at least version \(compatibility) to work \
-            with this project
+            The target project states a config_version of \(configVersion); you must \
+            update to at least Swift Bundler \(configVersion) to work with this project
             """
       }
     }

@@ -86,7 +86,7 @@ enum ConfigurationFlattener {
 
     return PackageConfiguration.Flat(
       formatVersion: configuration.formatVersion,
-      compatibility: configuration.compatibility,
+      configVersion: configuration.configVersion,
       apps: flattenedApps,
       projects: flattenedProjects,
       builders: flattenedBuilders,
