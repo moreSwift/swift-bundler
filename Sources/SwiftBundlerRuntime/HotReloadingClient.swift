@@ -22,6 +22,7 @@ public struct HotReloadingClient: Sendable {
   /// Connects to the server specified by the `SWIFT_BUNDLER_SERVER` environment variable.
   /// Only supports the address formats supported by ``Self/parseAddress(_:)``.
   public init() async throws {
+    print("Creating hot reloading client")
     guard let addressString = ProcessInfo.processInfo.environment["SWIFT_BUNDLER_SERVER"] else {
       throw HotReloadingClientError.missingAddress
     }
@@ -32,10 +33,12 @@ public struct HotReloadingClient: Sendable {
 
   /// Connects to a hot reloading server.
   public init(address: String, port: UInt16) async throws {
+    print("Connecting to server")
     server = try await AsyncSocket.connected(to: .inet(ip4: address, port: port))
+    print("Connected to server")
   }
 
-  #if canImport(Darwin)
+  #if canImport(Darwin) || canImport(Glibc)
     public mutating func handlePackets(handleDylib: (sending Dylib) -> Void) async throws {
       while true {
         let packet = try await Packet.read(from: &server)

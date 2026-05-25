@@ -109,10 +109,12 @@
 
     func start(
       product: String,
+      appName: String,
       buildContext: GenericBuildContext,
       swiftToolchain: URL?,
       swiftSDK: SwiftSDK?,
-      appConfiguration: AppConfiguration.Flat
+      appConfiguration: AppConfiguration.Flat,
+      verbose: Bool
     ) async throws(Error) {
       let connection = try await accept()
       log.debug("Received connection from runtime")
@@ -124,7 +126,8 @@
       let outputDirectory = BundleCommand.outputDirectory(
         for: buildContext.scratchDirectory
       )
-      let metadataDirectory = outputDirectory / "metadata"
+      let appOutputDirectory = outputDirectory / "apps" / appName
+      let metadataDirectory = appOutputDirectory / "metadata"
 
       try await Error.catch(withMessage: .failedToWatchPackage) {
         try await FileSystemWatcher.watch(
@@ -163,7 +166,8 @@
 
                 try await Packet.reloadDylib(path: dylibFile).write(to: &connection)
               } catch {
-                log.error("Hot reloading failed: \(error.localizedDescription)")
+                log.error("Hot reloading failed")
+                displayError(error, verbose: verbose, displayHints: true)
               }
             }
           },

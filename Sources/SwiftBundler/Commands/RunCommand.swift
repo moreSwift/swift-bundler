@@ -145,10 +145,12 @@ struct RunCommand: ErrorHandledCommand {
           do {
             try await server.start(
               product: context.appConfiguration.product,
+              appName: context.appName,
               buildContext: buildContext,
               swiftToolchain: context.toolchain,
               swiftSDK: context.swiftSDK,
-              appConfiguration: context.appConfiguration
+              appConfiguration: context.appConfiguration,
+              verbose: verbose
             )
           } catch {
             log.error(
@@ -175,7 +177,8 @@ struct RunCommand: ErrorHandledCommand {
         device: device,
         arguments: passThroughArguments,
         environmentVariables: environmentVariables.merging(
-          additionalEnvironmentVariables, uniquingKeysWith: { key, _ in key }
+          additionalEnvironmentVariables,
+          uniquingKeysWith: { key, _ in key }
         )
       )
     }

@@ -25,16 +25,17 @@ public enum FileSystemWatcher {
             do {
               let stream = try await notifier.events(for: FilePath(path))
               group.addTask {
-                for await event in stream.debounce(for: .milliseconds(0.5)) {
-                  guard
-                    !event.flags.intersection([
-                      .fileCreated, .fileDeleted, .modified, .movedFrom,
-                      .movedTo,
-                      .selfDeleted, .selfMoved, .writableFileClosed,
-                    ]).isEmpty
-                  else {
-                    continue
-                  }
+                // let filteredStream = stream.filter { event in
+                //   let result = !event.flags.intersection([
+                //     .fileCreated, .fileDeleted, .modified, .movedFrom, .movedTo,
+                //     .selfDeleted, .selfMoved, .writableFileClosed,
+                //   ]).isEmpty
+                //   print("Got event \(event.flags): \(result)")
+                //   return result
+                // }
+
+                for await event in stream.debounce(for: .milliseconds(100)) {
+                  print("Handling \(event.path)")
                   handler()
                 }
               }
