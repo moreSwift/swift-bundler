@@ -8,15 +8,15 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
   /// The current configuration format version.
   static let currentFormatVersion = 2
 
-  /// The lower bound for the ``compatibility`` field. This doesn't mean that
+  /// The lower bound for the ``configVersion`` field. This doesn't mean that
   /// Swift Bundler doesn't support older configuration file formats (it still
-  /// does), just that the ``compatibility`` field doesn't make sense for config
+  /// does), just that the ``configVersion`` field doesn't make sense for config
   /// files that are to be parsed by Swift Bundler versions before 3.1.0 (which
-  /// is when we plan to enable the 'compatibility' field; enabling it sooner
+  /// is when we plan to enable the 'configVersion' field; enabling it sooner
   /// would lead to confusion when a file states 3.0.0 compatibility and a CLI
   /// that outputs its version as 3.0.0 fails to parse it, due to being a build
   /// from before the official 3.0.0 release).
-  static let minimumCompatibilityVersion = Version(3, 1, 0)
+  static let minimumConfigVersion = Version(3, 1, 0)
 
   /// The file name for Swift Bundler configuration files.
   static let configurationFileName = "Bundler.toml"
@@ -29,7 +29,7 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
   /// transition to 4.0.0, and we will at the very least 'understand' the field
   /// in 3.0.0 to throw sensible errors (for users with new enough 3.0.0 builds
   /// that contain this code).
-  var compatibility: Version?
+  var configVersion: Version?
 
   /// The configuration for each app in the package (packages can contain
   /// multiple apps). Maps app name to app configuration.
@@ -152,33 +152,33 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
       formatVersion = nil
     }
 
-    let compatibility: Version?
-    if let compatibilityValue = table[CodingKeys.compatibility.rawValue] {
+    let configVersion: Version?
+    if let configVersionValue = table[CodingKeys.configVersion.rawValue] {
       guard
-        let compatibilityString = compatibilityValue.string,
-        let compatibilityVersion = Version(compatibilityString)
+        let configVersionString = configVersionValue.string,
+        let configVersionParsed = Version(configVersionString)
       else {
-        throw Error(.invalidCompatibility(compatibilityValue))
+        throw Error(.invalidConfigVersion(configVersionValue))
       }
 
-      guard compatibilityVersion >= Self.minimumCompatibilityVersion else {
-        throw Error(.compatibilityTooLow(compatibilityVersion))
+      guard configVersionParsed >= Self.minimumConfigVersion else {
+        throw Error(.configVersionTooLow(configVersionParsed))
       }
 
-      guard compatibilityVersion <= SwiftBundler.version else {
-        throw Error(.unsupportedConfigCompatibility(compatibilityVersion))
+      guard configVersionParsed <= SwiftBundler.version else {
+        throw Error(.unsupportedConfigVersion(configVersionParsed))
       }
 
-      compatibility = compatibilityVersion
+      configVersion = configVersionParsed
     } else {
-      compatibility = nil
+      configVersion = nil
     }
 
-    // If we're missing the format_version or compatibility fields then we
+    // If we're missing the format_version or config_version fields then we
     // assume we're working with a Swift Bundler 2.x configuration (not to
     // be confused with a 'format_version = 2' configuration...)
     let configuration: PackageConfiguration
-    if formatVersion == nil && compatibility == nil {
+    if formatVersion == nil && configVersion == nil {
       configuration = try await migrateV2Configuration(
         location,
         contents: contents,
