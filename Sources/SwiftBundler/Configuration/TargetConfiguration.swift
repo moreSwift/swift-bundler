@@ -29,5 +29,9 @@ struct TargetConfiguration: Codable, Sendable {
     ///
     /// Defaults to the value of ``javaDirectory``.
     var kotlinDirectory: String?
+    /// The directory to find resource files in, such as XML resources.
+    ///
+    /// If not provided, resource linking is skipped.
+    var resourceDirectory: String?
   }
 }

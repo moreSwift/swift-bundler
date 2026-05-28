@@ -316,6 +316,14 @@ enum APKBundler: Bundler {
       targetPlatform: context.platform
     )
 
+    log.info("Locating and copying Android resources")
+    try copyResources(
+      dependedOnByRootProduct: context.appConfiguration.product,
+      fromPackageGraph: context.packageGraph,
+      toResources: project.resourceDirectory,
+      targetPlatform: context.platform
+    )
+
     // Run Gradle build
     let task = "assembleDebug"
     var gradleArguments = [task]
@@ -472,6 +480,107 @@ enum APKBundler: Bundler {
 
         try Error.catch(
           withMessage: .failedToCopyJVMSource(source: file, destination: destination)
+        ) {
+          try FileManager.default.copyItem(at: file, to: destination)
+        }
+      }
+    }
+  }
+
+  private static func copyResources(
+    dependedOnByRootProduct product: String,
+    fromPackageGraph packageGraph: SwiftPackageManager.PackageGraph,
+    toResources resourcesDirectory: URL,
+    targetPlatform: Platform
+  ) throws(Error) {
+    let conditionalTargets = try Error.catch {
+      try packageGraph.transitiveTargets(
+        inProduct: product,
+        inPackage: packageGraph.rootPackage.reference
+      )
+    }
+
+    let targets = packageGraph.activeTargets(
+      inConditionalReferences: conditionalTargets,
+      withTargetPlatform: targetPlatform
+    )
+
+    var directories: [(
+      location: URL,
+      target: SwiftPackageManager.TargetReference
+    )] = []
+
+    for target in targets {
+      guard let configuration = try Error.catch(do: {
+        try packageGraph.configuration(ofTarget: target)
+      }) else {
+        continue
+      }
+
+      let targetInfo = try Error.catch {
+        try packageGraph.target(referredToBy: target)
+      }
+
+      if let resourceDirectory = configuration.android?.resourceDirectory {
+        if targetInfo.kind == .library {
+          throw Error.init(.unsupportedAAPTResources(target))
+        }
+
+        log.info("Target '\(target.name)' has Android resources")
+        directories.append((targetInfo.directory / resourceDirectory, target))
+      }
+    }
+
+    for (directory, target) in directories {
+      guard let enumerator = FileManager.default.enumerator(
+        at: directory,
+        includingPropertiesForKeys: nil
+      ) else {
+        throw Error(.failedToEnumerateAAPTResources(directory, target))
+      }
+
+      var files: [URL] = []
+      for item in enumerator {
+        guard
+          let file = item as? URL,
+          file.exists(withType: .file)
+        else {
+          continue
+        }
+
+        files.append(file)
+      }
+
+      for file in files {
+        let destination = resourcesDirectory / file.path(relativeTo: directory)
+
+        let destinationDirectory = destination.deletingLastPathComponent()
+        if !destinationDirectory.exists() {
+          try Error.catch {
+            try FileManager.default.createDirectory(
+              at: destinationDirectory,
+              withIntermediateDirectories: true
+            )
+          }
+        }
+
+        if destination.exists() {
+          let clashes = directories.filter { ($0.location / file.relativePath).exists(withType: .file) }
+            .map(\.target)
+
+          log.warning(
+            """
+            Resource file at '\(file.relativePath)' will be overwritten \
+            by file of same name from target '\(target.name)' in package with \
+            identity '\(target.package.identity)'; clashing targets: \(
+              clashes.map { "\($0.name) in \($0.package)" }.joinedGrammatically()
+            )
+            """
+          )
+        }
+
+        try Error.catch(
+          withMessage: .failedToCopyAAPTResource(source: file, destination: destination)
         ) {
           try FileManager.default.copyItem(at: file, to: destination)
         }
@@ -677,6 +786,11 @@ enum APKBundler: Bundler {
           compileOptions {
               sourceCompatibility = JavaVersion.VERSION_17
               targetCompatibility = JavaVersion.VERSION_17
+          }
+
+          buildFeatures {
+              viewBinding = true
+              dataBinding = true
           }
       }
 
