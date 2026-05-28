@@ -529,7 +529,7 @@ enum APKBundler: Bundler {
       }
 
       if let resourceDirectory = configuration.android?.resourceDirectory {
-        if targetInfo.kind == .library {
+        if targetInfo.kind != .executable {
           throw Error.init(.unsupportedAAPTResources(target))
         }
 
@@ -609,7 +609,7 @@ enum APKBundler: Bundler {
     product: String,
     fromPackageGraph packageGraph: SwiftPackageManager.PackageGraph,
     targetPlatform: Platform
-  ) throws(Error) -> TargetConfiguration.Android.AAPTOptions.Flat {
+  ) throws(Error) -> TargetConfiguration.Android.AAPTOptions.Flat? {
     let conditionalTargets = try Error.catch {
       try packageGraph.transitiveTargets(
         inProduct: product,
@@ -627,7 +627,7 @@ enum APKBundler: Bundler {
         try packageGraph.target(referredToBy: target)
       }
 
-      if targetInfo.kind == .library { continue }
+      if targetInfo.kind != .executable { continue }
 
       guard let configuration = try Error.catch(do: {
         try packageGraph.configuration(ofTarget: target)
@@ -639,14 +639,8 @@ enum APKBundler: Bundler {
         return aapt
       }
     }
-      
-    return .init(
-      ignoreAssetsPatterns: [],
-      noCompress: [],
-      failOnMissingConfigEntry: nil as Bool?,
-      additionalParameters: [],
-      namespaced: nil as Bool?
-    )
+
+    return nil
   }
 
   struct SharedObject: Hashable {
@@ -766,8 +760,28 @@ enum APKBundler: Bundler {
   }
 
   private static func escapeStringForKotlin(_ str: String) -> String {
-    str.replacingOccurrences(of: "\"", with: "\\\"")
-      .replacingOccurrences(of: "\n", with: "\\n")
+    // https://kotlinlang.org/docs/characters.html#escape-sequences
+    // Backslash needs to be first and replacements need to be by Unicode scalars, not characters.
+    // Single quote does not need to be escaped in double-quoted strings.
+    let replacements: [(UnicodeScalar, String.UnicodeScalarView)] = [
+      ("\\", "\\\\".unicodeScalars),
+      ("\t", "\\t".unicodeScalars),
+      ("\u{08}", "\\b".unicodeScalars),
+      ("\n", "\\n".unicodeScalars),
+      ("\r", "\\r".unicodeScalars),
+      ("\"", "\\\"".unicodeScalars),
+      ("$", "\\$".unicodeScalars),
+    ]
+
+    var result = str.unicodeScalars
+    for replacement in replacements {
+      var endIndex = result.endIndex
+      while let index = result[..<endIndex].lastIndex(of: replacement.0) {
+        result.replaceSubrange(index...index, with: replacement.1)
+        endIndex = index
+      }
+    }
+    return String(result)
   }
 
   private static func generateGradleBuildConfig(
@@ -781,7 +795,7 @@ enum APKBundler: Bundler {
     projectStructure: ProjectStructure,
     ndkVersion: Version,
     containsLayouts: Bool,
-    aaptOptions: TargetConfiguration.Android.AAPTOptions.Flat
+    aaptOptions: TargetConfiguration.Android.AAPTOptions.Flat?
   ) -> String {
     let architectureNames = architectures.map(\.androidABIName)
     let abiFilters = architectureNames.map { architecture in
@@ -811,6 +825,7 @@ enum APKBundler: Bundler {
     let buildFeatures = containsLayouts
       ? """
 
+
           buildFeatures {
               viewBinding = true
               dataBinding = true
@@ -818,8 +833,9 @@ enum APKBundler: Bundler {
       """
       : ""
 
-    var aaptOptionsString = "\n    androidResources {\n"
-    do {
+    var aaptOptionsString = ""
+    if let aaptOptions {
+      aaptOptionsString = "\n\n    androidResources {\n"
       defer { aaptOptionsString += "    }" }
 
       if !aaptOptions.ignoreAssetsPatterns.isEmpty {
@@ -898,9 +914,7 @@ enum APKBundler: Bundler {
           compileOptions {
               sourceCompatibility = JavaVersion.VERSION_17
               targetCompatibility = JavaVersion.VERSION_17
-          }
-      \(buildFeatures)
-      \(aaptOptionsString)
+          }\(buildFeatures)\(aaptOptionsString)
       }
 
       kotlin {
