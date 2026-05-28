@@ -147,9 +147,22 @@ enum APKBundler: Bundler {
       try AndroidSDKManager.getVersion(ofNDKAt: ndk)
     }
 
+    log.info("Locating and copying Android resources")
+    let hasLayouts = try copyResources(
+      dependedOnByRootProduct: context.appConfiguration.product,
+      fromPackageGraph: context.packageGraph,
+      toResources: project.resourceDirectory,
+      targetPlatform: context.platform
+    )
+
     // Create Gradle configuration files
     let packageIdentifier = computePackageIdentifier(
       forAppIdentifier: context.appConfiguration.identifier
+    )
+    let aaptOptions = try getAAPTOptions(
+      product: context.appConfiguration.product,
+      fromPackageGraph: context.packageGraph,
+      targetPlatform: context.platform
     )
     let gradleBuildConfig = generateGradleBuildConfig(
       packageIdentifier: packageIdentifier,
@@ -160,7 +173,9 @@ enum APKBundler: Bundler {
       compileSDK: compileSDK,
       architectures: context.architectures,
       projectStructure: project,
-      ndkVersion: ndkVersion
+      ndkVersion: ndkVersion,
+      containsLayouts: hasLayouts,
+      aaptOptions: aaptOptions
     )
     let gradleSettings = generateGradleSettings(forApp: context.appName)
     let gradleProperties = generateGradleProperties()
@@ -479,6 +494,155 @@ enum APKBundler: Bundler {
     }
   }
 
+  private static func copyResources(
+    dependedOnByRootProduct product: String,
+    fromPackageGraph packageGraph: SwiftPackageManager.PackageGraph,
+    toResources resourcesDirectory: URL,
+    targetPlatform: Platform
+  ) throws(Error) -> Bool {
+    let conditionalTargets = try Error.catch {
+      try packageGraph.transitiveTargets(
+        inProduct: product,
+        inPackage: packageGraph.rootPackage.reference
+      )
+    }
+
+    let targets = packageGraph.activeTargets(
+      inConditionalReferences: conditionalTargets,
+      withTargetPlatform: targetPlatform
+    )
+
+    var directories: [(
+      location: URL,
+      target: SwiftPackageManager.TargetReference
+    )] = []
+
+    for target in targets {
+      guard let configuration = try Error.catch(do: {
+        try packageGraph.configuration(ofTarget: target)
+      }) else {
+        continue
+      }
+
+      let targetInfo = try Error.catch {
+        try packageGraph.target(referredToBy: target)
+      }
+
+      if let resourceDirectory = configuration.android?.resourceDirectory {
+        if targetInfo.kind != .executable {
+          throw Error.init(.unsupportedAAPTResources(target))
+        }
+
+        log.info("Target '\(target.name)' has Android resources")
+        directories.append((targetInfo.directory / resourceDirectory, target))
+      }
+    }
+
+    var hasLayouts = false
+
+    for (directory, target) in directories {
+      guard let enumerator = FileManager.default.enumerator(
+        at: directory,
+        includingPropertiesForKeys: nil
+      ) else {
+        throw Error(.failedToEnumerateAAPTResources(directory, target))
+      }
+
+      var files: [URL] = []
+      for item in enumerator {
+        guard
+          let file = item as? URL,
+          file.exists(withType: .file)
+        else {
+          continue
+        }
+
+        files.append(file)
+      }
+
+      for file in files {
+        let relativePath = file.path(relativeTo: directory)
+        if relativePath.starts(with: "./layout") {
+          // could be layout/*.xml, layout-sw600dp/*.xml, layout-land/*.xml, ...
+          // we don't care which one.
+          hasLayouts = true
+        }
+        let destination = resourcesDirectory / file.path(relativeTo: directory)
+
+        let destinationDirectory = destination.deletingLastPathComponent()
+        if !destinationDirectory.exists() {
+          try Error.catch {
+            try FileManager.default.createDirectory(
+              at: destinationDirectory,
+              withIntermediateDirectories: true
+            )
+          }
+        }
+
+        if destination.exists() {
+          let clashes = directories.filter { ($0.location / file.relativePath).exists(withType: .file) }
+            .map(\.target)
+
+          log.warning(
+            """
+            Resource file at '\(file.relativePath)' will be overwritten \
+            by file of same name from target '\(target.name)' in package with \
+            identity '\(target.package.identity)'; clashing targets: \(
+              clashes.map { "\($0.name) in \($0.package)" }.joinedGrammatically()
+            )
+            """
+          )
+        }
+
+        try Error.catch(
+          withMessage: .failedToCopyAAPTResource(source: file, destination: destination)
+        ) {
+          try FileManager.default.copyItem(at: file, to: destination)
+        }
+      }
+    }
+
+    return hasLayouts
+  }
+
+  private static func getAAPTOptions(
+    product: String,
+    fromPackageGraph packageGraph: SwiftPackageManager.PackageGraph,
+    targetPlatform: Platform
+  ) throws(Error) -> TargetConfiguration.Android.AAPTOptions.Flat? {
+    let conditionalTargets = try Error.catch {
+      try packageGraph.transitiveTargets(
+        inProduct: product,
+        inPackage: packageGraph.rootPackage.reference
+      )
+    }
+
+    let targets = packageGraph.activeTargets(
+      inConditionalReferences: conditionalTargets,
+      withTargetPlatform: targetPlatform
+    )
+
+    for target in targets {
+      let targetInfo = try Error.catch {
+        try packageGraph.target(referredToBy: target)
+      }
+
+      if targetInfo.kind != .executable { continue }
+
+      guard let configuration = try Error.catch(do: {
+        try packageGraph.configuration(ofTarget: target)
+      }) else {
+        continue
+      }
+
+      if let aapt = configuration.android?.aapt {
+        return aapt
+      }
+    }
+
+    return nil
+  }
+
   struct SharedObject: Hashable {
     /// The location of the shared object.
     var location: URL
@@ -595,6 +759,31 @@ enum APKBundler: Bundler {
     return dependencies
   }
 
+  private static func escapeStringForKotlin(_ str: String) -> String {
+    // https://kotlinlang.org/docs/characters.html#escape-sequences
+    // Backslash needs to be first and replacements need to be by Unicode scalars, not characters.
+    // Single quote does not need to be escaped in double-quoted strings.
+    let replacements: [(UnicodeScalar, String.UnicodeScalarView)] = [
+      ("\\", "\\\\".unicodeScalars),
+      ("\t", "\\t".unicodeScalars),
+      ("\u{08}", "\\b".unicodeScalars),
+      ("\n", "\\n".unicodeScalars),
+      ("\r", "\\r".unicodeScalars),
+      ("\"", "\\\"".unicodeScalars),
+      ("$", "\\$".unicodeScalars),
+    ]
+
+    var result = str.unicodeScalars
+    for replacement in replacements {
+      var endIndex = result.endIndex
+      while let index = result[..<endIndex].lastIndex(of: replacement.0) {
+        result.replaceSubrange(index...index, with: replacement.1)
+        endIndex = index
+      }
+    }
+    return String(result)
+  }
+
   private static func generateGradleBuildConfig(
     packageIdentifier: String,
     appVersion: Version,
@@ -604,7 +793,9 @@ enum APKBundler: Bundler {
     compileSDK: Int,
     architectures: [BuildArchitecture],
     projectStructure: ProjectStructure,
-    ndkVersion: Version
+    ndkVersion: Version,
+    containsLayouts: Bool,
+    aaptOptions: TargetConfiguration.Android.AAPTOptions.Flat?
   ) -> String {
     let architectureNames = architectures.map(\.androidABIName)
     let abiFilters = architectureNames.map { architecture in
@@ -629,6 +820,52 @@ enum APKBundler: Bundler {
         """
     } else {
       cmake16KBAlignmentFix = ""
+    }
+
+    let buildFeatures = containsLayouts
+      ? """
+
+
+          buildFeatures {
+              viewBinding = true
+              dataBinding = true
+          }
+      """
+      : ""
+
+    var aaptOptionsString = ""
+    if let aaptOptions {
+      aaptOptionsString = "\n\n    androidResources {\n"
+      defer { aaptOptionsString += "    }" }
+
+      if !aaptOptions.ignoreAssetsPatterns.isEmpty {
+        aaptOptionsString += "        ignoreAssetsPatterns.addAll(listOf("
+        aaptOptionsString += aaptOptions.ignoreAssetsPatterns.map { "\"\(escapeStringForKotlin($0))\"" }
+          .joined(separator: ", ")
+        aaptOptionsString += "))\n"
+      }
+
+      if !aaptOptions.noCompress.isEmpty {
+        aaptOptionsString += "        noCompress.addAll(listOf("
+        aaptOptionsString += aaptOptions.noCompress.map { "\"\(escapeStringForKotlin($0))\"" }
+          .joined(separator: ", ")
+        aaptOptionsString += "))\n"
+      }
+
+      if let failOnMissingConfigEntry = aaptOptions.failOnMissingConfigEntry {
+        aaptOptionsString += "        failOnMissingConfigEntry = \(failOnMissingConfigEntry)\n"
+      }
+
+      if !aaptOptions.additionalParameters.isEmpty {
+        aaptOptionsString += "        additionalParameters.addAll(listOf("
+        aaptOptionsString += aaptOptions.additionalParameters.map { "\"\(escapeStringForKotlin($0))\"" }
+          .joined(separator: ", ")
+        aaptOptionsString += "))\n"
+      }
+
+      if let namespaced = aaptOptions.namespaced {
+        aaptOptionsString += "        namespaced = \(namespaced)\n"
+      }
     }
 
     // TODO: Make JVM target configurable
@@ -677,7 +914,7 @@ enum APKBundler: Bundler {
           compileOptions {
               sourceCompatibility = JavaVersion.VERSION_17
               targetCompatibility = JavaVersion.VERSION_17
-          }
+          }\(buildFeatures)\(aaptOptionsString)
       }
 
       kotlin {

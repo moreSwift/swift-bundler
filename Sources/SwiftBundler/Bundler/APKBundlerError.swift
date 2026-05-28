@@ -27,6 +27,9 @@ extension APKBundler {
     case failedToCopyAPK(_ source: URL, _ destination: URL)
     case failedToEnumerateJVMSources(_ directory: URL, SwiftPackageManager.TargetReference)
     case failedToCopyJVMSource(source: URL, destination: URL)
+    case failedToEnumerateAAPTResources(_ directory: URL, SwiftPackageManager.TargetReference)
+    case failedToCopyAAPTResource(source: URL, destination: URL)
+    case unsupportedAAPTResources(SwiftPackageManager.TargetReference)
     case cannotBundleAPKWithoutSwiftAndroidSDK
     case cannotBuildAPKWithoutTargetAndroidPlatformVersion
 
@@ -91,6 +94,22 @@ extension APKBundler {
           return """
             Failed to copy Java/Kotlin source from '\(source.path)' to \
             '\(destination.path)'
+            """
+        case .failedToEnumerateAAPTResources(let directory, let target):
+          return """
+            Failed to enumerate resources in directory at \
+            '\(directory.path)' for target '\(target.name)' in package with \
+            identity '\(target.package.identity)'
+            """
+        case .failedToCopyAAPTResource(let source, let destination):
+          return """
+            Failed to copy resource from '\(source.path)' to \
+            '\(destination.path)'
+            """
+        case .unsupportedAAPTResources(let target):
+          return """
+            Android resources are not supported in non-executable targets (found in \
+            '\(target.name)')
             """
         case .cannotBundleAPKWithoutSwiftAndroidSDK:
           return "Cannot bundle APK without Swift Android SDK"
