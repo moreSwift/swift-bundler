@@ -29,5 +29,21 @@ struct TargetConfiguration: Codable, Hashable, Sendable {
     ///
     /// Defaults to the value of ``javaDirectory``.
     var kotlinDirectory: String?
+    /// The directory to find resource files in, such as XML resources.
+    ///
+    /// If not provided, resource linking is skipped.
+    var resourceDirectory: String?
+    /// Additional AAPT options.
+    var aapt: AAPTOptions?
+
+    // https://developer.android.com/reference/tools/gradle-api/8.1/com/android/build/api/dsl/AndroidResources
+    @Configuration(overlayable: false)
+    struct AAPTOptions: Codable, Sendable {
+      var ignoreAssetsPatterns: [String]?
+      var noCompress: [String]?
+      var failOnMissingConfigEntry: Bool?
+      var additionalParameters: [String]?
+      var namespaced: Bool?
+    }
   }
 }
