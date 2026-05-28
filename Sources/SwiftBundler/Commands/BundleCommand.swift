@@ -124,11 +124,6 @@ struct BundleCommand: ErrorHandledCommand {
       return false
     }
 
-    if HostPlatform.hostPlatform == .windows && arguments.strip {
-      log.error("'--strip' is not supported on Windows")
-      return false
-    }
-
     if let bundler = arguments.bundler {
       if !bundler.isSupportedOnHostPlatform {
         log.error(
@@ -949,16 +944,25 @@ struct BundleCommand: ErrorHandledCommand {
             / "Build/Products/\(productsDirectoryBase)\(xcodeSuffix)")
       }
 
-      var originalExecutableArtifact = productsDirectory / context.appConfiguration.product
-      if let fileExtension = context.platform.executableFileExtension {
-        originalExecutableArtifact = originalExecutableArtifact
-          .appendingPathExtension(fileExtension)
-      }
-      let executableArtifact: URL
-      if arguments.strip {
-        executableArtifact = originalExecutableArtifact.appendingPathExtension("stripped")
+      var originalMainArtifact: URL
+      if context.bundler.bundler.requiresBuildAsDylib {
+        let dylibName = SwiftPackageManager.dylibName(
+          product: context.appConfiguration.product,
+          platform: context.platform
+        )
+        originalMainArtifact = productsDirectory / dylibName
+      } else if let fileExtension = context.platform.executableFileExtension {
+        originalMainArtifact = productsDirectory
+          / "\(context.appConfiguration.product).\(fileExtension)"
       } else {
-        executableArtifact = originalExecutableArtifact
+        originalMainArtifact = productsDirectory / context.appConfiguration.product
+      }
+
+      let mainArtifact: URL
+      if arguments.strip {
+        mainArtifact = originalMainArtifact.appendingPathExtension("stripped")
+      } else {
+        mainArtifact = originalMainArtifact
       }
 
       var bundlerContext = BundlerContext(
@@ -976,7 +980,7 @@ struct BundleCommand: ErrorHandledCommand {
         darwinCodeSigningContext: resolvedDarwinCodeSigningContext,
         windowsCodeSigningContext: resolvedWindowsCodeSigningContext,
         builtDependencies: [:],
-        executableArtifact: executableArtifact,
+        mainArtifact: mainArtifact,
         swiftToolchain: context.toolchain,
         swiftSDK: context.swiftSDK
       )
@@ -1127,12 +1131,12 @@ struct BundleCommand: ErrorHandledCommand {
 
         if context.platform == .linux {
           try await RichError<SwiftBundlerError>.catch {
-            let debugInfoFile = originalExecutableArtifact.appendingPathExtension("debug")
+            let debugInfoFile = originalMainArtifact.appendingPathExtension("debug")
             if debugInfoFile.exists() {
               try FileManager.default.removeItem(at: debugInfoFile)
             }
             try await Stripper.extractLinuxDebugInfo(
-              from: originalExecutableArtifact,
+              from: originalMainArtifact,
               to: debugInfoFile
             )
           }
@@ -1140,11 +1144,11 @@ struct BundleCommand: ErrorHandledCommand {
 
         if arguments.strip {
           try await RichError<SwiftBundlerError>.catch {
-            if executableArtifact.exists() {
-              try FileManager.default.removeItem(at: executableArtifact)
+            if mainArtifact.exists() {
+              try FileManager.default.removeItem(at: mainArtifact)
             }
-            try FileManager.default.copyItem(at: originalExecutableArtifact, to: executableArtifact)
-            try await Stripper.strip(executableArtifact)
+            try FileManager.default.copyItem(at: originalMainArtifact, to: mainArtifact)
+            try await Stripper.strip(mainArtifact, platform: context.platform)
           }
         }
       }

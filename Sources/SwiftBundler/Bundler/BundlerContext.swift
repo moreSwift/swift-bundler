@@ -44,8 +44,9 @@ struct BundlerContext {
   /// The app's built dependencies.
   var builtDependencies: [ProjectBuilder.ProductReference: ProjectBuilder.BuiltProduct]
 
-  /// The app's main built executable file.
-  var executableArtifact: URL
+  /// The app's main executable or dylib file. It may have an additional `.stripped`
+  /// path extension if Swift Bundler was directed to strip the app's main artifact.
+  var mainArtifact: URL
 
   /// The Swift toolchain used to perform the build.
   var swiftToolchain: URL?

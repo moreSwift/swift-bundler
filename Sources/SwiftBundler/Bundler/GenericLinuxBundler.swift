@@ -146,7 +146,7 @@ enum GenericLinuxBundler: Bundler {
       additionalContext: additionalContext
     )
 
-    let executableArtifact = context.executableArtifact
+    let executableArtifact = context.mainArtifact
     try copyExecutable(at: executableArtifact, to: structure.mainExecutable)
 
     try await copyDependencies(structure: structure, context: context)

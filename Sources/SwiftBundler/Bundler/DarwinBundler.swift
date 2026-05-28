@@ -87,7 +87,7 @@ enum DarwinBundler: Bundler {
     try bundleStructure.createDirectories()
 
     try copyExecutable(
-      at: context.executableArtifact,
+      at: context.mainArtifact,
       to: bundleStructure.mainExecutable
     )
 

@@ -130,6 +130,19 @@ enum SwiftPackageManager {
     }
   }
 
+  /// Gets the file name for a hypothetical dynamic library product with the
+  /// given product name compiled for the given platform.
+  static func dylibName(product: String, platform: Platform) -> String {
+    switch platform.partitioned {
+      case .apple:
+        return "lib\(product).dylib"
+      case .android, .linux:
+        return "lib\(product).so"
+      case .windows:
+        return "\(product).dll"
+    }
+  }
+
   /// Builds the specified executable product of a Swift package as a dynamic library.
   /// Used in hot reloading, should not be relied upon for producing production builds.
   /// - Parameters:
@@ -141,16 +154,16 @@ enum SwiftPackageManager {
   ) async throws(Error) -> URL {
     #if os(macOS) || os(Linux)
       let productsDirectory = try await SwiftPackageManager.getProductsDirectory(buildContext)
-      let dylibExtension: String
-      switch buildContext.genericContext.platform {
-        case .macOS:
-          dylibExtension = "dylib"
-        case .android, .linux:
-          dylibExtension = "so"
+      let platform = buildContext.genericContext.platform
+      let dylibName = dylibName(product: product, platform: platform)
+      let dylibFile = productsDirectory / dylibName
+
+      switch platform {
+        case .macOS, .android, .linux:
+          break
         case let platform:
           throw Error(.cannotCompileExecutableAsDylibForPlatform(platform))
       }
-      let dylibFile = productsDirectory / "lib\(product).\(dylibExtension)"
 
       try await build(
         product: product,
@@ -163,13 +176,13 @@ enum SwiftPackageManager {
 
       log.info("Relinking main executable as a dynamic library")
       let triple: String
-      switch buildContext.genericContext.platform {
+      switch platform {
         case .macOS, .linux:
           let targetInfo = try await getHostTargetInfo(toolchain: buildContext.toolchain)
           triple = targetInfo.target.triple
         case .android:
           triple = try Error.catch {
-            try buildContext.genericContext.platform.targetTriple(
+            try platform.targetTriple(
               // TODO: Clean this up so that we don't have to assume that there's exactly 1
               //   architecture specified for Android builds (make it more verifiable).
               withArchitecture: buildContext.genericContext.architectures[0],
@@ -187,7 +200,7 @@ enum SwiftPackageManager {
         "C.\(product)-\(triple)-\(configuration).exe",
         "C.\(product)-\(configuration).exe",
       ]
-      if buildContext.genericContext.platform == .macOS {
+      if platform == .macOS {
         // The triple sometimes seems to not have the platform version (e.g. 26.0).
         // Maybe that's something that changed around Swift 6.3?
         let architecture = buildContext.genericContext.architectures[0]
@@ -220,7 +233,7 @@ enum SwiftPackageManager {
       modifiedArguments.remove(at: index)
       modifiedArguments.append(contentsOf: ["-o", dylibFile.path])
 
-      switch buildContext.genericContext.platform {
+      switch platform {
         case .macOS:
           modifiedArguments.append(contentsOf: [
             "-Xcc",
@@ -258,8 +271,7 @@ enum SwiftPackageManager {
 
       return dylibFile
     #else
-      fatalError("buildExecutableAsDylib not implemented for current platform")
-      #warning("buildExecutableAsDylib not implemented for current platform")
+      fatalError("\(#function) not supported by \(HostPlatform.hostPlatform.platform.displayName)")
     #endif
   }
 

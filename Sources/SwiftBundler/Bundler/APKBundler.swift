@@ -243,8 +243,8 @@ enum APKBundler: Bundler {
     }
 
     let jniLibs = project.jniLibsSubdirectory(for: architecture)
-    let library = context.productsDirectory / "lib\(context.appConfiguration.product).so"
-    let libraryDestination = jniLibs / library.lastPathComponent
+    let library = context.mainArtifact
+    let libraryDestination = jniLibs / "lib\(context.appConfiguration.product).so"
     do {
       try FileManager.default.createDirectory(at: jniLibs)
       try FileManager.default.copyItem(at: library, to: libraryDestination)

@@ -233,6 +233,8 @@ enum AndroidSDKManager {
       case .windows: "windows"
     }
 
+    // The LLVM prebuilts are only distributed for x86_64, but on macOS we're
+    // lucky enough to have Rosetta, so we can use them.
     let prebuiltDirectory = ndk / "toolchains/llvm/prebuilt/\(platformName)-x86_64"
     guard prebuiltDirectory.exists(withType: .directory) else {
       throw Error(.ndkMissingNDKPrebuilts(prebuiltDirectory))
