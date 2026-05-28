@@ -33,5 +33,16 @@ struct TargetConfiguration: Codable, Sendable {
     ///
     /// If not provided, resource linking is skipped.
     var resourceDirectory: String?
+    /// Additional AAPT options.
+    var aapt: AAPTOptions?
+
+    @Configuration(overlayable: false)
+    struct AAPTOptions: Codable, Sendable {
+      var ignoreAssetsPatterns: [String]?
+      var noCompress: [String]?
+      var failOnMissingConfigEntry: Bool?
+      var additionalParameters: [String]?
+      var namespaced: Bool?
+    }
   }
 }

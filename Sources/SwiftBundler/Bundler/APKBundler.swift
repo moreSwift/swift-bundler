@@ -147,9 +147,22 @@ enum APKBundler: Bundler {
       try AndroidSDKManager.getVersion(ofNDKAt: ndk)
     }
 
+    log.info("Locating and copying Android resources")
+    let hasLayouts = try copyResources(
+      dependedOnByRootProduct: context.appConfiguration.product,
+      fromPackageGraph: context.packageGraph,
+      toResources: project.resourceDirectory,
+      targetPlatform: context.platform
+    )
+
     // Create Gradle configuration files
     let packageIdentifier = computePackageIdentifier(
       forAppIdentifier: context.appConfiguration.identifier
+    )
+    let aaptOptions = try getAAPTOptions(
+      product: context.appConfiguration.product,
+      fromPackageGraph: context.packageGraph,
+      targetPlatform: context.platform
     )
     let gradleBuildConfig = generateGradleBuildConfig(
       packageIdentifier: packageIdentifier,
@@ -160,7 +173,9 @@ enum APKBundler: Bundler {
       compileSDK: compileSDK,
       architectures: context.architectures,
       projectStructure: project,
-      ndkVersion: ndkVersion
+      ndkVersion: ndkVersion,
+      containsLayouts: hasLayouts,
+      aaptOptions: aaptOptions
     )
     let gradleSettings = generateGradleSettings(forApp: context.appName)
     let gradleProperties = generateGradleProperties()
@@ -313,14 +328,6 @@ enum APKBundler: Bundler {
       dependedOnByRootProduct: context.appConfiguration.product,
       fromPackageGraph: context.packageGraph,
       toJavaSources: project.javaSourceDirectory,
-      targetPlatform: context.platform
-    )
-
-    log.info("Locating and copying Android resources")
-    try copyResources(
-      dependedOnByRootProduct: context.appConfiguration.product,
-      fromPackageGraph: context.packageGraph,
-      toResources: project.resourceDirectory,
       targetPlatform: context.platform
     )
 
@@ -492,7 +499,7 @@ enum APKBundler: Bundler {
     fromPackageGraph packageGraph: SwiftPackageManager.PackageGraph,
     toResources resourcesDirectory: URL,
     targetPlatform: Platform
-  ) throws(Error) {
+  ) throws(Error) -> Bool {
     let conditionalTargets = try Error.catch {
       try packageGraph.transitiveTargets(
         inProduct: product,
@@ -531,6 +538,8 @@ enum APKBundler: Bundler {
       }
     }
 
+    var hasLayouts = false
+
     for (directory, target) in directories {
       guard let enumerator = FileManager.default.enumerator(
         at: directory,
@@ -552,6 +561,12 @@ enum APKBundler: Bundler {
       }
 
       for file in files {
+        let relativePath = file.path(relativeTo: directory)
+        if relativePath.starts(with: "./layout") {
+          // could be layout/*.xml, layout-sw600dp/*.xml, layout-land/*.xml, ...
+          // we don't care which one.
+          hasLayouts = true
+        }
         let destination = resourcesDirectory / file.path(relativeTo: directory)
 
         let destinationDirectory = destination.deletingLastPathComponent()
@@ -586,6 +601,52 @@ enum APKBundler: Bundler {
         }
       }
     }
+
+    return hasLayouts
+  }
+
+  private static func getAAPTOptions(
+    product: String,
+    fromPackageGraph packageGraph: SwiftPackageManager.PackageGraph,
+    targetPlatform: Platform
+  ) throws(Error) -> TargetConfiguration.Android.AAPTOptions.Flat {
+    let conditionalTargets = try Error.catch {
+      try packageGraph.transitiveTargets(
+        inProduct: product,
+        inPackage: packageGraph.rootPackage.reference
+      )
+    }
+
+    let targets = packageGraph.activeTargets(
+      inConditionalReferences: conditionalTargets,
+      withTargetPlatform: targetPlatform
+    )
+
+    for target in targets {
+      let targetInfo = try Error.catch {
+        try packageGraph.target(referredToBy: target)
+      }
+
+      if targetInfo.kind == .library { continue }
+
+      guard let configuration = try Error.catch(do: {
+        try packageGraph.configuration(ofTarget: target)
+      }) else {
+        continue
+      }
+
+      if let aapt = configuration.android?.aapt {
+        return aapt
+      }
+    }
+      
+    return .init(
+      ignoreAssetsPatterns: [],
+      noCompress: [],
+      failOnMissingConfigEntry: nil as Bool?,
+      additionalParameters: [],
+      namespaced: nil as Bool?
+    )
   }
 
   struct SharedObject: Hashable {
@@ -704,6 +765,11 @@ enum APKBundler: Bundler {
     return dependencies
   }
 
+  private static func escapeStringForKotlin(_ str: String) -> String {
+    str.replacingOccurrences(of: "\"", with: "\\\"")
+      .replacingOccurrences(of: "\n", with: "\\n")
+  }
+
   private static func generateGradleBuildConfig(
     packageIdentifier: String,
     appVersion: Version,
@@ -713,7 +779,9 @@ enum APKBundler: Bundler {
     compileSDK: Int,
     architectures: [BuildArchitecture],
     projectStructure: ProjectStructure,
-    ndkVersion: Version
+    ndkVersion: Version,
+    containsLayouts: Bool,
+    aaptOptions: TargetConfiguration.Android.AAPTOptions.Flat
   ) -> String {
     let architectureNames = architectures.map(\.androidABIName)
     let abiFilters = architectureNames.map { architecture in
@@ -738,6 +806,50 @@ enum APKBundler: Bundler {
         """
     } else {
       cmake16KBAlignmentFix = ""
+    }
+
+    let buildFeatures = containsLayouts
+      ? """
+
+          buildFeatures {
+              viewBinding = true
+              dataBinding = true
+          }
+      """
+      : ""
+
+    var aaptOptionsString = "\n    androidResources {\n"
+    do {
+      defer { aaptOptionsString += "    }" }
+
+      if !aaptOptions.ignoreAssetsPatterns.isEmpty {
+        aaptOptionsString += "        ignoreAssetsPatterns.addAll(listOf("
+        aaptOptionsString += aaptOptions.ignoreAssetsPatterns.map { "\"\(escapeStringForKotlin($0))\"" }
+          .joined(separator: ", ")
+        aaptOptionsString += "))\n"
+      }
+
+      if !aaptOptions.noCompress.isEmpty {
+        aaptOptionsString += "        noCompress.addAll(listOf("
+        aaptOptionsString += aaptOptions.noCompress.map { "\"\(escapeStringForKotlin($0))\"" }
+          .joined(separator: ", ")
+        aaptOptionsString += "))\n"
+      }
+
+      if let failOnMissingConfigEntry = aaptOptions.failOnMissingConfigEntry {
+        aaptOptionsString += "        failOnMissingConfigEntry = \(failOnMissingConfigEntry)\n"
+      }
+
+      if !aaptOptions.additionalParameters.isEmpty {
+        aaptOptionsString += "        additionalParameters.addAll(listOf("
+        aaptOptionsString += aaptOptions.additionalParameters.map { "\"\(escapeStringForKotlin($0))\"" }
+          .joined(separator: ", ")
+        aaptOptionsString += "))\n"
+      }
+
+      if let namespaced = aaptOptions.namespaced {
+        aaptOptionsString += "        namespaced = \(namespaced)\n"
+      }
     }
 
     // TODO: Make JVM target configurable
@@ -787,11 +899,8 @@ enum APKBundler: Bundler {
               sourceCompatibility = JavaVersion.VERSION_17
               targetCompatibility = JavaVersion.VERSION_17
           }
-
-          buildFeatures {
-              viewBinding = true
-              dataBinding = true
-          }
+      \(buildFeatures)
+      \(aaptOptionsString)
       }
 
       kotlin {
