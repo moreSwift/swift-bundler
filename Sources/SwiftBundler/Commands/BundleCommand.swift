@@ -1025,7 +1025,7 @@ struct BundleCommand: ErrorHandledCommand {
           rootPackageScratchDirectory: buildContext.genericContext.scratchDirectory,
           swiftToolchain: context.toolchain,
           appName: context.appName,
-          dryRun: skipBuild
+          dryRun: skipBuild || arguments.skipDependencies
         )
       }
       bundlerContext.builtDependencies = dependencies

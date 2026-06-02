@@ -282,4 +282,14 @@ struct BundleArguments: ParsableArguments {
     )
   #endif
   var noXcodebuild = false
+
+  /// Whether to skip building dependencies or not.
+  @Flag(
+    name: .long,
+    help: """
+      Skip building dependencies. Use with caution. Applies to project \
+      dependencies, not SwiftPM dependencies.
+      """
+  )
+  var skipDependencies = false
 }
