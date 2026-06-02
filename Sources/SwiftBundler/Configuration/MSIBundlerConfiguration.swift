@@ -1,5 +1,6 @@
 import Foundation
 import XMLCoder
+import Version
 
 /// MSI bundler related configuration properties.
 @Configuration(overlayable: false)
@@ -34,4 +35,7 @@ struct MSIBundlerConfiguration: Codable, Sendable {
   /// ]
   /// ```
   var wxsExtras: [WXSValue]?
+
+  /// WiX extensions required to build an MSI installer of the app.
+  var wixExtensions: [WiXTool.ExtensionSpecifier]?
 }
