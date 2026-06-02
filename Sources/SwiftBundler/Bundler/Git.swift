@@ -74,7 +74,7 @@ enum Git {
         directory: repository
       ).getOutput(excludeStdError: true).trimmingCharacters(in: .whitespacesAndNewlines)
     } catch {
-      throw Error(.failedToCountRevisions(repository, revision))
+      throw Error(.failedToCountRevisions(repository, revision), cause: error)
     }
 
     guard let count = Int(digits) else {
