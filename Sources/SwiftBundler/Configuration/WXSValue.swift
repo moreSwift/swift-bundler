@@ -2,6 +2,7 @@ struct WXSValue: TriviallyFlattenable, Sendable {
   var tag: String
   var attributes: [String: String]
   var children: [WXSValue]
+  var content: String?
 }
 
 extension WXSValue: Codable {
@@ -12,9 +13,10 @@ extension WXSValue: Codable {
 
     static let tag = Self("tag")
     static let children = Self("children")
+    static let content = Self("content")
 
     var isSpecial: Bool {
-      self == .tag || self == .children
+      self == .tag || self == .children || self == .content
     }
 
     init?(intValue: Int) {
@@ -37,6 +39,10 @@ extension WXSValue: Codable {
       self.children = []
     }
 
+    if container.contains(.content) {
+      content = try container.decode(String.self, forKey: .content)
+    }
+
     var keys = container.allKeys
     keys = keys.filter { !$0.isSpecial }
     attributes = [:]
@@ -50,6 +56,7 @@ extension WXSValue: Codable {
     var container = encoder.container(keyedBy: Key.self)
     try container.encode(tag, forKey: .tag)
     try container.encode(children, forKey: .children)
+    try container.encode(content, forKey: .content)
     for (key, value) in attributes {
       try container.encode(value, forKey: Key(key))
     }
