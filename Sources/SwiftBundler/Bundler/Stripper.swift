@@ -37,11 +37,28 @@ enum Stripper {
     }
   }
 
-  static func strip(_ executable: URL) async throws(Error) {
+  static func strip(_ artifact: URL, platform: Platform) async throws(Error) {
+    let stripTool: String
+    switch platform {
+      case .android:
+        stripTool = try Error.catch {
+          let sdk = try AndroidSDKManager.locateAndroidSDK()
+          let ndk = try AndroidSDKManager.getLatestNDK(availableIn: sdk)
+          let prebuilts = try AndroidSDKManager.llvmPrebuiltDirectory(
+            forNDK: ndk,
+            hostPlatform: .hostPlatform,
+            hostArchitecture: .host
+          )
+          return (prebuilts / "bin/llvm-strip").path
+        }
+      default:
+        stripTool = HostPlatform.hostPlatform == .windows ? "llvm-strip" : "strip"
+    }
+
     do {
       try await Process.create(
-        "strip",
-        arguments: ["-x", executable.path]
+        stripTool,
+        arguments: ["-x", artifact.path]
       ).runAndWait()
     } catch {
       throw Error(.failedToStrip, cause: error)

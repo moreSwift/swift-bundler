@@ -196,7 +196,7 @@ enum GenericWindowsBundler: Bundler {
 
     log.info("Bundling '\(appBundleName)'")
 
-    let executableArtifact = context.executableArtifact
+    let executableArtifact = context.mainArtifact
 
     let structure = BundleStructure(
       at: root,
