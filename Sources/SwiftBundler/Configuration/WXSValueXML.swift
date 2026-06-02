@@ -9,13 +9,6 @@ struct WXSValueXML: Encodable {
 
     var intValue: Int? { nil}
 
-    static let tag = Self("tag")
-    static let children = Self("children")
-
-    var isSpecial: Bool {
-      self == .tag || self == .children
-    }
-
     init?(intValue: Int) {
       return nil
     }
@@ -44,6 +37,10 @@ struct WXSValueXML: Encodable {
 
     for (tag, group) in groupedChildren {
       try container.encode(Element(group), forKey: Key(tag))
+    }
+
+    if let content = value.content {
+      try container.encode(content, forKey: Key(""))
     }
   }
 }
