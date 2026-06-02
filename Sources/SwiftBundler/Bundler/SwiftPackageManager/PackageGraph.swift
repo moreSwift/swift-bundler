@@ -286,8 +286,8 @@ extension SwiftPackageManager {
         let nestedDirectDependencies = try directTargetDependencies(
           ofTarget: dependency.target.name,
           inPackage: dependency.target.package
-        ).map { dependency in
-          dependency.appendingConditions(dependency.conditions)
+        ).map { nestedDependency in
+          nestedDependency.appendingConditions(dependency.conditions)
         }
 
         for dependency in nestedDirectDependencies {
