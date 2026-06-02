@@ -61,21 +61,25 @@ enum MSIBundler: Bundler {
       try contents.write(to: wxsFile)
     }
 
-    log.info("Running WiX MSI builder")
-    let process = Process.create(
-      "wix",
-      arguments: [
-        "build",
-        "-b", genericBundlerOutput.root.path,
-        "-o", outputStructure.bundle.path,
-        "-arch", "x64",
-        wxsFile.path,
-      ],
-      runSilentlyWhenNotVerbose: false
-    )
+    let wixExtensions = context.appConfiguration.msi?.wixExtensions ?? []
+    try await Error.catch {
+      try await WiXTool.ensureExtensions(
+        wixExtensions,
+        workspaceRoot: context.packageDirectory
+      )
+    }
 
-    try await Error.catch(withMessage: .failedToRunWiX) {
-      try await process.runAndWait()
+    log.info("Running WiX MSI builder")
+    let architecture = context.architectures[0]
+    try await Error.catch {
+      try await WiXTool.build(
+        wxsFile: wxsFile,
+        sourceDirectory: genericBundlerOutput.root,
+        outputLocation: outputStructure.bundle,
+        architecture: architecture,
+        workspaceRoot: context.packageDirectory,
+        extensions: wixExtensions.map(\.identifier)
+      )
     }
 
     if let codeSigningContext = context.windowsCodeSigningContext {

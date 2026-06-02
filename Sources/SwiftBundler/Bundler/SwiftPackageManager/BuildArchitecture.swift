@@ -66,6 +66,19 @@ enum BuildArchitecture: String, CaseIterable, ExpressibleByArgument {
         "amd64"
     }
   }
+
+  /// The name to use for this architecture when invoking the WiX CLI.
+  var wixName: String {
+    switch self {
+      case .arm64, .x86:
+        rawValue
+      case .x86_64:
+        "x64"
+      case .armv7:
+        // This one isn't supported by WiX
+        "armv7"
+    }
+  }
 }
 
 extension BuildArchitecture {
