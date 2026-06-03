@@ -974,6 +974,7 @@ struct BundleCommand: ErrorHandledCommand {
         outputDirectory: appOutputDirectory,
         packageGraph: SwiftPackageManager.PackageGraph.dummy,
         architectures: buildContext.genericContext.architectures,
+        buildConfiguration: buildContext.genericContext.configuration,
         platform: context.platform,
         platformVersion: context.platformVersion,
         device: context.device,
