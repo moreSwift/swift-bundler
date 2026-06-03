@@ -20,12 +20,13 @@ That said, Swift Bundler doesn't lock you into any particular framework; everyth
 - <doc:installation>
 - <doc:creating-an-app>
 - <doc:configuration>
-
-### Concepts
-
+- <doc:bundlers>
 - <doc:package-templates>
 
 ### Advanced usage
 
 - <doc:custom-templates>
 - <doc:metal-shaders>
+- <doc:mac-catalyst>
+- <doc:stand-alone-apps>
+- <doc:troubleshooting>

@@ -65,31 +65,43 @@ Swift Bundler has no runtime dependencies on macOS outside of the Xcode toolchai
 
 ### Linux
 
-On Linux you'll need to install `patchelf`. There also two bundler-specific dependencies; `rpmbuild` for the `linuxRPM` bundler, and `appimagetool` for the `linuxAppImage` bundler.
+On Linux you'll need to install `patchelf`. There also two bundler-specific
+dependencies; `rpmbuild` for the `linuxRPM` bundler, and `appimagetool` for the
+`linuxAppImage` bundler.
 
 #### patchelf (required)
 
 [patchelf](https://github.com/NixOS/patchelf) is used to relocate dynamic libraries during bundling. Modern Linux distributions generally have patchelf in their official repository. If yours doesn't, the [patchelf GitHub repository](https://github.com/NixOS/patchelf) has binary downloads attached to every release.
 
-```sh
-# Ubuntu, Debian
-sudo apt install patchelf
-
-# Fedora
-sudo dnf install patchelf
-```
+@TabNavigator {
+    @Tab("Debian-based distros") {
+        ```shell
+        sudo apt install patchelf
+        ```
+    }
+    @Tab("Fedora-based distros") {
+        ```shell
+        sudo dnf install patchelf
+        ```
+    }
+}
 
 #### rpmbuild (required for RPM bundling)
 
 rpmbuild is used by Swift Bundler's RPM bundler to produce RPM packages. You don't need to use an RPM-based distribution to produce RPM packages.
 
-```sh
-# Ubuntu, Debian
-sudo apt install rpm
-
-# Fedora
-sudo dnf install rpmdevtools
-```
+@TabNavigator {
+    @Tab("Debian-based distros") {
+        ```shell
+        sudo apt install rpm
+        ```
+    }
+    @Tab("Fedora-based distros") {
+        ```shell
+        sudo dnf install rpmdevtools
+        ```
+    }
+}
 
 #### appimagetool (required for AppImage bundling)
 
