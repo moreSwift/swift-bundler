@@ -22,6 +22,9 @@ struct BundlerContext {
   /// The architectures that the app has been built for.
   var architectures: [BuildArchitecture]
 
+  /// The configuration that the app was built with.
+  var buildConfiguration: BuildConfiguration
+
   /// The target platform.
   var platform: Platform
   /// The target platform version (e.g. iOS version or Android API version).

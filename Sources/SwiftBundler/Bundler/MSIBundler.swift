@@ -138,9 +138,23 @@ enum MSIBundler: Bundler {
       withSeed: appConfiguration.identifier
     ).description
 
+    let excludedPaths = [genericBundle.mainExecutable.path]
     let installFolder = try enumerate(
       genericBundle.root,
-      excluding: [genericBundle.mainExecutable],
+      inclusionPredicate:  { item in
+        // For some reason URL comparison seems to be a little broken on Windows.
+        // URLs with identical paths get evaluated as distinct URLs, so we have to
+        // convert to paths before comparison.
+        if excludedPaths.contains(item.path) {
+          return false
+        } else if context.buildConfiguration == .release {
+          // In release builds we skip pdb files (Windows debug information)
+          return item.pathExtension != "pdb"
+        } else {
+          // In debug mode we include everything that's not explicitly excluded
+          return true
+        }
+      },
       id: "InstallFolder"
     )
 
@@ -277,20 +291,14 @@ enum MSIBundler: Bundler {
   private static func enumerate(
     _ directory: URL,
     withRespectTo root: URL? = nil,
-    excluding excludedItems: [URL] = [],
+    inclusionPredicate: (URL) -> Bool,
     id: String? = nil
   ) throws(Error) -> WXSFile.Directory {
     let root = root ?? directory
-    let excludedPaths = excludedItems.map(\.path)
 
     let items: [URL] = try Error.catch(withMessage: .failedToEnumerateBundle) {
       try FileManager.default.contentsOfDirectory(at: directory)
-    }.filter { item in
-      // For some reason URL comparison seems to be a little broken on Windows.
-      // URLs with identical paths get evaluated as distinct URLs, so we have to
-      // convert to paths before comparison.
-      return !excludedPaths.contains(item.path)
-    }
+    }.filter(inclusionPredicate)
 
     let files = items.filter { item in
       item.exists(withType: .file)
@@ -302,7 +310,11 @@ enum MSIBundler: Bundler {
     let directories = try items.filter { item in
       item.exists(withType: .directory)
     }.map { (subdirectory) throws(Error) -> WXSFile.Directory in
-      try enumerate(subdirectory, withRespectTo: root, excluding: excludedItems)
+      try enumerate(
+        subdirectory,
+        withRespectTo: root,
+        inclusionPredicate: inclusionPredicate
+      )
     }
 
     // Enumerate each directory and then combine files and directories into
