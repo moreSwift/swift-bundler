@@ -152,6 +152,19 @@
   "sections" : [
 
   ],
+  "seeAlsoSections" : [
+    {
+      "anchor" : "Advanced-usage",
+      "generated" : true,
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/custom-templates",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/metal-shaders",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/mac-catalyst",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/troubleshooting"
+      ],
+      "title" : "Advanced usage"
+    }
+  ],
   "variants" : [
     {
       "paths" : [
@@ -166,6 +179,62 @@
   ]
 , 
 "references": {
+"doc://swift-bundler/documentation/swift-bundler/custom-templates": {
+  "abstract" : [
+    {
+      "text" : "Custom templates are a great way to tailor Swift Bundler to your workflow.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/custom-templates",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Custom templates",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/custom-templates"
+},
+"doc://swift-bundler/documentation/swift-bundler/mac-catalyst": {
+  "abstract" : [
+    {
+      "text" : "Targeting Mac Catalyst.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/mac-catalyst",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Mac Catalyst",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/mac-catalyst"
+},
+"doc://swift-bundler/documentation/swift-bundler/metal-shaders": {
+  "abstract" : [
+    {
+      "text" : "Using Metal shaders with Swift Bundler.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/metal-shaders",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Metal shaders",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/metal-shaders"
+},
+"doc://swift-bundler/documentation/swift-bundler/troubleshooting": {
+  "abstract" : [
+    {
+      "text" : "Troubleshooting common issues.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/troubleshooting",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Troubleshooting",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/troubleshooting"
+},
 "doc://swift-bundler/documentation/swift-bundler": {
   "abstract" : [
     {

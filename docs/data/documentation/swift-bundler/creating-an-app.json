@@ -396,7 +396,9 @@
       "generated" : true,
       "identifiers" : [
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
-        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates"
       ],
       "title" : "Getting started"
     }
@@ -415,6 +417,20 @@
   ]
 , 
 "references": {
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
 "doc://swift-bundler/documentation/swift-bundler/configuration": {
   "abstract" : [
     {

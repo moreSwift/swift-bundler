@@ -1,0 +1,203 @@
+{
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Android APKs.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/apk-bundler"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "swift-bundler"
+      }
+    ],
+    "role" : "article",
+    "roleHeading" : "Article",
+    "title" : "APK bundler"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The APK bundler is the recommended bundler to use when developing and",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "distributing Android applications.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Usage",
+          "level" : 2,
+          "text" : "Usage",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "You can omit ",
+              "type" : "text"
+            },
+            {
+              "code" : "--bundler androidAPK",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " when Swift Bundler can infer that the target platform is ",
+              "type" : "text"
+            },
+            {
+              "code" : "Android",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ", because the default Android bundler is the APK bundler. This includes using the ",
+              "type" : "text"
+            },
+            {
+              "code" : "--platform android",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " argument to specifically target Android.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Create-an-APK",
+          "level" : 3,
+          "text" : "Create an APK",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler bundle --bundler androidAPK"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Create-an-optimized-APK",
+          "level" : 3,
+          "text" : "Create an optimized APK",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler bundle --bundler androidAPK -c release --strip"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Run-on-an-Android-device",
+          "level" : 3,
+          "text" : "Run on an Android device",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler run --device \"Your Pixel 8a\""
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Run-on-an-Android-emulator",
+          "level" : 3,
+          "text" : "Run on an Android emulator",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler run --simulator \"Pixel 8a\""
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 3,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swift-bundler\/apk-bundler"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
+}
+}
+}

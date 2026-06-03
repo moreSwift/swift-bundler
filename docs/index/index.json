@@ -26,8 +26,62 @@
             "type" : "article"
           },
           {
-            "title" : "Concepts",
-            "type" : "groupMarker"
+            "children" : [
+              {
+                "title" : "Darwin bundlers (Apple platforms)",
+                "type" : "groupMarker"
+              },
+              {
+                "path" : "\/documentation\/swift-bundler\/darwin-app-bundler",
+                "title" : "Darwin app bundler",
+                "type" : "article"
+              },
+              {
+                "title" : "Android bundlers",
+                "type" : "groupMarker"
+              },
+              {
+                "path" : "\/documentation\/swift-bundler\/apk-bundler",
+                "title" : "APK bundler",
+                "type" : "article"
+              },
+              {
+                "title" : "Linux bundlers",
+                "type" : "groupMarker"
+              },
+              {
+                "path" : "\/documentation\/swift-bundler\/generic-linux-bundler",
+                "title" : "Generic Linux bundler",
+                "type" : "article"
+              },
+              {
+                "path" : "\/documentation\/swift-bundler\/appimage-bundler",
+                "title" : "AppImage bundler",
+                "type" : "article"
+              },
+              {
+                "path" : "\/documentation\/swift-bundler\/rpm-bundler",
+                "title" : "RPM bundler",
+                "type" : "article"
+              },
+              {
+                "title" : "Windows bundlers",
+                "type" : "groupMarker"
+              },
+              {
+                "path" : "\/documentation\/swift-bundler\/generic-windows-bundler",
+                "title" : "Generic Window bundler",
+                "type" : "article"
+              },
+              {
+                "path" : "\/documentation\/swift-bundler\/msi-bundler",
+                "title" : "MSI bundler",
+                "type" : "article"
+              }
+            ],
+            "path" : "\/documentation\/swift-bundler\/bundlers",
+            "title" : "Bundlers",
+            "type" : "symbol"
           },
           {
             "path" : "\/documentation\/swift-bundler\/package-templates",
@@ -47,10 +101,6 @@
             "path" : "\/documentation\/swift-bundler\/metal-shaders",
             "title" : "Metal shaders",
             "type" : "article"
-          },
-          {
-            "title" : "Articles",
-            "type" : "groupMarker"
           },
           {
             "path" : "\/documentation\/swift-bundler\/mac-catalyst",

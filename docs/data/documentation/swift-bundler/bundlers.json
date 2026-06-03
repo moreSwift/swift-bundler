@@ -1,0 +1,321 @@
+{
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "swift-bundler"
+      }
+    ],
+    "role" : "collectionGroup",
+    "title" : "Bundlers"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Swift Bundler offers a range of different bundlers tailored for different",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "platforms and distribution scenarios.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "All of our bundlers are usable without any platform-specific configuration, but",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "many of them have dedicated configuration options for tuning bundler-specific",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "behaviour.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 3,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "seeAlsoSections" : [
+    {
+      "anchor" : "Getting-started",
+      "generated" : true,
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates"
+      ],
+      "title" : "Getting started"
+    }
+  ],
+  "topicSections" : [
+    {
+      "anchor" : "Darwin-bundlers-Apple-platforms",
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/darwin-app-bundler"
+      ],
+      "title" : "Darwin bundlers (Apple platforms)"
+    },
+    {
+      "anchor" : "Android-bundlers",
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/apk-bundler"
+      ],
+      "title" : "Android bundlers"
+    },
+    {
+      "anchor" : "Linux-bundlers",
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/generic-linux-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/appimage-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/rpm-bundler"
+      ],
+      "title" : "Linux bundlers"
+    },
+    {
+      "anchor" : "Windows-bundlers",
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/generic-windows-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/msi-bundler"
+      ],
+      "title" : "Windows bundlers"
+    }
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swift-bundler\/bundlers"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://swift-bundler/documentation/swift-bundler/apk-bundler": {
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Android APKs.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/apk-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "APK bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/apk-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler/appimage-bundler": {
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Linux AppImages.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/appimage-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "AppImage bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/appimage-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler/configuration": {
+  "abstract" : [
+    {
+      "text" : "Configuring your app.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Configuration",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/configuration"
+},
+"doc://swift-bundler/documentation/swift-bundler/creating-an-app": {
+  "abstract" : [
+    {
+      "text" : "Creating a hello world app.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Creating an app",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/creating-an-app"
+},
+"doc://swift-bundler/documentation/swift-bundler/darwin-app-bundler": {
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Darwin app bundles for Apple platforms.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/darwin-app-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Darwin app bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/darwin-app-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler/generic-linux-bundler": {
+  "abstract" : [
+    {
+      "text" : "The default Linux bundler.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/generic-linux-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Generic Linux bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/generic-linux-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler/generic-windows-bundler": {
+  "abstract" : [
+    {
+      "text" : "The default Windows bundler.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/generic-windows-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Generic Window bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/generic-windows-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler/installation": {
+  "abstract" : [
+    {
+      "text" : "Installing Swift Bundler on your system.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Installation",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/installation"
+},
+"doc://swift-bundler/documentation/swift-bundler/msi-bundler": {
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Windows MSI installers.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/msi-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "MSI bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/msi-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler/package-templates": {
+  "abstract" : [
+    {
+      "text" : "Easily create common types of apps from templates.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Package templates",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/package-templates"
+},
+"doc://swift-bundler/documentation/swift-bundler/rpm-bundler": {
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Linux RPM installers.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/rpm-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "RPM bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/rpm-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
+}
+}
+}

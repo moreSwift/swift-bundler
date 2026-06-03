@@ -1,0 +1,231 @@
+{
+  "abstract" : [
+    {
+      "text" : "The default Linux bundler.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/generic-linux-bundler"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "swift-bundler"
+      }
+    ],
+    "role" : "article",
+    "roleHeading" : "Article",
+    "title" : "Generic Linux bundler"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The generic Linux bundler generates a directory structure—reminiscent of the structure laid out by the ",
+              "type" : "text"
+            },
+            {
+              "identifier" : "https:\/\/en.wikipedia.org\/wiki\/Filesystem_Hierarchy_Standard",
+              "isActive" : true,
+              "type" : "reference"
+            },
+            {
+              "text" : "—that houses your main executable, required dynamic libraries, and resources.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "It is the recommended bundler to use during Linux development, as it’s the fastest, and produces the most inspectable output bundle. If you wish, you can also use this bundler to distribute your application by archiving the resulting directory (as long as you tell your users to install required system dependencies).",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "This bundler forms the base for all of the other Linux bundlers.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Usage",
+          "level" : 2,
+          "text" : "Usage",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "In all of the following examples you can omit ",
+              "type" : "text"
+            },
+            {
+              "code" : "--bundler genericLinux",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " because it is the default when targeting Linux.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Create-an-app-bundle",
+          "level" : 3,
+          "text" : "Create an app bundle",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler bundle --bundler genericLinux"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Run-on-your-host-machine",
+          "level" : 3,
+          "text" : "Run on your host machine",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler run --bundler genericLinux"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 3,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "seeAlsoSections" : [
+    {
+      "anchor" : "Linux-bundlers",
+      "generated" : true,
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/appimage-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/rpm-bundler"
+      ],
+      "title" : "Linux bundlers"
+    }
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swift-bundler\/generic-linux-bundler"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://swift-bundler/documentation/swift-bundler/appimage-bundler": {
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Linux AppImages.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/appimage-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "AppImage bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/appimage-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
+"doc://swift-bundler/documentation/swift-bundler/rpm-bundler": {
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Linux RPM installers.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/rpm-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "RPM bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/rpm-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
+},
+"https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard": {
+  "identifier" : "https:\/\/en.wikipedia.org\/wiki\/Filesystem_Hierarchy_Standard",
+  "title" : "Filesystem Hierarchy Standard",
+  "titleInlineContent" : [
+    {
+      "text" : "Filesystem Hierarchy Standard",
+      "type" : "text"
+    }
+  ],
+  "type" : "link",
+  "url" : "https:\/\/en.wikipedia.org\/wiki\/Filesystem_Hierarchy_Standard"
+}
+}
+}

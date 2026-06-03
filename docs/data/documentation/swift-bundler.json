@@ -123,34 +123,22 @@
       "identifiers" : [
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
-        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration"
-      ],
-      "title" : "Getting started"
-    },
-    {
-      "anchor" : "Concepts",
-      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates"
       ],
-      "title" : "Concepts"
+      "title" : "Getting started"
     },
     {
       "anchor" : "Advanced-usage",
       "identifiers" : [
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/custom-templates",
-        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/metal-shaders"
-      ],
-      "title" : "Advanced usage"
-    },
-    {
-      "anchor" : "Articles",
-      "generated" : true,
-      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/metal-shaders",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/mac-catalyst",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/stand-alone-apps",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/troubleshooting"
       ],
-      "title" : "Articles"
+      "title" : "Advanced usage"
     }
   ],
   "variants" : [
@@ -167,6 +155,20 @@
   ]
 , 
 "references": {
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
 "doc://swift-bundler/documentation/swift-bundler/configuration": {
   "abstract" : [
     {

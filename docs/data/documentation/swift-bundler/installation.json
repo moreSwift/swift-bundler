@@ -295,7 +295,15 @@
               "type" : "codeVoice"
             },
             {
-              "text" : ". There also two bundler-specific dependencies; ",
+              "text" : ". There also two bundler-specific",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "dependencies; ",
               "type" : "text"
             },
             {
@@ -319,7 +327,11 @@
               "type" : "codeVoice"
             },
             {
-              "text" : " for the ",
+              "text" : " for the",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
               "type" : "text"
             },
             {
@@ -370,15 +382,33 @@
           "type" : "paragraph"
         },
         {
-          "code" : [
-            "# Ubuntu, Debian",
-            "sudo apt install patchelf",
-            "",
-            "# Fedora",
-            "sudo dnf install patchelf"
+          "tabs" : [
+            {
+              "content" : [
+                {
+                  "code" : [
+                    "sudo apt install patchelf"
+                  ],
+                  "syntax" : "shell",
+                  "type" : "codeListing"
+                }
+              ],
+              "title" : "Debian-based distros"
+            },
+            {
+              "content" : [
+                {
+                  "code" : [
+                    "sudo dnf install patchelf"
+                  ],
+                  "syntax" : "shell",
+                  "type" : "codeListing"
+                }
+              ],
+              "title" : "Fedora-based distros"
+            }
           ],
-          "syntax" : "sh",
-          "type" : "codeListing"
+          "type" : "tabNavigator"
         },
         {
           "anchor" : "rpmbuild-required-for-RPM-bundling",
@@ -396,15 +426,33 @@
           "type" : "paragraph"
         },
         {
-          "code" : [
-            "# Ubuntu, Debian",
-            "sudo apt install rpm",
-            "",
-            "# Fedora",
-            "sudo dnf install rpmdevtools"
+          "tabs" : [
+            {
+              "content" : [
+                {
+                  "code" : [
+                    "sudo apt install rpm"
+                  ],
+                  "syntax" : "shell",
+                  "type" : "codeListing"
+                }
+              ],
+              "title" : "Debian-based distros"
+            },
+            {
+              "content" : [
+                {
+                  "code" : [
+                    "sudo dnf install rpmdevtools"
+                  ],
+                  "syntax" : "shell",
+                  "type" : "codeListing"
+                }
+              ],
+              "title" : "Fedora-based distros"
+            }
           ],
-          "syntax" : "sh",
-          "type" : "codeListing"
+          "type" : "tabNavigator"
         },
         {
           "anchor" : "appimagetool-required-for-AppImage-bundling",
@@ -552,7 +600,9 @@
       "generated" : true,
       "identifiers" : [
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
-        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates"
       ],
       "title" : "Getting started"
     }
@@ -571,6 +621,20 @@
   ]
 , 
 "references": {
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
 "doc://swift-bundler/documentation/swift-bundler/configuration": {
   "abstract" : [
     {
@@ -608,6 +672,20 @@
   "title" : "Runtime dependencies",
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler\/installation#Runtime-dependencies"
+},
+"doc://swift-bundler/documentation/swift-bundler/package-templates": {
+  "abstract" : [
+    {
+      "text" : "Easily create common types of apps from templates.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Package templates",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/package-templates"
 },
 "doc://swift-bundler/documentation/swift-bundler": {
   "abstract" : [

@@ -1,0 +1,195 @@
+{
+  "abstract" : [
+    {
+      "text" : "The default Windows bundler.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/generic-windows-bundler"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "swift-bundler"
+      }
+    ],
+    "role" : "article",
+    "roleHeading" : "Article",
+    "title" : "Generic Window bundler"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The generic Windows bundler bundles your main executable, required dynamic libraries, and resources in a single flat directory, as is common for manually distributed Windows applications.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "It is the recommended bundler to use during Windows development, as it’s the fastest, and produces the most inspectable output bundle. If you wish, you can also use this bundler to distribute your application by zipping the resulting directory (as long as you tell your users to install required system dependencies).",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "This bundler forms the base for all of the other Windows bundlers.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Usage",
+          "level" : 2,
+          "text" : "Usage",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "In all of the following examples you can omit ",
+              "type" : "text"
+            },
+            {
+              "code" : "--bundler genericWindows",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " because it is the default when targeting Windows.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Create-an-app-bundle",
+          "level" : 3,
+          "text" : "Create an app bundle",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler bundle --bundler genericWindows"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Run-on-your-host-machine",
+          "level" : 3,
+          "text" : "Run on your host machine",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler run --bundler genericWindows"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 3,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "seeAlsoSections" : [
+    {
+      "anchor" : "Windows-bundlers",
+      "generated" : true,
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/msi-bundler"
+      ],
+      "title" : "Windows bundlers"
+    }
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swift-bundler\/generic-windows-bundler"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
+"doc://swift-bundler/documentation/swift-bundler/msi-bundler": {
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Windows MSI installers.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/msi-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "MSI bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/msi-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
+}
+}
+}

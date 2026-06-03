@@ -1,0 +1,200 @@
+{
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Darwin app bundles for Apple platforms.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/darwin-app-bundler"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "swift-bundler"
+      }
+    ],
+    "role" : "article",
+    "roleHeading" : "Article",
+    "title" : "Darwin app bundler"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The Darwin app bundler produces the ",
+              "type" : "text"
+            },
+            {
+              "code" : ".app",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " bundles that you know and love. It’s currently the only bundler for Apple platforms.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Usage",
+          "level" : 2,
+          "text" : "Usage",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "In all of the following examples you can omit ",
+              "type" : "text"
+            },
+            {
+              "code" : "--bundler darwinApp",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " because it is the default when targeting Apple platforms.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Create-an-app-bundle",
+          "level" : 3,
+          "text" : "Create an app bundle",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler bundle --bundler darwinApp"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Run-on-your-Mac",
+          "level" : 3,
+          "text" : "Run on your Mac",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler run --bundler darwinApp"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Run-on-your-Mac-using-Mac-Catalyst",
+          "level" : 3,
+          "text" : "Run on your Mac using Mac Catalyst",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler run --platform macCatalyst"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Run-on-an-iOStvOSvisionOS-device",
+          "level" : 3,
+          "text" : "Run on an iOS\/tvOS\/visionOS device",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler run --device \"Your Device\""
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Run-on-an-iOStvOSvisionOS-simulator",
+          "level" : 3,
+          "text" : "Run on an iOS\/tvOS\/visionOS simulator",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler run --simulator \"Your Simulator\""
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 3,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swift-bundler\/darwin-app-bundler"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
+}
+}
+}

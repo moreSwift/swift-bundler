@@ -183,6 +183,19 @@
   "sections" : [
 
   ],
+  "seeAlsoSections" : [
+    {
+      "anchor" : "Getting-started",
+      "generated" : true,
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers"
+      ],
+      "title" : "Getting started"
+    }
+  ],
   "variants" : [
     {
       "paths" : [
@@ -197,6 +210,48 @@
   ]
 , 
 "references": {
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
+"doc://swift-bundler/documentation/swift-bundler/configuration": {
+  "abstract" : [
+    {
+      "text" : "Configuring your app.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Configuration",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/configuration"
+},
+"doc://swift-bundler/documentation/swift-bundler/creating-an-app": {
+  "abstract" : [
+    {
+      "text" : "Creating a hello world app.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Creating an app",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/creating-an-app"
+},
 "doc://swift-bundler/documentation/swift-bundler/custom-templates": {
   "abstract" : [
     {
@@ -210,6 +265,20 @@
   "title" : "Custom templates",
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler\/custom-templates"
+},
+"doc://swift-bundler/documentation/swift-bundler/installation": {
+  "abstract" : [
+    {
+      "text" : "Installing Swift Bundler on your system.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Installation",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/installation"
 },
 "doc://swift-bundler/documentation/swift-bundler": {
   "abstract" : [

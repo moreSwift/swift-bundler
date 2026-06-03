@@ -346,7 +346,10 @@
       "anchor" : "Advanced-usage",
       "generated" : true,
       "identifiers" : [
-        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/metal-shaders"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/metal-shaders",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/mac-catalyst",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/stand-alone-apps",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/troubleshooting"
       ],
       "title" : "Advanced usage"
     }
@@ -365,6 +368,20 @@
   ]
 , 
 "references": {
+"doc://swift-bundler/documentation/swift-bundler/mac-catalyst": {
+  "abstract" : [
+    {
+      "text" : "Targeting Mac Catalyst.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/mac-catalyst",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Mac Catalyst",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/mac-catalyst"
+},
 "doc://swift-bundler/documentation/swift-bundler/metal-shaders": {
   "abstract" : [
     {
@@ -378,6 +395,34 @@
   "title" : "Metal shaders",
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler\/metal-shaders"
+},
+"doc://swift-bundler/documentation/swift-bundler/stand-alone-apps": {
+  "abstract" : [
+    {
+      "text" : "What is a stand-alone app, and how you can make one.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/stand-alone-apps",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Stand alone apps",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/stand-alone-apps"
+},
+"doc://swift-bundler/documentation/swift-bundler/troubleshooting": {
+  "abstract" : [
+    {
+      "text" : "Troubleshooting common issues.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/troubleshooting",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Troubleshooting",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/troubleshooting"
 },
 "doc://swift-bundler/documentation/swift-bundler": {
   "abstract" : [

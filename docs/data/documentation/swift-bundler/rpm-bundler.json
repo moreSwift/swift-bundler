@@ -1,0 +1,411 @@
+{
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Linux RPM installers.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/rpm-bundler"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "swift-bundler"
+      }
+    ],
+    "role" : "article",
+    "roleHeading" : "Article",
+    "title" : "RPM bundler"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The RPM bundler is one of the bundlers that we recommend when distributing Linux applications.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The output of the RPM bundler is not directly runnable, so it is incompatible",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "with the ",
+              "type" : "text"
+            },
+            {
+              "code" : "swift-bundler run",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " command.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Dependencies",
+          "level" : 2,
+          "text" : "Dependencies",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The RPM bundler relies on the ",
+              "type" : "text"
+            },
+            {
+              "code" : "rpmbuild",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " command, and the ",
+              "type" : "text"
+            },
+            {
+              "code" : "patchelf",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " command.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "tabs" : [
+            {
+              "content" : [
+                {
+                  "code" : [
+                    "sudo apt install rpm patchelf"
+                  ],
+                  "syntax" : "shell",
+                  "type" : "codeListing"
+                }
+              ],
+              "title" : "Debian-based distros"
+            },
+            {
+              "content" : [
+                {
+                  "code" : [
+                    "sudo dnf install rpmdevtools patchelf"
+                  ],
+                  "syntax" : "shell",
+                  "type" : "codeListing"
+                }
+              ],
+              "title" : "Fedora-based distros"
+            }
+          ],
+          "type" : "tabNavigator"
+        },
+        {
+          "anchor" : "Usage",
+          "level" : 2,
+          "text" : "Usage",
+          "type" : "heading"
+        },
+        {
+          "anchor" : "Create-an-RPM-installer",
+          "level" : 3,
+          "text" : "Create an RPM installer",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler bundle --bundler linuxRPM"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Create-an-optimized-RPM-installer",
+          "level" : 3,
+          "text" : "Create an optimized RPM installer",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler bundle --bundler linuxRPM -c release --strip"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Testing-installers-on-non-RPM-distros",
+          "level" : 2,
+          "text" : "Testing installers on non-RPM distros",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Sometimes it’s most convenient to test RPM installers on your own machine even",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "if your chosen Linux distribution doesn’t use the RPM package manager or a",
+              "type" : "text"
+            },
+            {
+              "text" : " ",
+              "type" : "text"
+            },
+            {
+              "text" : "derivative thereof.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "content" : [
+            {
+              "inlineContent" : [
+                {
+                  "text" : "Proceed with caution. This is not a supported usecase of RPM. RPM",
+                  "type" : "text"
+                },
+                {
+                  "text" : " ",
+                  "type" : "text"
+                },
+                {
+                  "text" : "is a low-level tool that generally isn’t designed to be used directly by users,",
+                  "type" : "text"
+                },
+                {
+                  "text" : " ",
+                  "type" : "text"
+                },
+                {
+                  "text" : "and especially not on Linux systems with competing package managers. We do not",
+                  "type" : "text"
+                },
+                {
+                  "text" : " ",
+                  "type" : "text"
+                },
+                {
+                  "text" : "take liability for anything that happens as a result of following these",
+                  "type" : "text"
+                },
+                {
+                  "text" : " ",
+                  "type" : "text"
+                },
+                {
+                  "text" : "instructions.",
+                  "type" : "text"
+                }
+              ],
+              "type" : "paragraph"
+            }
+          ],
+          "name" : "Warning",
+          "style" : "warning",
+          "type" : "aside"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "First, install the ",
+              "type" : "text"
+            },
+            {
+              "code" : "rpm",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " CLI. On Ubuntu you can do that like so,",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "sudo apt install rpm"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Next, locate your RPM installer and install it with this command,",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "sudo rpm -i --nodeps path\/to\/yourapp.rpm"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "To check that your package has been installed, you can get RPM to list all installed packages,",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "sudo rpm -qa"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "To remove your application, take note of the name given to your package in the output of the above command, and run the following command after substituting the package name,",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "sudo rpm -e <packagename>"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 3,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "seeAlsoSections" : [
+    {
+      "anchor" : "Linux-bundlers",
+      "generated" : true,
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/generic-linux-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/appimage-bundler"
+      ],
+      "title" : "Linux bundlers"
+    }
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swift-bundler\/rpm-bundler"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://swift-bundler/documentation/swift-bundler/appimage-bundler": {
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Linux AppImages.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/appimage-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "AppImage bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/appimage-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
+"doc://swift-bundler/documentation/swift-bundler/generic-linux-bundler": {
+  "abstract" : [
+    {
+      "text" : "The default Linux bundler.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/generic-linux-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Generic Linux bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/generic-linux-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
+}
+}
+}

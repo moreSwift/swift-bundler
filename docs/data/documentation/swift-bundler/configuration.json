@@ -1394,7 +1394,9 @@
       "generated" : true,
       "identifiers" : [
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
-        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates"
       ],
       "title" : "Getting started"
     }
@@ -1425,6 +1427,20 @@
   "type" : "link",
   "url" : "#Variable-substitutions"
 },
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
 "doc://swift-bundler/documentation/swift-bundler/creating-an-app": {
   "abstract" : [
     {
@@ -1452,6 +1468,20 @@
   "title" : "Installation",
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler\/installation"
+},
+"doc://swift-bundler/documentation/swift-bundler/package-templates": {
+  "abstract" : [
+    {
+      "text" : "Easily create common types of apps from templates.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Package templates",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/package-templates"
 },
 "doc://swift-bundler/documentation/swift-bundler": {
   "abstract" : [

@@ -1,0 +1,315 @@
+{
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Linux AppImages.",
+      "type" : "text"
+    }
+  ],
+  "hierarchy" : {
+    "paths" : [
+      [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers"
+      ]
+    ]
+  },
+  "identifier" : {
+    "interfaceLanguage" : "swift",
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/appimage-bundler"
+  },
+  "kind" : "article",
+  "metadata" : {
+    "modules" : [
+      {
+        "name" : "swift-bundler"
+      }
+    ],
+    "role" : "article",
+    "roleHeading" : "Article",
+    "title" : "AppImage bundler"
+  },
+  "primaryContentSections" : [
+    {
+      "content" : [
+        {
+          "anchor" : "Overview",
+          "level" : 2,
+          "text" : "Overview",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The AppImage bundler produces Linux ",
+              "type" : "text"
+            },
+            {
+              "identifier" : "https:\/\/appimage.org\/",
+              "isActive" : true,
+              "type" : "reference"
+            },
+            {
+              "text" : " which are self contained executable files that don’t require installation.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Dependencies",
+          "level" : 2,
+          "text" : "Dependencies",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The AppImage bundler relies on ",
+              "type" : "text"
+            },
+            {
+              "code" : "appimagetool",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ", and ",
+              "type" : "text"
+            },
+            {
+              "code" : "patchelf",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : ".",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "anchor" : "Installing-appimagetool",
+          "level" : 3,
+          "text" : "Installing appimagetool",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Download a recent release of appimagetool from the ",
+              "type" : "text"
+            },
+            {
+              "identifier" : "https:\/\/github.com\/AppImage\/appimagetool\/releases",
+              "isActive" : true,
+              "type" : "reference"
+            },
+            {
+              "text" : " on GitHub.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Then move it to a location on your PATH and mark it as executable,",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "sudo mv appimagetool-$(uname -m).AppImage \/usr\/local\/bin\/appimagetool",
+            "chmod +x \/usr\/local\/bin\/appimagetool"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Installing-patchelf",
+          "level" : 3,
+          "text" : "Installing patchelf",
+          "type" : "heading"
+        },
+        {
+          "tabs" : [
+            {
+              "content" : [
+                {
+                  "code" : [
+                    "sudo apt install patchelf"
+                  ],
+                  "syntax" : "shell",
+                  "type" : "codeListing"
+                }
+              ],
+              "title" : "Debian-based distros"
+            },
+            {
+              "content" : [
+                {
+                  "code" : [
+                    "sudo dnf install patchelf"
+                  ],
+                  "syntax" : "shell",
+                  "type" : "codeListing"
+                }
+              ],
+              "title" : "Fedora-based distros"
+            }
+          ],
+          "type" : "tabNavigator"
+        },
+        {
+          "anchor" : "Usage",
+          "level" : 2,
+          "text" : "Usage",
+          "type" : "heading"
+        },
+        {
+          "anchor" : "Create-an-AppImage",
+          "level" : 2,
+          "text" : "Create an AppImage",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler bundle --bundler linuxAppImage"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Create-and-run-an-AppImage",
+          "level" : 2,
+          "text" : "Create and run an AppImage",
+          "type" : "heading"
+        },
+        {
+          "code" : [
+            "swift-bundler run --bundler linuxAppImage"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        }
+      ],
+      "kind" : "content"
+    }
+  ],
+  "schemaVersion" : {
+    "major" : 0,
+    "minor" : 3,
+    "patch" : 0
+  },
+  "sections" : [
+
+  ],
+  "seeAlsoSections" : [
+    {
+      "anchor" : "Linux-bundlers",
+      "generated" : true,
+      "identifiers" : [
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/generic-linux-bundler",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/rpm-bundler"
+      ],
+      "title" : "Linux bundlers"
+    }
+  ],
+  "variants" : [
+    {
+      "paths" : [
+        "\/documentation\/swift-bundler\/appimage-bundler"
+      ],
+      "traits" : [
+        {
+          "interfaceLanguage" : "swift"
+        }
+      ]
+    }
+  ]
+, 
+"references": {
+"doc://swift-bundler/documentation/swift-bundler/bundlers": {
+  "abstract" : [
+    {
+      "text" : "Swift Bundler supports a variety of bundle formats.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+  "kind" : "article",
+  "role" : "collectionGroup",
+  "title" : "Bundlers",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/bundlers"
+},
+"doc://swift-bundler/documentation/swift-bundler/generic-linux-bundler": {
+  "abstract" : [
+    {
+      "text" : "The default Linux bundler.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/generic-linux-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Generic Linux bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/generic-linux-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler/rpm-bundler": {
+  "abstract" : [
+    {
+      "text" : "A bundler that produces Linux RPM installers.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/rpm-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "RPM bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/rpm-bundler"
+},
+"doc://swift-bundler/documentation/swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "Create apps for macOS, iOS, tvOS, Linux and Windows with Swift Package Manager.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler",
+  "kind" : "symbol",
+  "role" : "collection",
+  "title" : "swift-bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler"
+},
+"https://appimage.org/": {
+  "identifier" : "https:\/\/appimage.org\/",
+  "title" : "AppImages",
+  "titleInlineContent" : [
+    {
+      "text" : "AppImages",
+      "type" : "text"
+    }
+  ],
+  "type" : "link",
+  "url" : "https:\/\/appimage.org\/"
+},
+"https://github.com/AppImage/appimagetool/releases": {
+  "identifier" : "https:\/\/github.com\/AppImage\/appimagetool\/releases",
+  "title" : "appimagetool releases page",
+  "titleInlineContent" : [
+    {
+      "text" : "appimagetool releases page",
+      "type" : "text"
+    }
+  ],
+  "type" : "link",
+  "url" : "https:\/\/github.com\/AppImage\/appimagetool\/releases"
+}
+}
+}

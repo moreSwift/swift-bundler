@@ -19,6 +19,7 @@
       "nav-keyline": "var(--color-bg-even-darker)",
       "nav-background": "var(--color-bg)",
       "nav-uiblur-stuck": "var(--color-bg)",
+      "tabnav-item-border-color": "#00000000",
       "figure-gray": "var(--color-fg)",
       "figure-gray-secondary": "var(--color-fg)",
       "figure-gray-secondary-alt": "var(--color-fg)",
@@ -43,7 +44,6 @@
       "aside-warning-border": "var(--color-warning)",
       "code-background": "var(--color-bg-darker)",
       "grid": "var(--color-bg-even-darker)",
-      
       "syntax-attributes": "#947100",
       "syntax-characters": "#272ad8",
       "syntax-comments": "#707f8c",
