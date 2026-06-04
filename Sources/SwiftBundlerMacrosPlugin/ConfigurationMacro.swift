@@ -311,6 +311,8 @@ extension ConfigurationMacro {
       )
 
       try VariableDeclSyntax("var condition: OverlayCondition")
+      try VariableDeclSyntax("var lazyContent: [String: TOMLValue]")
+      try VariableDeclSyntax("var requiredConfigVersion: Version?")
 
       for property in properties {
         try VariableDeclSyntax("var \(raw: property.identifier): \(raw: property.overlayType)")
@@ -318,10 +320,84 @@ extension ConfigurationMacro {
 
       try EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
         try EnumCaseDeclSyntax("case condition")
+        try EnumCaseDeclSyntax("case requiredConfigVersion = \"required_config_version\"")
 
         for property in properties {
           try EnumCaseDeclSyntax(
             "case \(raw: property.identifier) = \(StringLiteralExprSyntax(content: property.key))"
+          )
+        }
+      }
+
+      try InitializerDeclSyntax("init(from decoder: Decoder) throws") {
+        StmtSyntax("let container = try decoder.container(keyedBy: StringCodingKey.self)\n")
+
+        // Parse the required config version first (if present) so that we can
+        // early exit.
+        StmtSyntax(
+          """
+          self.requiredConfigVersion = container.contains(StringCodingKey(CodingKeys.requiredConfigVersion.stringValue))
+            ? try container.decode(
+              Version.self,
+              forKey: StringCodingKey(CodingKeys.requiredConfigVersion.stringValue)
+            )
+            : nil
+
+          """
+        )
+
+        // I'm not sure why we need to do this, but some things fail to compile without it
+        let initPropertiesToNil = properties.map { property in
+          """
+          self.\(property.identifier) = nil
+          """
+        }.joined(separator: "\n")
+
+        // Early exit if the overlay requires a newer Swift Bundler version than
+        // currently in use
+        StmtSyntax(
+          """
+          if let requiredConfigVersion,
+            let version = decoder.userInfo[.swiftBundlerVersion] as? Version,
+            requiredConfigVersion > version
+          {
+            if version < Version(3, 1, 0) {
+              throw PackageConfiguration.Error(
+                .requiredConfigVersionNotSupportedInOverlays
+              )
+            }
+
+            self.condition = .false
+            \(raw: initPropertiesToNil)
+
+            var lazyContent: [String: TOMLValue] = [:]
+            for key in container.allKeys {
+              lazyContent[key.stringValue] = try container.decode(TOMLValue.self, forKey: key)
+            }
+            self.lazyContent = lazyContent
+            return
+          } else {
+            self.lazyContent = [:]
+          }
+
+          """
+        )
+
+        StmtSyntax("self.condition = try container.decode(OverlayCondition.self, forKey: StringCodingKey(CodingKeys.condition.stringValue))\n")
+
+        for property in properties {
+          StmtSyntax(
+            """
+            if container.contains(StringCodingKey(CodingKeys.\(raw: property.identifier).stringValue)) {
+              self.\(raw: property.identifier) = try container.decode(
+                \(raw: property.overlayType).self,
+                forKey: StringCodingKey(CodingKeys.\(raw: property.identifier).stringValue)
+              )
+            } else {
+              self.\(raw: property.identifier) = nil
+            }
+
+            """
           )
         }
       }

@@ -7,7 +7,16 @@ protocol ConfigurationOverlay {
 
   static var exclusiveProperties: [OverlayCondition: PropertySet<Self>] { get }
 
+  /// The condition that controls when this overlay is active.
   var condition: OverlayCondition { get }
+  /// The Swift Bundler version required to parse this overlay. If the current
+  /// Swift Bundler version is too old to parse the overlay, then the overlay's
+  /// contents get stored in ``lazyContent`` and the ``condition`` gets set to
+  /// ``OverlayCondition/false``.
+  var requiredConfigVersion: Version? { get }
+  /// Overlay content that was lazily loaded, generally due to
+  /// ``requiredConfigVersion`` being higher than ``SwiftBundler/version``.
+  var lazyContent: [String: TOMLValue] { get }
 
   func merge(into base: inout Base)
 }
@@ -123,6 +132,7 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
   case platform(String)
   case bundler(String)
   case arch(String)
+  case `false`
 
   var description: String {
     switch self {
@@ -132,6 +142,8 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
         return "bundler(\(identifier))"
       case .arch(let arch):
         return "arch(\(arch))"
+      case .false:
+        return "false"
     }
   }
 
@@ -185,6 +197,10 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
       }.map { arch in
         OverlayCondition.arch(arch.rawValue)
       }
+
+      Parse {
+        "false"
+      }.map { OverlayCondition.false }
     }
 
     self = try parser.parse(value)
@@ -192,17 +208,6 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
 
   func encode(to encoder: any Encoder) throws {
     var container = encoder.singleValueContainer()
-
-    let value: String
-    switch self {
-      case .platform(let identifier):
-        value = "platform(\(identifier))"
-      case .bundler(let identifier):
-        value = "bundler(\(identifier))"
-      case .arch(let identifier):
-        value = "arch(\(identifier))"
-    }
-
-    try container.encode(value)
+    try container.encode(description)
   }
 }

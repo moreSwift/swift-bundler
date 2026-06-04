@@ -139,10 +139,10 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
 
       // For a month or so, the format_version was bumped to version 3. We now
       // consider both format versions to be equivalent even though format version
-      // 3 contained some additive, because treating them as separate (and generating
-      // new Bundler.toml files with a format_version of 3), causes pre-release
-      // Swift Bundler 3.0.0 builds to spit out cryptic errors (due to Swift Bundler
-      // previously not checking the format_version field properly...)
+      // 3 contained some additive changes, because treating them as separate (and
+      // generating new Bundler.toml files with a format_version of 3), causes
+      // pre-release Swift Bundler 3.0.0 builds to spit out cryptic errors (due to
+      // Swift Bundler previously not checking the format_version field properly...)
       guard formatVersionInt == 2 || formatVersionInt == 3 else {
         throw Error(.unsupportedFormatVersion(formatVersionInt))
       }
@@ -190,6 +190,7 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
         var decoder = TOMLDecoder(strictDecoding: true)
         // Tolerant version parsing
         decoder.userInfo[.decodingMethod] = DecodingMethod.tolerant
+        decoder.userInfo[.swiftBundlerVersion] = SwiftBundler.version
         return try decoder.decode(
           PackageConfiguration.self,
           from: table
@@ -355,4 +356,9 @@ extension PackageConfiguration.Flat {
       throw PackageConfiguration.Error(.noApps)
     }
   }
+}
+
+extension CodingUserInfoKey {
+  /// The Swift Bundler version that is parsing the configuration.
+  static let swiftBundlerVersion = Self(rawValue: "swiftBundlerVersion")!
 }

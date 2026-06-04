@@ -1,4 +1,6 @@
-import Version
+// Exported to make the Configuration macro work nicely. Its expansion
+// references Version.
+@_exported import struct Version.Version
 
 extension Version {
   /// A representation of the version using underscore separators and only including down to the least
