@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import Version
 
 @testable import SwiftBundler
 
@@ -52,7 +53,7 @@ struct PackageConfigurationTests {
             "HelloWorld": AppConfiguration(
               identifier: "com.example.HelloWorld",
               product: "HelloWorld",
-              version: "0.1.0",
+              version: Version(0, 1, 0),
               category: "public.app-category.games",
               plist: [
                 "Key": .string("Value")
@@ -73,7 +74,7 @@ struct PackageConfigurationTests {
             "DeltaClient": AppConfiguration(
               identifier: "dev.stackotter.delta-client",
               product: "DeltaClient",
-              version: "0.1.0-alpha.1",
+              version: Version(0, 1, 0, pre: ["alpha", "1"]),
               category: "public.app-category.games",
               icon: "AppIcon.icns",
               plist: [
@@ -96,7 +97,7 @@ struct PackageConfigurationTests {
             "DeltaClient": AppConfiguration(
               identifier: "dev.stackotter.delta-client",
               product: "DeltaClient",
-              version: "0.1.0-alpha.1",
+              version: Version(0, 1, 0, pre: ["alpha", "1"]),
               category: "public.app-category.games",
               icon: "AppIcon.icns",
               plist: [
@@ -172,7 +173,7 @@ struct PackageConfigurationTests {
           "HelloWorld": AppConfiguration(
             identifier: "com.example.HelloWorld",
             product: "HelloWorld",
-            version: "0.1.0",
+            version: Version(0, 1, 0),
             android: AndroidConfiguration(
               minSDK: nil,
               targetSDK: nil,
