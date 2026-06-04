@@ -1,6 +1,7 @@
 import ErrorKit
 import Foundation
 import TOMLKit
+import Parsing
 
 /// An error mapper used by Swift Bundler to provide nicer variants of certain
 /// third-party errors.
@@ -34,6 +35,8 @@ public enum SwiftBundlerErrorMapper: ErrorMapper {
         return """
           TOML decoding error: \(error.debugDescription)
           """
+      case let error where "\(type(of: error))" == "ParsingError":
+        return String(describing: error)
       default:
         return nil
     }

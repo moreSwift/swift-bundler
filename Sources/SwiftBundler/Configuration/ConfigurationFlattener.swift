@@ -1,5 +1,4 @@
 import Foundation
-import Version
 
 /// Evaluates a configuration's overlays and performs any other useful
 /// transformations or validations at the same time.
@@ -138,6 +137,8 @@ enum ConfigurationFlattener {
       case .arch(let identifier):
         // TODO(stackotter): Do people find this condition interpretation intuitive?
         context.architectures.map(\.rawValue).contains(identifier)
+      case .false:
+        false
     }
   }
 }

@@ -26,6 +26,7 @@ extension PackageConfiguration {
     case invalidConfigVersion(any TOMLValueConvertible & Sendable)
     case configVersionTooLow(Version)
     case unsupportedConfigVersion(Version)
+    case requiredConfigVersionNotSupportedInOverlays
 
     var userFriendlyMessage: String {
       switch self {
@@ -92,6 +93,12 @@ extension PackageConfiguration {
           return """
             The target project states a config_version of \(configVersion); you must \
             update to at least Swift Bundler \(configVersion) to work with this project
+            """
+        case .requiredConfigVersionNotSupportedInOverlays:
+          return """
+            The required_config_version overlay field is not supported in \
+            Swift Bundler \(SwiftBundler.version) or config files that use the \
+            pre-3.1.0 format_version field; it will be enabled in 3.1.0
             """
       }
     }
