@@ -1,11 +1,12 @@
 :root {
-  --main-bg-color: #FFE2CA;
-  --main-fg-color: #70374D;
-  --button-bg-color: #C06E7B;
+  --main-bg-color: #ffe2ca;
+  --main-fg-color: #70374d;
+  --button-bg-color: #c06e7b;
   --button-fg-color: var(--main-bg-color);
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   font-family: "Work sans";
@@ -18,13 +19,14 @@ html {
 }
 
 body {
-  width: 50vw;
+  max-width: 100ch;
   margin: auto;
   margin-bottom: 6rem;
   margin-top: 6rem;
 }
 
-#logo, #title {
+#logo,
+#title {
   margin: auto;
   display: block;
   text-align: center;
@@ -67,7 +69,7 @@ body {
 
 .button {
   background: var(--button-bg-color);
-  color: var(--button-fg-color);
+  color: white;
   border-radius: 6px;
   height: 3rem;
   display: inline-block;
@@ -103,11 +105,14 @@ body {
   transform: translate(-50%, -50%);
 }
 
-#title, h1, h2 {
+#title,
+h1,
+h2 {
   font-family: "Montserrat";
 }
 
-h1, h2 {
+h1,
+h2 {
   font-weight: 600;
 }
 
@@ -119,13 +124,14 @@ h2 {
   font-size: 1.5rem;
 }
 
-p, li {
+p,
+li {
   font-size: 1.25rem;
 }
 
 a {
   text-decoration: none;
-  color: #1786C5;
+  color: #1786c5;
 }
 
 li {
@@ -149,7 +155,9 @@ li {
     font-size: 24px;
   }
 
-  p, li, #blurb {
+  p,
+  li,
+  #blurb {
     font-size: 1.5rem;
   }
 }
@@ -164,11 +172,10 @@ li {
     font-size: 3rem;
     margin-top: 1rem;
     margin-bottom: 1.5rem;
-  }  
+  }
 
   body {
     margin-top: 2rem;
     margin-bottom: 2rem;
   }
 }
-

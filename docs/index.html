@@ -21,23 +21,24 @@
     <a id="docs-link" href="documentation/swift-bundler">Docs</a>
 
     <h1>Overview</h1>
-    <p>Swift Bundler provides a layer over the top of Swift Package Manager that turns built executables into distributable apps. The only setup required is a (git-friendly) configuration file.</p>
-    <p>There used to be an early access version, but that has now been merged, and the <a href="https://github.com/moreSwift/swift-bundler">public version</a> supports creating both macOS and iOS apps!</p>
+    <p>Swift Bundler provides a layer over the top of Swift Package Manager that turns built executables into distributable apps. The only setup required is a (git-friendly) TOML configuration file.</p>
+    <p>Swift Bundler is maintained by <a href="https://github.com/moreSwift">moreSwift</a>. If you enjoy using Swift Bundler, please considering <a href="https://opencollective.com/moreswift">donating to moreSwift</a>.</p>
 
     <h1>Why Swift Bundler?</h1>
     
+    <h2>A cross-platform future</h2>
+    <p>Swift Bundler supports all of the major platforms: macOS, Linux, Windows, Android, iOS, tvOS, and visionOS.</p>
+    <p>When combined with an easy to use cross-platform UI framework (such as <a href="https://swiftcrossui.dev">SwiftCrossUI</a>) we believe that Swift can be a great language for developing performant and native cross-platform apps.</p>
+
     <h2>Escape Xcode</h2>
     <p>All of us know how frustrating it is when Xcode's syntax highlighting breaks, its auto complete stops working or it crashes and we can't do anything to fix it.</p>
     <p>VSCode and many other code editors are open source (along with their extensions) and the community can easily step up and fix bugs. I use neovim/helix and the autocompletion is more stable than Xcode!</p>
-    <p>However, if you still want to use Xcode, Swift Bundler has excellent support for building and running through Xcode without requiring an xcodeproj.</p>
+    <p>However, if you still want to use Xcode, Swift Bundler supports building and running through Xcode without requiring an xcodeproj.</p>
     <p>No more xcodeproj-related merge conflicts!</p>
-
-    <h2>A cross-platform future</h2>
-    <p>Swift Bundler supports macOS, Linux, iOS, tvOS, visionOS, and all corresponding Apple platform simulators. In the future I hope to add support for other platforms such as Windows and Android.</p>
-    <p>Along with an easy to use cross-platform UI framework (such as <a href="https://github.com/moreSwift/swift-cross-ui">SwiftCrossUI</a>) I believe that Swift can be a great language for developing performant and native cross-platform apps.</p>
 
     <h1>Apps made with Swift Bundler</h1>
     <ul>
+      <li><a href="https://videovillage.com/">Video Village Plugins</a>: The Linux version of Video Village's plugin manager is written with <a href="https://swiftcrossui.dev">SwiftCrossUI</a> and built with Swift Bundler</li>
       <li><a href="https://deltaclient.app">Delta Client</a>: An open-source 'Minecraft: Java Edition' compatible client written from scratch in Swift for macOS</li>
       <li><a href="https://github.com/JezewskiG/ModularMTL">ModularMTL</a>: A modular multiplication visualisation made with Swift Bundler and SwiftUI</li>
     </ul>
