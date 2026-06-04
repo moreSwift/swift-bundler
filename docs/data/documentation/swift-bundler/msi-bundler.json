@@ -1036,7 +1036,7 @@
                   "type" : "codeVoice"
                 },
                 {
-                  "text" : ", your app may become impossible to install, as the installer will attempt to run your setup executable after it has already removed all of the files (as silly as it may sound), which will fail and cause the uninstaller to revert.",
+                  "text" : ", your app may become impossible to uninstall, as the installer will attempt to run your setup executable after it has already removed all of the files (as silly as it may sound), which will fail and cause the uninstaller to revert.",
                   "type" : "text"
                 }
               ],
