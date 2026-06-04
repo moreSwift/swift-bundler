@@ -196,7 +196,7 @@ Optionally, you can update the `After` attribute to impose an ordering. Its valu
 
 Note the `Condition` that we provide to the `Custom` element in the `InstallExecuteSequence` array. Without that condition, your custom install action (named `RunSetupExe`) will also run when your installer gets invoked to repair/modify/uninstall your application.
 
-> Warning: If you forget to include a suitable `Condition`, your app may become impossible to install, as the installer will attempt to run your setup executable after it has already removed all of the files (as silly as it may sound), which will fail and cause the uninstaller to revert.
+> Warning: If you forget to include a suitable `Condition`, your app may become impossible to uninstall, as the installer will attempt to run your setup executable after it has already removed all of the files (as silly as it may sound), which will fail and cause the uninstaller to revert.
 
 ## Uninstalling apps with broken uninstallers
 
