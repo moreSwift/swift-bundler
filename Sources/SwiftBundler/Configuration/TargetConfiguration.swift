@@ -37,13 +37,31 @@ struct TargetConfiguration: Codable, Hashable, Sendable {
     var aapt: AAPTOptions?
 
     // https://developer.android.com/reference/tools/gradle-api/8.1/com/android/build/api/dsl/AndroidResources
-    @Configuration(overlayable: false)
-    struct AAPTOptions: Codable, Sendable {
+    @Mergeable
+    struct AAPTOptions: Codable, Hashable, Sendable, Flattenable {
       var ignoreAssetsPatterns: [String]?
       var noCompress: [String]?
       var failOnMissingConfigEntry: Bool?
       var additionalParameters: [String]?
       var namespaced: Bool?
+    
+      struct Flat: Hashable, Sendable {
+        var ignoreAssetsPatterns: [String]
+        var noCompress: [String]
+        var failOnMissingConfigEntry: Bool?
+        var additionalParameters: [String]
+        var namespaced: Bool?
+      }
+        
+      func flatten(with context: ConfigurationFlattener.Context) throws(ConfigurationFlattener.Error) -> Flat {
+        Flat(
+          ignoreAssetsPatterns: ignoreAssetsPatterns ?? [],
+          noCompress: noCompress ?? [],
+          failOnMissingConfigEntry: failOnMissingConfigEntry,
+          additionalParameters: additionalParameters ?? [],
+          namespaced: namespaced
+        )
+      }
     }
   }
 }
