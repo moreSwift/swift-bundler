@@ -109,7 +109,7 @@ extension APKBundler {
         case .unsupportedAAPTResources(let target):
           return """
             Android resources are not supported in non-executable targets (found in \
-            '\(target.name)')
+            '\(target.name)', in package '\(target.package.identity)')
             """
         case .cannotBundleAPKWithoutSwiftAndroidSDK:
           return "Cannot bundle APK without Swift Android SDK"

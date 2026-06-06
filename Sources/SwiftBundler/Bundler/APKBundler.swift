@@ -575,7 +575,7 @@ enum APKBundler: Bundler {
         // we don't care which one.
         hasLayouts = true
       }
-      let destination = resourcesDirectory / file.path(relativeTo: directory)
+      let destination = resourcesDirectory / relativePath
 
       let destinationDirectory = destination.deletingLastPathComponent()
       if !destinationDirectory.exists() {
