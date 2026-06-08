@@ -33,6 +33,8 @@ extension APKBundler {
     var androidManifest: URL
     /// The root directory of the Java source package struture.
     var javaSourceDirectory: URL
+    /// The root directory of the AAPT resources.
+    var resourceDirectory: URL
     /// The directory containing Java source files for the app's main package.
     var mainJavaPackageDirectory: URL
     /// The `MainActivity.java` source file.
@@ -102,6 +104,7 @@ extension APKBundler {
       let identifierPath = appIdentifier.lowercased()
         .replacingOccurrences(of: ".", with: "/")
       javaSourceDirectory = srcMain / "java"
+      resourceDirectory = srcMain / "res"
       mainJavaPackageDirectory = javaSourceDirectory / identifierPath
       mainActivitySource = mainJavaPackageDirectory / "\(mainActivityName).java"
       cmakeLists = srcMain / "CMakeLists.txt"
