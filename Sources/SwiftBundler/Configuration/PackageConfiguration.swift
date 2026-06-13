@@ -174,6 +174,10 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
       configVersion = nil
     }
 
+    guard formatVersion == nil || configVersion == nil else {
+      throw Error(.formatVersionAndConfigVersionMutuallyExclusive)
+    }
+
     // If we're missing the format_version or config_version fields then we
     // assume we're working with a Swift Bundler 2.x configuration (not to
     // be confused with a 'format_version = 2' configuration...)
@@ -185,12 +189,19 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
         mode: migrateConfiguration ? .writeChanges(backup: true) : .readOnly
       )
     } else {
+      let effectiveConfigVersion: Version
+      if let configVersion {
+        effectiveConfigVersion = configVersion
+      } else {
+        effectiveConfigVersion = Version(3, 0, 0)
+      }
+
       // Parse the config file as a post-v2 configuration
       configuration = try Error.catch(withMessage: .failedToDeserializeConfiguration) {
         var decoder = TOMLDecoder(strictDecoding: true)
         // Tolerant version parsing
         decoder.userInfo[.decodingMethod] = DecodingMethod.tolerant
-        decoder.userInfo[.swiftBundlerVersion] = SwiftBundler.version
+        decoder.userInfo[.swiftBundlerConfigVersion] = effectiveConfigVersion
         return try decoder.decode(
           PackageConfiguration.self,
           from: table
@@ -210,7 +221,7 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
     }
   }
 
-  /// Migrates a Swift Bundler `v2.0.0` configuration file to the current configuration format.
+  /// Migrates a Swift Bundler `v2.x.x` configuration file to the current configuration format.
   ///
   /// Mutates the contents of the given configuration file.
   /// - Parameters:
@@ -359,6 +370,6 @@ extension PackageConfiguration.Flat {
 }
 
 extension CodingUserInfoKey {
-  /// The Swift Bundler version that is parsing the configuration.
-  static let swiftBundlerVersion = Self(rawValue: "swiftBundlerVersion")!
+  /// The Swift Bundler version to parse the config as.
+  static let swiftBundlerConfigVersion = Self(rawValue: "swiftBundlerConfigVersion")!
 }
