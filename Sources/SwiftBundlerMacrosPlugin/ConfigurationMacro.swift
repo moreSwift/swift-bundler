@@ -358,7 +358,7 @@ extension ConfigurationMacro {
         StmtSyntax(
           """
           if let requiredConfigVersion,
-            let version = decoder.userInfo[.swiftBundlerVersion] as? Version,
+            let version = decoder.userInfo[.swiftBundlerConfigVersion] as? Version,
             requiredConfigVersion > version
           {
             if version < Version(3, 1, 0) {

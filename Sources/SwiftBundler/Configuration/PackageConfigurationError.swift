@@ -27,6 +27,7 @@ extension PackageConfiguration {
     case configVersionTooLow(Version)
     case unsupportedConfigVersion(Version)
     case requiredConfigVersionNotSupportedInOverlays
+    case formatVersionAndConfigVersionMutuallyExclusive
 
     var userFriendlyMessage: String {
       switch self {
@@ -96,9 +97,17 @@ extension PackageConfiguration {
             """
         case .requiredConfigVersionNotSupportedInOverlays:
           return """
-            The required_config_version overlay field is not supported in \
-            Swift Bundler \(SwiftBundler.version) or config files that use the \
-            pre-3.1.0 format_version field; it will be enabled in 3.1.0
+            The required_config_version overlay field is not available in config files \
+            that support Swift Bundler 3.0.0; it is available from 3.1.0 onwards; replace \
+            the format_version field with a config_version of at least 3.1.0 in order to \
+            use the required_config_version overlay field
+            """
+        case .formatVersionAndConfigVersionMutuallyExclusive:
+          return """
+            The format_version and config_version fields are mutually exclusive; \
+            config files should only use one or the other, not both; config_version \
+            is the newer of the two fields, and will become the default in Swift \
+            Bundler 4.0.0
             """
       }
     }
