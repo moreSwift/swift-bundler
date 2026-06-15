@@ -26,8 +26,13 @@ extension PackageConfiguration {
     case invalidConfigVersion(any TOMLValueConvertible & Sendable)
     case configVersionTooLow(Version)
     case unsupportedConfigVersion(Version)
-    case requiredConfigVersionNotSupportedInOverlays
+    case requiredConfigVersionFieldNotSupportedByConfigVersion
     case formatVersionAndConfigVersionMutuallyExclusive
+    case requiredConfigVersionNotHigherThanConfigVersion(
+      _ required: Version,
+      _ configVersion: Version,
+      CodingPath
+    )
 
     var userFriendlyMessage: String {
       switch self {
@@ -38,7 +43,7 @@ extension PackageConfiguration {
         case .multipleAppsAndNoneSpecified:
           return "This package contains multiple apps. You must provide the 'app-name' argument"
         case .failedToEvaluateVariables:
-          return "Failed to evaluate all expressions"
+          return "Failed to evaluate all expressions" 
         case .failedToReadConfigurationFile(let file):
           return
             "Failed to read the configuration file at '\(file.relativePath)'. Are you sure that it exists?"
@@ -95,7 +100,7 @@ extension PackageConfiguration {
             The target project states a config_version of \(configVersion); you must \
             update to at least Swift Bundler \(configVersion) to work with this project
             """
-        case .requiredConfigVersionNotSupportedInOverlays:
+        case .requiredConfigVersionFieldNotSupportedByConfigVersion:
           return """
             The required_config_version overlay field is not available in config files \
             that support Swift Bundler 3.0.0; it is available from 3.1.0 onwards; replace \
@@ -108,6 +113,15 @@ extension PackageConfiguration {
             config files should only use one or the other, not both; config_version \
             is the newer of the two fields, and will become the default in Swift \
             Bundler 4.0.0
+            """
+        case .requiredConfigVersionNotHigherThanConfigVersion(
+          let requiredVersion,
+          let configVersion,
+          let codingPath
+        ):
+          return """
+            The required_config_version of \(requiredVersion) at \(codingPath) is \
+            redundant because config_version is \(configVersion)
             """
       }
     }
