@@ -357,16 +357,35 @@ extension ConfigurationMacro {
         // currently in use
         StmtSyntax(
           """
-          if let requiredConfigVersion,
-            let version = decoder.userInfo[.swiftBundlerConfigVersion] as? Version,
-            requiredConfigVersion > version
-          {
-            if version < Version(3, 1, 0) {
+          if let requiredConfigVersion {
+            if let version = decoder.userInfo[.swiftBundlerConfigVersion] as? Version,
+              version < Version(3, 1, 0)
+            {
               throw PackageConfiguration.Error(
-                .requiredConfigVersionNotSupportedInOverlays
+                .requiredConfigVersionFieldNotSupportedByConfigVersion
               )
             }
 
+            if let version = decoder.userInfo[.swiftBundlerConfigVersion] as? Version,
+              requiredConfigVersion <= version
+            {
+              throw PackageConfiguration.Error(
+                .requiredConfigVersionNotHigherThanConfigVersion(
+                  requiredConfigVersion,
+                  version,
+                  CodingPath(container.codingPath)
+                )
+              )
+            }
+          }
+          """
+        )
+
+        StmtSyntax(
+          """
+          if let requiredConfigVersion,
+            requiredConfigVersion > SwiftBundler.version
+          {
             self.condition = .false
             \(raw: initPropertiesToNil)
 

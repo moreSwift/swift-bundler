@@ -4,7 +4,24 @@ import Version
 
 /// The root command of Swift Bundler.
 public struct SwiftBundler: AsyncParsableCommand {
-  public static let version = Version(3, 0, 0)
+  /// The actual version of Swift Bundler.
+  private static let _version = Version(3, 0, 0)
+
+  /// The effective version of Swift Bundler. Under normal use this will match
+  /// ``_version``, but the `SBUN_EFFECTIVE_VERSION` environment variable can
+  /// be used to override the version that this build of Swift Bundler believes
+  /// it is. Overriding Swift Bundler's effective version is generally only done
+  /// to test configuration field deprecations and similar conditional behavior.
+  public static var version: Version {
+    if let effectiveVersion = ProcessInfo.processInfo.environment["_SBUN_EFFECTIVE_VERSION"],
+      let parsedVersion = Version(tolerant: effectiveVersion)
+    {
+      parsedVersion
+    } else {
+      _version
+    }
+  }
+
   public static let identifier = "dev.moreswift.swift-bundler"
 
   public static let configuration = CommandConfiguration(
