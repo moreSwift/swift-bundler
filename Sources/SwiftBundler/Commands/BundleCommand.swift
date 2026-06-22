@@ -186,6 +186,23 @@ struct BundleCommand: ErrorHandledCommand {
       )
       return false
     }
+    
+    #if compiler(>=6.2)
+      if arguments.xcodebuild && arguments.useNewSwiftBuild {
+        log.error(
+          """
+          '--experimental-swiftbuild' only works when building with the SwiftPM build system. \
+          Remove '--xcodebuild' to build with the new Swift Build system instead.
+          """
+        )
+        return false
+      }
+      if arguments.useNewSwiftBuild && arguments.additionalSwiftPMArguments.contains("--build-system") {
+        log.warning(
+          "'--build-system' is already set via '--Xswiftpm', ignoring '--experimental-swiftbuild'"
+        )
+      }
+    #endif
 
     // macOS-only arguments
     #if os(macOS)
@@ -891,6 +908,13 @@ struct BundleCommand: ErrorHandledCommand {
         compiledMetadata = nil
       }
 
+      var swiftPMArguments = arguments.additionalSwiftPMArguments
+      #if compiler(>=6.2)
+        if arguments.useNewSwiftBuild && !swiftPMArguments.contains("--build-system") {
+          swiftPMArguments += ["--build-system", "swiftbuild"]
+        }
+      #endif
+
       let buildContext = SwiftPackageManager.BuildContext(
         genericContext: GenericBuildContext(
           projectDirectory: context.packageDirectory,
@@ -901,7 +925,7 @@ struct BundleCommand: ErrorHandledCommand {
           platformVersion: context.platformVersion,
           additionalArguments: isUsingXcodebuild
             ? arguments.additionalXcodeBuildArguments
-            : arguments.additionalSwiftPMArguments
+            : swiftPMArguments
         ),
         toolchain: context.toolchain,
         hotReloadingEnabled: hotReloadingEnabled,

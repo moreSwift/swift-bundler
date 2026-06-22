@@ -292,4 +292,19 @@ struct BundleArguments: ParsableArguments {
       """
   )
   var skipDependencies = false
+  
+  #if compiler(>=6.2)
+    /// Whether to use the new Swift Build system.
+    @Flag(
+      name: .customLong("experimental-swiftbuild"),
+      help: """
+        Use the new Swift Build system which is the default SwiftPM build \
+        system in nightly snapshots of Swift's 'main' branches. As of Swift 6.2 \
+        and 6.3, it can be enabled by passing '--build-system swiftbuild' to the \
+        'swift build' command.
+        """
+    )
+    var useNewSwiftBuild = false
+  #endif
+
 }
