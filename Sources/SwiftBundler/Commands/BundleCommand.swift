@@ -198,9 +198,14 @@ struct BundleCommand: ErrorHandledCommand {
         return false
       }
       if arguments.useNewSwiftBuild && arguments.additionalSwiftPMArguments.contains("--build-system") {
-        log.warning(
-          "'--build-system' is already set via '--Xswiftpm', ignoring '--experimental-swiftbuild'"
+        log.error(
+          """
+          The build system was specified twice via '--experimental-swiftbuild' and \
+          '--Xswiftpm --build-system'. Use '--Xswiftpm --build-system' instead \
+          or omit '--experimental-swiftbuild'.
+          """
         )
+        return false
       }
     #endif
 
