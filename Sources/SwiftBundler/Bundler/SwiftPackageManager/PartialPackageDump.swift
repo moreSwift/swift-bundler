@@ -5,13 +5,15 @@ extension SwiftPackageManager {
     var dependencies: [Dependency]
     var products: [Product]
     var targets: [Target]
+    var traits: [Trait]
 
     /// A Partial decoding of package dependencies. We only need this for
-    /// associating the `nameForTargetDependencyResolutionOnly` values with
-    /// identities, so that's all we parse.
+    /// associating the `nameForTargetDependencyResolutionOnly` values and
+    /// trait values with identities, so that's all we parse.
     enum Dependency: Sendable, Decodable {
       case decoded(
         identity: String,
+        traits: [String],
         nameForTargetDependencyResolutionOnly: String?
       )
       case other
@@ -23,7 +25,12 @@ extension SwiftPackageManager {
 
       struct DTO: Decodable {
         var identity: String
+        var traits: [TraitReference]
         var nameForTargetDependencyResolutionOnly: String?
+      }
+
+      struct TraitReference: Decodable {
+        var name: String
       }
 
       init(from decoder: any Decoder) throws {
@@ -67,6 +74,7 @@ extension SwiftPackageManager {
 
         self = .decoded(
           identity: dto.identity,
+          traits: dto.traits.map(\.name),
           nameForTargetDependencyResolutionOnly:
             dto.nameForTargetDependencyResolutionOnly
         )
@@ -84,19 +92,22 @@ extension SwiftPackageManager {
       var dependencies: [TargetDependency]
     }
 
-    enum DependencyCondition: Sendable, Decodable {
-      case platform(names: [String])
-      case unknown
+    struct DependencyCondition: Sendable, Decodable {
+      var platforms: [String]
+      var traits: [String]?
 
       enum CodingKeys: String, CodingKey {
         case platformNames
+        case traits
       }
 
       init(from decoder: any Decoder) throws {
         do {
           let container = try decoder.container(keyedBy: CodingKeys.self)
-          let platformNames = try container.decode([String].self, forKey: .platformNames)
-          self = .platform(names: platformNames)
+          platforms = try container.decode([String].self, forKey: .platformNames)
+          if container.contains(.traits) {
+            self.traits = try container.decode([String].self, forKey: .traits)
+          }
         } catch {
           log.warning(
             """
@@ -105,7 +116,8 @@ extension SwiftPackageManager {
             \(error.localizedDescription)
             """
           )
-          self = .unknown
+          platforms = []
+          traits = []
         }
       }
     }
@@ -177,6 +189,16 @@ extension SwiftPackageManager {
           self = .unknown
         }
       }
+    }
+
+    /// A package trait definition.
+    struct Trait: Sendable, Decodable {
+      /// The traits human-facing description.
+      var description: String?
+      /// Traits that this trait transitively enables.
+      var enabledTraits: [String]
+      /// The name of the trait (used to reference the trait in package manifests).
+      var name: String
     }
   }
 }

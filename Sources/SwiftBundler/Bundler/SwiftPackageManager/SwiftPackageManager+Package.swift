@@ -18,7 +18,7 @@ extension SwiftPackageManager {
     isRootPackage: Bool,
     configurationContext: ConfigurationFlattener.Context,
     toolchain: URL?
-  ) async throws(Error) -> Package<PackageManifest.PackageDependency> {
+  ) async throws(Error) -> Package<PackageDependency> {
     let manifest = try await loadPackageManifest(from: packageDirectory, toolchain: toolchain)
     let partialManifest = try await loadPartialPackageDump(
       packageDirectory: packageDirectory,
@@ -61,12 +61,42 @@ extension SwiftPackageManager {
       configuration = nil
     }
 
+    var traitsTable: [String: Set<String>] = [:]
+    for dependency in partialManifest.dependencies {
+      switch dependency {
+        case .decoded(let identity, let traits, _):
+          traitsTable[identity] = Set(traits)
+        case .other:
+          break
+      }
+    }
+
+    var dependencies: [PackageDependency] = []
+    for dependency in manifest.dependencies {
+      dependencies.append(
+        PackageDependency(
+          package: PackageReference(identity: dependency.identity),
+          traits: traitsTable[dependency.identity] ?? [],
+          location: dependency.location
+        )
+      )
+    }
+
+    let traits = partialManifest.traits.map { trait in
+      Trait(
+        name: trait.name,
+        description: trait.description,
+        enabledTraits: trait.enabledTraits
+      )
+    }
+
     return Package(
       name: packageName,
       identity: packageIdentity,
       source: source,
       localCheckout: packageDirectory,
-      dependencies: manifest.dependencies,
+      dependencies: dependencies,
+      traits: traits,
       products: products,
       targets: targets,
       fullConfiguration: fullConfiguration,
@@ -200,7 +230,7 @@ extension SwiftPackageManager {
     for dependency in manifest.dependencies {
       let resolutionName = partialManifest.dependencies.compactMap { partialDependency in
         switch partialDependency {
-          case .decoded(let identity, .some(let resolutionName))
+          case .decoded(let identity, _, .some(let resolutionName))
               where identity == dependency.identity:
             resolutionName
           default:
@@ -246,22 +276,13 @@ extension SwiftPackageManager {
     }
 
     let condition: TargetDependency.Condition?
-    switch partialCondition {
-      case .platform(let names):
-        condition = .platform(names: names)
-      case .unknown:
-        log.warning(
-          """
-          Target '\(target.name)' in package '\(packageName)' has a \
-          dependency condition that we failed to parse. Please open an issue at \
-          \(SwiftBundler.newIssueURL), as this is likely due to a newer \
-          Swift version breaking our parsing. Treating condition as \
-          unconditionally true.
-          """
-        )
-        condition = nil
-      case .none:
-        condition = nil
+    if let partialCondition {
+      condition = TargetDependency.Condition(
+        platforms: partialCondition.platforms,
+        traits: partialCondition.traits ?? []
+      )
+    } else {
+      condition = nil
     }
 
     /// Gets the normalized package identity of the dependency with the

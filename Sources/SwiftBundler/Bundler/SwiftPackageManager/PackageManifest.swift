@@ -169,23 +169,6 @@ struct PackageManifest: Sendable, Decodable {
         }
       }
     }
-
-    /// Gets the path to the given dependency's local checkout. If the dependency
-    /// is a local package dependency, then this returns the path to the
-    /// dependency's source on disk.
-    func localCheckout(packageDirectory: URL, checkoutsDirectory: URL) -> URL {
-      switch location {
-        case .fileSystem(let path):
-          return path
-        case .sourceControl(let location):
-          var name = location.lastPathComponent
-          let gitSuffix = ".git"
-          if name.hasSuffix(gitSuffix) {
-            name = String(name.dropLast(gitSuffix.count))
-          }
-          return checkoutsDirectory / name
-      }
-    }
   }
 
   var name: String
