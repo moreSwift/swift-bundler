@@ -384,17 +384,13 @@ enum APKBundler: Bundler {
     toJavaSources sourcesDirectory: URL,
     targetPlatform: Platform
   ) throws(Error) {
-    let conditionalTargets = try Error.catch {
-      try packageGraph.transitiveTargets(
+    let targets = try Error.catch {
+      try packageGraph.transitiveActiveTargets(
         inProduct: product,
-        inPackage: packageGraph.rootPackage.reference
+        inPackage: packageGraph.rootPackage.reference,
+        targetPlatform: targetPlatform
       )
     }
-
-    let targets = packageGraph.activeTargets(
-      inConditionalReferences: conditionalTargets,
-      withTargetPlatform: targetPlatform
-    )
 
     var directories: [(
       location: URL,
@@ -495,17 +491,13 @@ enum APKBundler: Bundler {
     toResources resourcesDirectory: URL,
     targetPlatform: Platform
   ) throws(Error) -> ResourceCopyingResult {
-    let conditionalTargets = try Error.catch {
-      try packageGraph.transitiveTargets(
+    let targets = try Error.catch {
+      try packageGraph.transitiveActiveTargets(
         inProduct: product,
-        inPackage: packageGraph.rootPackage.reference
+        inPackage: packageGraph.rootPackage.reference,
+        targetPlatform: targetPlatform
       )
     }
-
-    let targets = packageGraph.activeTargets(
-      inConditionalReferences: conditionalTargets,
-      withTargetPlatform: targetPlatform
-    )
 
     for target in targets {
       guard let configuration = try Error.catch(do: {

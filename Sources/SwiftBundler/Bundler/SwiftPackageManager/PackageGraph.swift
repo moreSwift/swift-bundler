@@ -10,6 +10,8 @@ extension SwiftPackageManager {
     /// Transitive dependencies that we intentionally ignored when loading this
     /// package graph. Used to produce helpful diagnostics.
     var ignoredTransitiveDependencies: [PackageReference]
+    /// The set of traits enabled for each package.
+    var enabledTraits: [PackageReference: Set<String>]
 
     /// Gets the package referred to by the given package reference.
     /// - Parameter packageReference: The package reference.
@@ -215,26 +217,25 @@ extension SwiftPackageManager {
     /// - Throws: If any required packages, products, or targets cannot be found.
     /// - Returns: The targets contained within the product both directly and
     ///   transitively.
-    func transitiveTargets(
+    func transitiveActiveTargets(
       inProduct product: String,
-      inPackage packageReference: PackageReference
-    ) throws(Error) -> [ConditionalTargetReference] {
+      inPackage packageReference: PackageReference,
+      targetPlatform: Platform
+    ) throws(Error) -> [TargetReference] {
       let directTargets = try targets(
         ofProduct: product,
         inPackage: packageReference
       )
 
       let indirectTargets = try directTargets.flatMap { (target) throws(Error) in
-        return try transitiveTargetDependencies(
+        return try transitiveActiveTargetDependencies(
           ofTarget: target.name,
-          inPackage: target.package
+          inPackage: target.package,
+          targetPlatform: targetPlatform
         )
       }
 
-      let targets = directTargets.map { target in
-        ConditionalTargetReference(target: target, conditions: [])
-      } + indirectTargets
-
+      let targets = directTargets + indirectTargets
       return targets.uniqued()
     }
 
@@ -249,11 +250,10 @@ extension SwiftPackageManager {
       withTargetPlatform targetPlatform: Platform
     ) -> [TargetReference] {
       references.compactMap { reference in
-        let conditionsSatisfied = reference.conditions.allSatisfy { condition in
-          condition.isSatisfied(targetPlatform: targetPlatform)
+        if reference.target.package.identity == "swift-metrics" {
+          print(reference.conditions)
         }
-
-        if conditionsSatisfied {
+        if reference.isActive(targetPlatform: targetPlatform, packageGraph: self) {
           return reference.target
         } else {
           return nil
@@ -270,25 +270,26 @@ extension SwiftPackageManager {
     /// Excludes macro and plugin dependencies, as the code from those does
     /// not end up in the final executable, which is all that Swift Bundler
     /// cares about.
-    func transitiveTargetDependencies(
+    func transitiveActiveTargetDependencies(
       ofTarget target: String,
-      inPackage packageReference: PackageReference
-    ) throws(Error) -> [ConditionalTargetReference] {
+      inPackage packageReference: PackageReference,
+      targetPlatform: Platform
+    ) throws(Error) -> [TargetReference] {
       let directDependencies = try directTargetDependencies(
         ofTarget: target,
-        inPackage: packageReference
+        inPackage: packageReference,
+        targetPlatform: targetPlatform
       )
 
       var remainingDependencies = directDependencies
-      var dependencies: [ConditionalTargetReference] = directDependencies
+      var dependencies: [TargetReference] = directDependencies
 
       while let dependency = remainingDependencies.popLast() {
         let nestedDirectDependencies = try directTargetDependencies(
-          ofTarget: dependency.target.name,
-          inPackage: dependency.target.package
-        ).map { nestedDependency in
-          nestedDependency.appendingConditions(dependency.conditions)
-        }
+          ofTarget: dependency.name,
+          inPackage: dependency.package,
+          targetPlatform: targetPlatform
+        )
 
         for dependency in nestedDirectDependencies {
           guard !dependencies.contains(dependency) else {
@@ -312,41 +313,49 @@ extension SwiftPackageManager {
     /// cares about.
     func directTargetDependencies(
       ofTarget target: String,
-      inPackage packageReference: PackageReference
-    ) throws(Error) -> [ConditionalTargetReference] {
+      inPackage packageReference: PackageReference,
+      targetPlatform: Platform
+    ) throws(Error) -> [TargetReference] {
       let package = try self.package(referredToBy: packageReference)
 
       guard let target = package.targets[target] else {
         throw Error(.targetNotFoundInPackage(target, packageReference))
       }
     
-      return try target.dependencies.flatMap { (dependency) throws(Error) in
+      let enabledTraits = enabledTraits[packageReference] ?? []
+      return try target.dependencies.flatMap { (dependency: TargetDependency) throws(Error) -> [TargetReference] in
         switch dependency {
           case .target(let name, let condition):
-            let targetReference = ConditionalTargetReference(
-              target: TargetReference(name: name, package: packageReference),
-              conditions: [condition].compactMap { $0 }
-            )
+            guard condition?.isSatisfied(
+              targetPlatform: targetPlatform,
+              enabledTraits: enabledTraits
+            ) != false else {
+              return []
+            }
+
+            let targetReference = TargetReference(name: name, package: packageReference)
 
             // Exclude macro and plugin targets as we're only interested in targets with
             // code that ends up in the final executable.
-            let dependencyTarget = try self.target(referredToBy: targetReference.target)
+            let dependencyTarget = try self.target(referredToBy: targetReference)
             if dependencyTarget.kind == .macro || dependencyTarget.kind == .plugin {
               return []
             }
 
             return [targetReference]
           case .product(let packageIdentity, let product, let condition):
+            guard condition?.isSatisfied(
+              targetPlatform: targetPlatform,
+              enabledTraits: enabledTraits
+            ) != false else {
+              return []
+            }
+
             let dependencyPackageReference = PackageReference(identity: packageIdentity)
             return try targets(
               ofProduct: product,
               inPackage: dependencyPackageReference
-            ).map { target in
-              ConditionalTargetReference(
-                target: target,
-                conditions: [condition].compactMap { $0 }
-              )
-            }
+            )
         }
       }
     }
@@ -363,10 +372,12 @@ extension SwiftPackageManager.PackageGraph {
       source: .local(path: URL(fileURLWithPath: "/dummy")),
       localCheckout: URL(fileURLWithPath: "/dummy"),
       dependencies: [],
+      traits: [],
       products: [:],
       targets: [:]
     ),
     dependencyPackages: [:],
-    ignoredTransitiveDependencies: []
+    ignoredTransitiveDependencies: [],
+    enabledTraits: [SwiftPackageManager.PackageReference(identity: "dummy"): []]
   )
 }

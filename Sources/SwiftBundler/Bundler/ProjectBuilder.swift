@@ -148,13 +148,10 @@ enum ProjectBuilder {
     processDependencies(appConfiguration.dependencies, depender: .app)
 
     let targets = try Error.catch {
-      let targets = try packageGraph.transitiveTargets(
+      try packageGraph.transitiveActiveTargets(
         inProduct: appConfiguration.product,
-        inPackage: packageGraph.rootPackage.reference
-      )
-      return packageGraph.activeTargets(
-        inConditionalReferences: targets,
-        withTargetPlatform: targetPlatform
+        inPackage: packageGraph.rootPackage.reference,
+        targetPlatform: targetPlatform
       )
     }
 

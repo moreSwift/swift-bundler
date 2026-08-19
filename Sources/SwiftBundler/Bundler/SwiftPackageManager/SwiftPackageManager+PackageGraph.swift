@@ -4,8 +4,9 @@ import Mutex
 extension SwiftPackageManager {
   /// Shared mutable state used to coordinate the package graph loading process.
   private struct PackageGraphLoadingState: Sendable {
-    var coveredDependencies: [PackageReference] = []
-    var dependencyPackages: [PackageReference: Package<PackageReference>] = [:]
+    var coveredDependencies: Set<PackageReference> = []
+    var enabledTraits: [PackageReference: Set<String>] = [:]
+    var dependencyPackages: [PackageReference: Package<PackageDependency>] = [:]
     var ignoredTransitiveDependencies: [PackageReference] = []
   }
 
@@ -48,13 +49,14 @@ extension SwiftPackageManager {
 
     let state = Mutex(PackageGraphLoadingState(
       // We initially process all root dependencies, so mark them as covered straight away.
-      coveredDependencies: root.dependencies.map(\.identity).map(PackageReference.init(identity:)),
+      coveredDependencies: [root.reference],
+      enabledTraits: [root.reference: ["default"]],
       dependencyPackages: [:],
       ignoredTransitiveDependencies: []
     ))
 
     // A wrapper around 'processDependency' to make callsites more succinct (using captures)
-    let processDependency = { (dependency: PackageManifest.PackageDependency) async in
+    let processDependency = { (dependency: PackageDependency) async in
       return await Result.catching { () throws(Error) in
         try await Self.processDependency(
           dependency,
@@ -68,11 +70,21 @@ extension SwiftPackageManager {
     }
 
     let result: Result<(), Error> = await withTaskGroup(
-      of: Result<[PackageManifest.PackageDependency], Error>.self
+      of: Result<[PackageDependency], Error>.self
     ) { taskGroup in
-      for dependency in root.dependencies {
-        taskGroup.addTask {
-          await processDependency(dependency)
+      // Queue root dependencies (but only those that are used)
+      taskGroup.addTask {
+        await Result.catching { () throws(Error) in
+          var queue: [PackageDependency] = []
+          try state.withLock { (state) throws(Error) in
+            try queueTransitiveDependencies(
+              package: root,
+              state: &state,
+              into: &queue,
+              requirePublicUsage: false
+            )
+          }
+          return queue
         }
       }
 
@@ -100,8 +112,9 @@ extension SwiftPackageManager {
     let finalState = state.withLock { $0 }
     return PackageGraph(
       rootPackage: root.withReferences,
-      dependencyPackages: finalState.dependencyPackages,
-      ignoredTransitiveDependencies: finalState.ignoredTransitiveDependencies
+      dependencyPackages: finalState.dependencyPackages.mapValues(\.withReferences),
+      ignoredTransitiveDependencies: finalState.ignoredTransitiveDependencies,
+      enabledTraits: finalState.enabledTraits
     )
   }
 
@@ -167,13 +180,13 @@ extension SwiftPackageManager {
   ///     files contained within the dependency (if there are any).
   ///   - toolchain: The Swift toolchain to use when loading the dependency.
   private static func processDependency(
-    _ dependency: PackageManifest.PackageDependency,
+    _ dependency: PackageDependency,
     state: borrowing Mutex<PackageGraphLoadingState>,
     packageDirectory: URL,
     checkoutsDirectory: URL,
     configurationContext: ConfigurationFlattener.Context,
     toolchain: URL?
-  ) async throws(Error) -> [PackageManifest.PackageDependency] {
+  ) async throws(Error) -> [PackageDependency] {
     let dependencyDirectory = dependency.localCheckout(
       packageDirectory: packageDirectory,
       checkoutsDirectory: checkoutsDirectory
@@ -192,54 +205,117 @@ extension SwiftPackageManager {
     let package = try await loadPackage(
       packageDirectory: dependencyDirectory,
       source: source,
-      identityOverride: dependency.identity,
+      identityOverride: dependency.package.identity,
       isRootPackage: false,
       configurationContext: configurationContext,
       toolchain: toolchain
     )
     // END: Slow section
 
+    state.withLock { state in
+      // We've only just loaded the package, so any existing traits in
+      // state.enabledTraits won't have been recursively evaluated yet.
+      // We take care to recursively evaluate the whole union of traits
+      // rather than just those passed in from the particular dependency
+      // edge that got us here.
+      let enabledTraits = package.recursivelyEnabledTraits(
+        enabledTraits: Set(dependency.traits)
+          .union(state.enabledTraits[dependency.package] ?? [])
+      )
+      state.enabledTraits[dependency.package] = enabledTraits
+    }
+
+    var queuedDependencies: [PackageDependency] = []
+    try state.withLock { state throws(Error) in
+      try queueTransitiveDependencies(
+        package: package,
+        state: &state,
+        into: &queuedDependencies
+      )
+    }
+    return queuedDependencies
+  }
+
+  private static func queueTransitiveDependencies(
+    package: Package<PackageDependency>,
+    state: inout PackageGraphLoadingState,
+    into queuedDependencies: inout [PackageDependency],
+    requirePublicUsage: Bool = true
+  ) throws(Error) {
     let reference = PackageReference(identity: package.identity)
+
+    let enabledTraits = package.recursivelyEnabledTraits(
+      enabledTraits: state.enabledTraits[reference] ?? []
+    )
 
     /// Determine transitive dependencies that are yet to be loaded and return
     /// them for further processing.
-    var queuedDependencies: [PackageManifest.PackageDependency] = []
-    try state.withLock { state throws(Error) in
-      state.dependencyPackages[reference] = package.withReferences
+    state.dependencyPackages[reference] = package
 
-      for transitiveDependency in package.dependencies {
-        // Make sure that we haven't covered this dependency yet
-        let dependencyReference = PackageReference(identity: transitiveDependency.identity)
-        guard
-          !state.coveredDependencies.contains(
-            where: { $0.identity == transitiveDependency.identity }
-          )
-        else {
-          continue
+    for transitiveDependency in package.dependencies {
+      // Make sure that we haven't covered this dependency yet
+      let dependencyReference = transitiveDependency.package
+
+      guard !state.coveredDependencies.contains(dependencyReference) else {
+        if let dependencyPackage = state.dependencyPackages[dependencyReference] {
+          // The package has already been loaded, so we have to check whether this
+          // dependency edge contains any new traits that haven't been enabled yet
+          let enabledDependencyTraits = Set(dependencyPackage.recursivelyEnabledTraits(
+            enabledTraits: transitiveDependency.traits
+          ))
+
+          // The package has been loaded, so the state.enabledTraits entry for this
+          // package has already been recursively evaluated; we can just subtract them
+          // to get the set of new traits.
+          let containsNewTraits = !enabledDependencyTraits.subtracting(
+            state.enabledTraits[dependencyReference] ?? []
+          ).isEmpty
+
+          state.enabledTraits[dependencyReference, default: []].formUnion(enabledDependencyTraits)
+          if containsNewTraits, let dependencyPackage = state.dependencyPackages[reference] {
+            // If we discovered more traits, we must attempt requeue the package's
+            // dependencies recursively as new dependencies may have been enabled,
+            // and new traits may have been passed on to the dependency's own
+            // dependencies
+            try queueTransitiveDependencies(
+              package: dependencyPackage,
+              state: &state,
+              into: &queuedDependencies
+            )
+          }
+        } else {
+          // We can't compute the set of all traits recursively enabled yet,
+          // because we haven't loaded the package, so we just store them in
+          // the look up table and they will get evaluated properly when the
+          // package gets loaded
+          state.enabledTraits[dependencyReference, default: []]
+            .formUnion(transitiveDependency.traits)
         }
-
-        let isUsed = try dependencyIsPubliclyUsed(
-          dependency: transitiveDependency,
-          package: package
-        )
-
-        logDependency(
-          dependencyReference,
-          packageIdentity: package.identity,
-          ignored: !isUsed,
-          ignoredTransitiveDependencies: &state.ignoredTransitiveDependencies
-        )
-
-        guard isUsed else {
-          continue
-        }
-
-        state.coveredDependencies.append(dependencyReference)
-        queuedDependencies.append(transitiveDependency)
+        
+        continue
       }
-    }
 
-    return queuedDependencies
+      let isUsed = try dependencyIsUsed(
+        dependency: transitiveDependency,
+        package: package,
+        enabledTraits: enabledTraits,
+        onlyCountPublicUsage: requirePublicUsage
+      )
+
+      logDependency(
+        dependencyReference,
+        packageIdentity: package.identity,
+        ignored: !isUsed,
+        ignoredTransitiveDependencies: &state.ignoredTransitiveDependencies
+      )
+
+      guard isUsed else {
+        continue
+      }
+
+      state.coveredDependencies.insert(dependencyReference)
+      queuedDependencies.append(transitiveDependency)
+    }
   }
 
   /// Logs debug messages regarding our decision to ignore or load a given
@@ -277,49 +353,69 @@ extension SwiftPackageManager {
     }
   }
 
-  /// Computes whether a given dependency is used publicly by a package. This aims
+  /// Computes whether a given dependency is used by a package. This aims
   /// to reproduce the logic used by SwiftPM to decide whether to include a given
   /// transitive dependency in package resolution or not.
   /// - Parameters:
   ///   - dependency: The dependency to check for usage of.
   ///   - package: The package to check for usage within.
-  private static func dependencyIsPubliclyUsed(
-    dependency: PackageManifest.PackageDependency,
-    package: Package<PackageManifest.PackageDependency>
+  ///   - enabledTraits: The set of traits enabled for the package to check for
+  ///     usage within.
+  ///   - onlyCountPublicUsage: When resolving dependencies of a non-root package,
+  ///     only publicly used dependencies get checked out. This parameter emulates
+  ///     that behavior.
+  private static func dependencyIsUsed(
+    dependency: PackageDependency,
+    package: Package<PackageDependency>,
+    enabledTraits: Set<String>,
+    onlyCountPublicUsage: Bool
   ) throws(Error) -> Bool {
-    // Only load a transitive dependency if it's used by a product, because
-    // anything else gets counted as an internal detail by SwiftPM, which
-    // leads to SwiftPM not checking out said dependency.
-
-    let directlyUsedTargets = package.products
-      .filter { _, product in
-        switch product.productType {
-          case .executable, .library:
-            return true
-          case .macro, .plugin:
-            return false
+    var queue: [Target]
+    if onlyCountPublicUsage {
+      // Only load a transitive dependency if it's used by a product, because
+      // anything else gets counted as an internal detail by SwiftPM, which
+      // leads to SwiftPM not checking out said dependency.
+      let directlyUsedTargets = package.products
+        .filter { _, product in
+          switch product.productType {
+            case .executable, .library:
+              return true
+            case .macro, .plugin:
+              return false
+          }
         }
-      }
-      .flatMap(\.value.targets)
+        .flatMap(\.value.targets)
 
-    var queue = Array(
-      package.targets.filter { targetName, _ in
-        directlyUsedTargets.contains(targetName)
-      }.values
-    )
+      queue = Array(
+        package.targets.filter { targetName, _ in
+          directlyUsedTargets.contains(targetName)
+        }.values
+      )
+    } else {
+      queue = Array(package.targets.values)
+    }
+
     var seen = Set(queue.map(\.name))
 
     while let target = queue.popLast() {
       for targetDependency in target.dependencies {
         switch targetDependency {
-          case .product(let packageIdentity, _, _):
-            if dependency.identity == packageIdentity {
+          case .product(let packageIdentity, _, let condition):
+            guard condition?.traitClauseIsSatisfied(by: enabledTraits) ?? true else {
+              continue
+            }
+
+            if dependency.package.identity == packageIdentity {
               return true
             }
-          case .target(let targetName, _):
+          case .target(let targetName, let condition):
             if seen.insert(targetName).inserted {
               guard let target = package.targets[targetName] else {
                 throw Error(.targetNotFoundInPackage(targetName, package.reference))
+              }
+
+              guard condition?.traitClauseIsSatisfied(by: enabledTraits) ?? true else {
+                continue
               }
 
               switch target.kind {

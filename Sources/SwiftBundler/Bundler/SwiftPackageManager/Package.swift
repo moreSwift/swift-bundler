@@ -25,6 +25,8 @@ extension SwiftPackageManager {
     /// packages in a ``PackageGraph``). That's why `Dependency` is a generic
     /// parameter.
     var dependencies: [Dependency]
+    /// The package's traits.
+    var traits: [Trait]
     /// The package's products.
     var products: [String: Product]
     /// The package's targets.
@@ -44,10 +46,43 @@ extension SwiftPackageManager {
     var reference: PackageReference {
       PackageReference(identity: identity)
     }
+
+    /// Computes the traits recursively enabled by the given set of enabled traits.
+    ///
+    /// Each trait can define a list of traits that get transitively enabled
+    /// whenever the trait gets enabled. This method resolves the set of all traits
+    /// enabled (including transitively) by a given set of explicitly enabled traits.
+    ///
+    /// Unknown traits are ignored (and removed from the result).
+    func recursivelyEnabledTraits(enabledTraits: Set<String>) -> Set<String> {
+      var recursiveTraits: Set<String> = []
+
+      var queue = Array(enabledTraits)
+      while let trait = queue.popLast() {
+        guard let definition = traits.first(where: { $0.name == trait }) else {
+          if trait != "default" {
+            log.warning(
+              """
+              Unknown trait '\(trait)' (for package '\(identity)' with traits \
+              \(traits.map(\.name)))
+              """
+            )
+          }
+          continue
+        }
+
+        recursiveTraits.formUnion([trait] + definition.enabledTraits)
+        for nestedTrait in definition.enabledTraits where !queue.contains(nestedTrait) {
+          queue.append(nestedTrait)
+        }
+      }
+
+      return recursiveTraits
+    }
   }
 }
 
-extension SwiftPackageManager.Package<PackageManifest.PackageDependency> {
+extension SwiftPackageManager.Package<SwiftPackageManager.PackageDependency> {
   /// Converts a package that represents its dependencies by location into one
   /// that represents its dependencies by thin references.
   var withReferences: SwiftPackageManager.Package<SwiftPackageManager.PackageReference> {
@@ -56,8 +91,8 @@ extension SwiftPackageManager.Package<PackageManifest.PackageDependency> {
       identity: identity,
       source: source,
       localCheckout: localCheckout,
-      dependencies: dependencies.map(\.identity)
-        .map(SwiftPackageManager.PackageReference.init(identity:)),
+      dependencies: dependencies.map(\.package),
+      traits: traits,
       products: products,
       targets: targets,
       fullConfiguration: fullConfiguration,
@@ -73,6 +108,7 @@ extension SwiftPackageManager.Package: Codable {
     case source
     case localCheckout
     case dependencies
+    case traits
     case products
     case targets
     case fullConfiguration
@@ -87,6 +123,7 @@ extension SwiftPackageManager.Package: Codable {
     source = try container.decode(SwiftPackageManager.PackageSource.self, forKey: .source)
     localCheckout = try container.decode(URL.self, forKey: .localCheckout)
     dependencies = try container.decode([Dependency].self, forKey: .dependencies)
+    traits = try container.decode([SwiftPackageManager.Trait].self, forKey: .dependencies)
     products = try container.decode([String: SwiftPackageManager.Product].self, forKey: .products)
     targets = try container.decode([String: SwiftPackageManager.Target].self, forKey: .targets)
     fullConfiguration = try container.decode(PackageConfiguration?.self, forKey: .fullConfiguration)
@@ -101,6 +138,7 @@ extension SwiftPackageManager.Package: Codable {
     try container.encode(source, forKey: .source)
     try container.encode(localCheckout, forKey: .localCheckout)
     try container.encode(dependencies, forKey: .dependencies)
+    try container.encode(traits, forKey: .traits)
     try container.encode(products, forKey: .products)
     try container.encode(targets, forKey: .targets)
     try container.encode(fullConfiguration, forKey: .fullConfiguration)
