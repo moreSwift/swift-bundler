@@ -14,6 +14,28 @@ enum WindowsCodeSigner {
   static let azureArtifactSigningNUPKG =
     URL(string: "https://www.nuget.org/api/v2/package/Microsoft.ArtifactSigning.Client/1.0.128")!
 
+  /// Checks whether a file is signed or not. Returns `true` if and only if the
+  /// binary is signed by a certificate that this computer trusts.
+  static func fileHasTrustedSignature(_ file: URL) async throws(Error) -> Bool {
+    guard file.exists(withType: .file) else {
+      throw Error(.fileDoesNotExist(file))
+    }
+
+    do {
+      try await Process.create(
+        "SignTool",
+        arguments: [
+          "verify",
+          "/pa",
+          file.path
+        ]
+      ).runAndWait()
+      return true
+    } catch {
+      return false
+    }
+  }
+
   /// Signs a file using the given code signing context. Also securely timestamps the file.
   static func signFile(
     _ file: URL,
