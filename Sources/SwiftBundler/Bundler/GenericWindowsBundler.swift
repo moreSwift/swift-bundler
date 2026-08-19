@@ -405,6 +405,15 @@ enum GenericWindowsBundler: Bundler {
         let isExecutable = artifact.location.pathExtension == "exe"
         if isExecutable, let codeSigningContext = context.windowsCodeSigningContext {
           try await Error.catch {
+            // Don't re-sign the file if it's already signed (it was probably
+            // downloaded from the internet or built by an external build system
+            // that already handles signing). If the file has a signature but not
+            // one that we trust, then we proceed with re-signing the executable.
+            let isSigned = try await WindowsCodeSigner.fileHasTrustedSignature(destination)
+            guard !isSigned else {
+              return
+            }
+
             try await WindowsCodeSigner.signFile(
               destination,
               context: codeSigningContext
