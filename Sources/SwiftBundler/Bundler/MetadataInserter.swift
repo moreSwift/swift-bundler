@@ -17,8 +17,18 @@ enum MetadataInserter {
     var appIdentifier: String
     /// The app's version.
     var appVersion: Version
+    /// The app's declared URL schemes.
+    var urlSchemes: [URLScheme]?
     /// Additional user-defined metadata.
     var additionalMetadata: [String: MetadataValue]
+
+    /// A URL scheme. This is a struct instead of a string so that we can extend
+    /// the format with additional properties without breaking existing metadata
+    /// producers or extractors.
+    struct URLScheme: Codable {
+      /// The URL scheme itself.
+      var scheme: String
+    }
   }
 
   enum CompiledMetadata {
@@ -31,6 +41,9 @@ enum MetadataInserter {
     Metadata(
       appIdentifier: configuration.identifier,
       appVersion: configuration.version,
+      urlSchemes: configuration.urlSchemes.map { scheme in
+        Metadata.URLScheme(scheme: scheme)
+      },
       additionalMetadata: configuration.metadata
     )
   }
