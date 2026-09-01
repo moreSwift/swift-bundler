@@ -27,7 +27,7 @@ extension SwiftPackageManager {
     toolchain: URL?
   ) async throws(Error) -> PackageGraph {
     log.info("Resolving dependencies")
-    try await SwiftPackageManager.resolveDependencies(
+    try await packageLoader.prepare(
       packageDirectory: packageDirectory,
       toolchain: toolchain
     )
@@ -68,6 +68,11 @@ extension SwiftPackageManager {
         )
       }
     }
+
+    // TODO(stackotter):
+    // - Create deterministic version of this for testing
+    // - Make package loader configurable so that we can mock the package
+    //   loader in tests
 
     let result: Result<(), Error> = await withTaskGroup(
       of: Result<[PackageDependency], Error>.self
@@ -272,7 +277,7 @@ extension SwiftPackageManager {
           ).isEmpty
 
           state.enabledTraits[dependencyReference, default: []].formUnion(enabledDependencyTraits)
-          if containsNewTraits, let dependencyPackage = state.dependencyPackages[reference] {
+          if containsNewTraits {
             // If we discovered more traits, we must attempt requeue the package's
             // dependencies recursively as new dependencies may have been enabled,
             // and new traits may have been passed on to the dependency's own

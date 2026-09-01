@@ -1,6 +1,9 @@
 import Foundation
 
 extension SwiftPackageManager {
+  /// The package loader local to the current task. Overwritten by tests.
+  @TaskLocal static var packageLoader: any PackageLoader = DefaultPackageLoader()
+
   /// Loads the given package.
   /// - Parameters:
   ///   - packageDirectory: The root directory of the package to load.
@@ -8,6 +11,8 @@ extension SwiftPackageManager {
   ///   - identityOverride: The package's identity according to whichever package
   ///     is depending on this package (if any). If `nil` then the package's name
   ///     field is lowercased to obtain its identity according to itself.
+  ///   - isRootPackage: Whether the package is the root package or not. Affects which
+  ///     products are loaded.
   ///   - configurationContext: The context to use when flattening package configurations.
   ///   - toolchain: The Swift toolchain to use.
   /// - Returns: The loaded package.
@@ -19,88 +24,13 @@ extension SwiftPackageManager {
     configurationContext: ConfigurationFlattener.Context,
     toolchain: URL?
   ) async throws(Error) -> Package<PackageDependency> {
-    let manifest = try await loadPackageManifest(from: packageDirectory, toolchain: toolchain)
-    let partialManifest = try await loadPartialPackageDump(
+    try await packageLoader.loadPackage(
       packageDirectory: packageDirectory,
-      toolchain: toolchain
-    )
-    let packageName = manifest.name
-    let packageIdentity = identityOverride ?? packageIdentity(forPackageWithName: packageName)
-
-    let products = products(
-      forManifest: manifest,
-      partialManifest: partialManifest,
-      isRootPackage: isRootPackage
-    )
-
-    let targets = targets(
-      forManifest: manifest,
-      partialManifest: partialManifest,
-      products: products,
-      packageName: packageName,
-      packageIdentity: packageIdentity,
-      packageDirectory: packageDirectory
-    )
-
-    // Load the package's bundler config file if present.
-    let fullConfiguration: PackageConfiguration?
-    let configuration: PackageConfiguration.Flat?
-    if PackageConfiguration.standardConfigurationFileLocation(for: packageDirectory).exists() {
-      let loadedConfiguration = try await Error.catch {
-        try await PackageConfiguration.load(fromDirectory: packageDirectory)
-      }
-      fullConfiguration = loadedConfiguration
-      configuration = try Error.catch {
-        try ConfigurationFlattener.flatten(
-          loadedConfiguration,
-          with: configurationContext
-        )
-      }
-    } else {
-      fullConfiguration = nil
-      configuration = nil
-    }
-
-    var traitsTable: [String: Set<String>] = [:]
-    for dependency in partialManifest.dependencies {
-      switch dependency {
-        case .decoded(let identity, let traits, _):
-          traitsTable[identity] = Set(traits)
-        case .other:
-          break
-      }
-    }
-
-    var dependencies: [PackageDependency] = []
-    for dependency in manifest.dependencies {
-      dependencies.append(
-        PackageDependency(
-          package: PackageReference(identity: dependency.identity),
-          traits: traitsTable[dependency.identity] ?? [],
-          location: dependency.location
-        )
-      )
-    }
-
-    let traits = partialManifest.traits.map { trait in
-      Trait(
-        name: trait.name,
-        description: trait.description,
-        enabledTraits: trait.enabledTraits
-      )
-    }
-
-    return Package(
-      name: packageName,
-      identity: packageIdentity,
       source: source,
-      localCheckout: packageDirectory,
-      dependencies: dependencies,
-      traits: traits,
-      products: products,
-      targets: targets,
-      fullConfiguration: fullConfiguration,
-      configuration: configuration
+      identityOverride: identityOverride,
+      isRootPackage: isRootPackage,
+      configurationContext: configurationContext,
+      toolchain: toolchain
     )
   }
 
@@ -117,7 +47,7 @@ extension SwiftPackageManager {
   ///     target dependencies.
   ///   - packageIdentity: The package's identity in the package graph.
   ///   - packageDirectory: The root directory of the package.
-  private static func targets(
+  static func targets(
     forManifest manifest: PackageManifest,
     partialManifest: PartialPackageDump,
     products: [String: Product],
@@ -351,7 +281,7 @@ extension SwiftPackageManager {
   ///     `swift package dump-package` command. We only load as much information
   ///   - isRootPackage: Whether the package is the root package in the package
   ///     graph. This affects whether we load 'implicit' executable products or not.
-  private static func products(
+  static func products(
     forManifest manifest: PackageManifest,
     partialManifest: PartialPackageDump,
     isRootPackage: Bool

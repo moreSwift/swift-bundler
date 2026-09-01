@@ -60,7 +60,11 @@ extension SwiftPackageManager {
       var queue = Array(enabledTraits)
       while let trait = queue.popLast() {
         guard let definition = traits.first(where: { $0.name == trait }) else {
-          if trait != "default" {
+          if trait == "default" {
+            // If the default trait doesn't have a definition, then it only
+            // enables itself
+            recursiveTraits.insert("default")
+          } else {
             log.warning(
               """
               Unknown trait '\(trait)' (for package '\(identity)' with traits \
