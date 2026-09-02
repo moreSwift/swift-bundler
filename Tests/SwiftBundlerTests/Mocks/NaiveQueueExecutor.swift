@@ -13,10 +13,10 @@ private final class NaiveQueueExecutor: TaskExecutor, SerialExecutor {
     self.queue = queue
   }
 
-  func enqueue(_ _job: consuming ExecutorJob) {
-    let job = UnownedJob(_job)
+  func enqueue(_ job: consuming ExecutorJob) {
+    let unownedJob = UnownedJob(job)
     queue.async {
-      job.runSynchronously(
+      unownedJob.runSynchronously(
         isolatedTo: self.asUnownedSerialExecutor(),
         taskExecutor: self.asUnownedTaskExecutor()
       )
@@ -35,6 +35,11 @@ private final class NaiveQueueExecutor: TaskExecutor, SerialExecutor {
 }
 
 /// Runs the given operation on a serial task executor.
+///
+/// NOTE: If this function fails to compile, try using a newer Swift version.
+///   Swift 6.1 is known to fail on macOS, but we haven't bumped the overall
+///   package Swift tools version because we don't want the tests to dictate
+///   our supported Swift versions (given that tests don't affect consumers)
 func withSerialTaskExecutor<T, Failure: Error>(
   isolation: isolated (any Actor)? = #isolation,
   queueLabel: String = #function,
@@ -49,15 +54,19 @@ func withSerialTaskExecutor<T, Failure: Error>(
       operation: operation
     )
   } else {
-    // This is a fallback for older versions of macOS. The downside of this
-    // approach is that it affects every other test running in parallel for the
-    // duration of the operation because it overrides swift_task_enqueueGlobal_hook 
-    // to control task execution
-    let didUseMainSerialExecutor = ConcurrencyExtras.uncheckedUseMainSerialExecutor
-    defer {
-      ConcurrencyExtras.uncheckedUseMainSerialExecutor = didUseMainSerialExecutor
-    }
-    ConcurrencyExtras.uncheckedUseMainSerialExecutor = true
-    return try await operation()
+    #if os(macOS)
+      // This is a fallback for older versions of macOS. The downside of this
+      // approach is that it affects every other test running in parallel for the
+      // duration of the operation because it overrides swift_task_enqueueGlobal_hook 
+      // to control task execution
+      let didUseMainSerialExecutor = ConcurrencyExtras.uncheckedUseMainSerialExecutor
+      defer {
+        ConcurrencyExtras.uncheckedUseMainSerialExecutor = didUseMainSerialExecutor
+      }
+      ConcurrencyExtras.uncheckedUseMainSerialExecutor = true
+      return try await operation()
+    #else
+      fatalError("How did we get here?")
+    #endif
   }
 }

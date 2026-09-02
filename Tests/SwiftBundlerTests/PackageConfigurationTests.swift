@@ -134,7 +134,7 @@ struct PackageConfigurationTests {
           Issue.record(
             """
             Parsing a config file with a format_version > 3 must fail with an \
-            'unsupported format version' error, got '\(message)'
+            'unsupported format version' error, got '\(message?.userFriendlyMessage ?? "<none>")'
             """
           )
       }
