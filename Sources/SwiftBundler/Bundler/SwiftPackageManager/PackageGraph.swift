@@ -135,11 +135,7 @@ extension SwiftPackageManager {
     internal func allProducts() -> [String: (PackageReference, Product)] {
       // blame is used when producing duplicate product name warnings
       var blame: [String: PackageReference] = [:]
-
-      var allProducts = rootPackage.products.mapValues { (rootPackage.reference, $0) }
-      for name in rootPackage.products.keys {
-        blame[name] = rootPackage.reference
-      }
+      var allProducts: [String: (PackageReference, Product)] = [:]
 
       for package in dependencyPackages.values {
         for (name, product) in package.products {
