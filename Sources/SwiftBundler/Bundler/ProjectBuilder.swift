@@ -301,7 +301,7 @@ enum ProjectBuilder {
     }
 
     if !dryRun {
-      log.info("Copying product '\(dependency)'")
+      log.info("Copying product \(dependency)")
     }
 
     let artifactPaths = [productPath] + auxiliaryArtifactPaths
