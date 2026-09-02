@@ -427,7 +427,8 @@ enum GenericWindowsBundler: Bundler {
     try await copyDynamicLibraryDependencies(
       of: structure.mainExecutable,
       to: structure.modules,
-      productsDirectory: context.productsDirectory
+      productsDirectory: context.productsDirectory,
+      context: context
     )
   }
 
@@ -440,7 +441,8 @@ enum GenericWindowsBundler: Bundler {
   private static func copyDynamicLibraryDependencies(
     of module: URL,
     to destination: URL,
-    productsDirectory: URL
+    productsDirectory: URL,
+    context: BundlerContext
   ) async throws(Error) {
     let productsDirectory = productsDirectory.actuallyResolvingSymlinksInPath()
 
@@ -471,6 +473,24 @@ enum GenericWindowsBundler: Bundler {
         errorMessage: ErrorMessage.failedToCopyDLL
       )
 
+      if let codeSigningContext = context.windowsCodeSigningContext {
+        try await Error.catch {
+          // Don't re-sign the file if it's already signed (it was probably
+          // downloaded from the internet or built by an external build system
+          // that already handles signing). If the file has a signature but not
+          // one that we trust, then we proceed with re-signing the executable.
+          let isSigned = try await WindowsCodeSigner.fileHasTrustedSignature(destinationFile)
+          guard !isSigned else {
+            return
+          }
+
+          try await WindowsCodeSigner.signFile(
+            destinationFile,
+            context: codeSigningContext
+          )
+        }
+      }
+
       if pdbFile.exists() {
         // Copy dll's pdb file if present
         let destinationPDBFile = destinationFile.replacingPathExtension(
@@ -488,7 +508,8 @@ enum GenericWindowsBundler: Bundler {
       try await copyDynamicLibraryDependencies(
         of: resolvedSourceFile,
         to: destination,
-        productsDirectory: productsDirectory
+        productsDirectory: productsDirectory,
+        context: context
       )
     }
   }
