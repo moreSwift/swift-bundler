@@ -154,6 +154,7 @@ let package = Package(
         .embedInCode("Resources/gradlew"),
         .embedInCode("Resources/gradle-wrapper.jar"),
         .embedInCode("Resources/DefaultAndroidIcon.webp"),
+        .embedInCode("Resources/DefaultLinuxIcon.png"),
       ],
       swiftSettings: [
         .define("SUPPORT_HOT_RELOADING", .when(platforms: [.macOS, .linux])),
