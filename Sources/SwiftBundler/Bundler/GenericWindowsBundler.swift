@@ -478,7 +478,7 @@ enum GenericWindowsBundler: Bundler {
           // Don't re-sign the file if it's already signed (it was probably
           // downloaded from the internet or built by an external build system
           // that already handles signing). If the file has a signature but not
-          // one that we trust, then we proceed with re-signing the executable.
+          // one that we trust, then we proceed with re-signing the DLL.
           let isSigned = try await WindowsCodeSigner.fileHasTrustedSignature(destinationFile)
           guard !isSigned else {
             return
