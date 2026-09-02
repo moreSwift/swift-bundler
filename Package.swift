@@ -78,6 +78,9 @@ let package = Package(
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
     .package(url: "https://github.com/apple/swift-system", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.3"),
+
+    // Test dependencies
+    .package(url: "https://github.com/pointfreeco/swift-concurrency-extras", from: "1.4.1"),
   ],
   targets: [
     .executableTarget(name: "swift-bundler", dependencies: ["SwiftBundler"]),
@@ -229,7 +232,14 @@ let package = Package(
 
     .testTarget(
       name: "SwiftBundlerTests",
-      dependencies: ["SwiftBundler"],
+      dependencies: [
+        "SwiftBundler",
+        .product(
+          name: "ConcurrencyExtras",
+          package: "swift-concurrency-extras",
+          condition: .when(platforms: [.macOS])
+        ),
+      ],
       resources: [
         .copy("Fixtures")
       ]

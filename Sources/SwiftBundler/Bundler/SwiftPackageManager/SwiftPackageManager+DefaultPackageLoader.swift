@@ -21,6 +21,10 @@ extension SwiftPackageManager {
       configurationContext: ConfigurationFlattener.Context,
       toolchain: URL?
     ) async throws(SwiftPackageManager.Error) -> Package<PackageDependency> {
+      if source.isRemote && !packageDirectory.exists() {
+        throw Error(.missingDependencyCheckout(packageDirectory))
+      }
+
       let manifest = try await loadPackageManifest(from: packageDirectory, toolchain: toolchain)
       let partialManifest = try await loadPartialPackageDump(
         packageDirectory: packageDirectory,

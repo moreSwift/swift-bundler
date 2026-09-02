@@ -1,5 +1,5 @@
 {
-  "originHash" : "8f6c0b60e995f8fb408d3e3596f159f01af1066634561455fadd05faeba36064",
+  "originHash" : "5427b654f43a5a3387171233473a8398ae4ddd9bad8ca2386fcb92f15bd1a045",
   "pins" : [
     {
       "identity" : "aexml",
@@ -178,6 +178,15 @@
       "location" : "https://github.com/apple/swift-collections.git",
       "state" : {
         "revision" : "6675bc0ff86e61436e615df6fc5174e043e57924",
+        "version" : "1.4.1"
+      }
+    },
+    {
+      "identity" : "swift-concurrency-extras",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/swift-concurrency-extras",
+      "state" : {
+        "revision" : "5fa253428866f2360c3754e88537f700ed2656b5",
         "version" : "1.4.1"
       }
     },
