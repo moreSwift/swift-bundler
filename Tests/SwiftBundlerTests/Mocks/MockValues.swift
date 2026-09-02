@@ -115,7 +115,7 @@ extension SwiftPackageManager.TargetDependency {
 extension SwiftPackageManager.PackageDependency {
   static func mock(
     _ package: String,
-    traits: Set<String> = [],
+    traits: Set<String> = ["default"],
     location: PackageManifest.PackageDependency.Location? = nil
   ) -> Self {
     let reference = SwiftPackageManager.PackageReference(name: package)

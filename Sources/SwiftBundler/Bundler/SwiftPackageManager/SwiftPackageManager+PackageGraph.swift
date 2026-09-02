@@ -69,11 +69,6 @@ extension SwiftPackageManager {
       }
     }
 
-    // TODO(stackotter):
-    // - Create deterministic version of this for testing
-    // - Make package loader configurable so that we can mock the package
-    //   loader in tests
-
     let result: Result<(), Error> = await withTaskGroup(
       of: Result<[PackageDependency], Error>.self
     ) { taskGroup in
@@ -197,10 +192,6 @@ extension SwiftPackageManager {
       checkoutsDirectory: checkoutsDirectory
     )
 
-    if dependency.location.isRemote && !dependencyDirectory.exists() {
-      throw Error(.missingDependencyCheckout(dependencyDirectory))
-    }
-
     let source = switch dependency.location {
       case .fileSystem(let path): PackageSource.local(path: path)
       case .sourceControl(let url): PackageSource.remote(gitRepository: url)
@@ -272,9 +263,10 @@ extension SwiftPackageManager {
           // The package has been loaded, so the state.enabledTraits entry for this
           // package has already been recursively evaluated; we can just subtract them
           // to get the set of new traits.
-          let containsNewTraits = !enabledDependencyTraits.subtracting(
+          let newTraits = enabledDependencyTraits.subtracting(
             state.enabledTraits[dependencyReference] ?? []
-          ).isEmpty
+          )
+          let containsNewTraits = !newTraits.isEmpty
 
           state.enabledTraits[dependencyReference, default: []].formUnion(enabledDependencyTraits)
           if containsNewTraits {
@@ -282,6 +274,12 @@ extension SwiftPackageManager {
             // dependencies recursively as new dependencies may have been enabled,
             // and new traits may have been passed on to the dependency's own
             // dependencies
+            log.debug(
+              """
+              Requeueing \(dependencyPackage.name) for dependency processing \
+              because of new traits: \(newTraits)
+              """
+            )
             try queueTransitiveDependencies(
               package: dependencyPackage,
               state: &state,
@@ -293,6 +291,12 @@ extension SwiftPackageManager {
           // because we haven't loaded the package, so we just store them in
           // the look up table and they will get evaluated properly when the
           // package gets loaded
+          log.debug(
+            """
+            Updating stored traits for \(dependencyReference) to add \
+            \(transitiveDependency.traits) (package not loaded yet)
+            """
+          )
           state.enabledTraits[dependencyReference, default: []]
             .formUnion(transitiveDependency.traits)
         }
