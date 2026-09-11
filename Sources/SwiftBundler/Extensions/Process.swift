@@ -101,7 +101,7 @@ extension Process {
       }
 
       if #available(macOS 10.15.4, *) {
-        if let data = try pipe.fileHandleForReading.readToEnd() {
+        if let data = try? pipe.fileHandleForReading.readToEnd() {
           output.append(contentsOf: data)
         }
       }
