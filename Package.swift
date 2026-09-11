@@ -76,7 +76,9 @@ let package = Package(
 
     // File watcher dependencies
     .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
-    .package(url: "https://github.com/apple/swift-system", from: "1.2.0"),
+    // swift-system 1.7.0 breaks builds on Linux systems with kernels <5.11
+    //   src: https://github.com/apple/swift-system/issues/385
+    .package(url: "https://github.com/apple/swift-system", "1.2.0"..<"1.7.0"),
     .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.3"),
 
     // Test dependencies
