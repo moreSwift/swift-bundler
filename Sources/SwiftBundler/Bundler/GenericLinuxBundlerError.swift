@@ -14,6 +14,7 @@ extension GenericLinuxBundler {
       destination: URL
     )
     case failedToCopyIcon(source: URL, destination: URL)
+    case failedToCreateDefaultIcon(URL)
     case failedToCreateDesktopFile(URL)
     case failedToCreateDBusServiceFile(URL)
     case failedToCreateSymlink(source: URL, relativeDestination: String)
@@ -42,6 +43,10 @@ extension GenericLinuxBundler {
           return """
             Failed to copy 'icns' file from '\(source.relativePath)' to \
             '\(destination.relativePath)'
+            """
+        case .failedToCreateDefaultIcon(let destination):
+          return """
+            Failed to create default icon at '\(destination.relativePath)'
             """
         case .failedToCreateDesktopFile(let file):
           return "Failed to create desktop file at '\(file.relativePath)'"
