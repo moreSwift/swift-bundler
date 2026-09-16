@@ -71,7 +71,7 @@ let package = Package(
     ),
     .package(
       url: "https://github.com/gregcotten/ZIPFoundationModern",
-      .upToNextMinor(from: "0.0.5")
+      .upToNextMinor(from: "0.0.10")
     ),
 
     // File watcher dependencies
