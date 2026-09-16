@@ -1,5 +1,5 @@
 {
-  "originHash" : "5427b654f43a5a3387171233473a8398ae4ddd9bad8ca2386fcb92f15bd1a045",
+  "originHash" : "02d97f2a6f1016c5a117aac6ab8d1bc5b92af43b54cb4c86948cc3cf3785f9fd",
   "pins" : [
     {
       "identity" : "aexml",
@@ -312,8 +312,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-system",
       "state" : {
-        "revision" : "869129b7bf4ecc57b97d0193ad29690ca2134750",
-        "version" : "1.8.1"
+        "revision" : "0b30161977799fd949f7f6848586b82ff6764f73",
+        "version" : "1.6.6"
       }
     },
     {
@@ -384,8 +384,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/gregcotten/ZIPFoundationModern",
       "state" : {
-        "revision" : "d986555bd6f63a8245aae5b8ddef910e155fa4c8",
-        "version" : "0.0.9"
+        "revision" : "2640fc90941624fe287744b834719fe29c8ea1ef",
+        "version" : "0.0.10"
       }
     },
     {
