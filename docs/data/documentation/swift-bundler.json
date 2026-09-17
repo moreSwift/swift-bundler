@@ -124,6 +124,7 @@
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/migrating-to-swift-bundler",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates"
       ],
@@ -252,6 +253,20 @@
   "title" : "Metal shaders",
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler\/metal-shaders"
+},
+"doc://swift-bundler/documentation/swift-bundler/migrating-to-swift-bundler": {
+  "abstract" : [
+    {
+      "text" : "A quick guide on migrating projects from other build systems to Swift Bundler.",
+      "type" : "text"
+    }
+  ],
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/migrating-to-swift-bundler",
+  "kind" : "article",
+  "role" : "article",
+  "title" : "Migrating projects to Swift Bundler",
+  "type" : "topic",
+  "url" : "\/documentation\/swift-bundler\/migrating-to-swift-bundler"
 },
 "doc://swift-bundler/documentation/swift-bundler/package-templates": {
   "abstract" : [

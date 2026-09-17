@@ -1,7 +1,7 @@
 {
   "abstract" : [
     {
-      "text" : "Easily create common types of apps from templates.",
+      "text" : "A quick guide on migrating projects from other build systems to Swift Bundler.",
       "type" : "text"
     }
   ],
@@ -14,7 +14,7 @@
   },
   "identifier" : {
     "interfaceLanguage" : "swift",
-    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates"
+    "url" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/migrating-to-swift-bundler"
   },
   "kind" : "article",
   "metadata" : {
@@ -25,140 +25,101 @@
     ],
     "role" : "article",
     "roleHeading" : "Article",
-    "title" : "Package templates"
+    "title" : "Migrating projects to Swift Bundler"
   },
   "primaryContentSections" : [
     {
       "content" : [
         {
-          "anchor" : "Overview",
+          "anchor" : "Adding-Swift-Bundler-support-to-a-SwiftPM-project",
           "level" : 2,
-          "text" : "Overview",
+          "text" : "Adding Swift Bundler support to a SwiftPM project",
           "type" : "heading"
         },
         {
           "inlineContent" : [
             {
-              "text" : "Package templates reduce the amount of boiler plate code you have to replicate when creating a new project.",
+              "text" : "Swift Bundler is built on top of SwiftPM, so if you have a SwiftPM package then you’re already most of the way to having a Swift Bundler project.",
               "type" : "text"
             }
           ],
           "type" : "paragraph"
         },
         {
-          "anchor" : "Default-templates",
-          "level" : 2,
-          "text" : "Default templates",
-          "type" : "heading"
-        },
-        {
           "inlineContent" : [
             {
-              "text" : "Swift Bundler comes with a few useful templates by default. Use the following command to list them:",
-              "type" : "text"
-            }
-          ],
-          "type" : "paragraph"
-        },
-        {
-          "code" : [
-            "swift bundler templates list"
-          ],
-          "syntax" : "sh",
-          "type" : "codeListing"
-        },
-        {
-          "inlineContent" : [
-            {
-              "text" : "The default templates are located at ",
+              "text" : "All you have to do is create a ",
               "type" : "text"
             },
             {
-              "code" : "~\/Library\/Application Support\/dev.stackotter.swift-bundler\/templates",
+              "code" : "Bundler.toml",
               "type" : "codeVoice"
             },
             {
-              "text" : " and are downloaded from ",
+              "text" : " file describing the application that you’d like Swift Bundler to build. I’ve included a minimal ",
               "type" : "text"
             },
             {
-              "identifier" : "https:\/\/github.com\/moreSwift\/swift-bundler-templates",
+              "code" : "Bundler.toml",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " file below.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "format_version = 2",
+            "",
+            "[apps.MyApp]",
+            "# The product field tells Swift Bundler which SwiftPM executable product to",
+            "# build as your app's main executable.",
+            "product = \"MyApp\"",
+            "identifier = \"com.example.MyApp\"",
+            "version = \"0.1.0\""
+          ],
+          "syntax" : "toml",
+          "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "The ",
+              "type" : "text"
+            },
+            {
+              "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
               "isActive" : true,
               "type" : "reference"
             },
             {
-              "text" : " when the first command requiring templates is run.",
+              "text" : " article explains all of the available configuration options in case you’re interested.",
               "type" : "text"
             }
           ],
           "type" : "paragraph"
         },
         {
-          "inlineContent" : [
-            {
-              "text" : "Use the following command to get more information about each template:",
-              "type" : "text"
-            }
-          ],
-          "type" : "paragraph"
-        },
-        {
-          "code" : [
-            "swift bundler templates info [template]"
-          ],
-          "syntax" : "sh",
-          "type" : "codeListing"
-        },
-        {
-          "inlineContent" : [
-            {
-              "text" : "Once you have decided which template you want to use, you can create a package from the template:",
-              "type" : "text"
-            }
-          ],
-          "type" : "paragraph"
-        },
-        {
-          "code" : [
-            "swift bundler create [app-name] --identifier [app-identifier] --template [template]"
-          ],
-          "syntax" : "sh",
-          "type" : "codeListing"
-        },
-        {
-          "anchor" : "Custom-templates",
+          "anchor" : "Migrating-from-xcodeproj-to-Swift-Bundler",
           "level" : 2,
-          "text" : "Custom templates",
+          "text" : "Migrating from xcodeproj to Swift Bundler",
           "type" : "heading"
         },
         {
           "inlineContent" : [
             {
-              "text" : "It’s relatively easy to create custom templates for Swift Bundler. See ",
+              "text" : "Swift Bundler has an experimental ",
               "type" : "text"
             },
             {
-              "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/custom-templates",
-              "isActive" : true,
-              "type" : "reference"
+              "code" : "convert",
+              "type" : "codeVoice"
             },
             {
-              "text" : " to learn more.",
-              "type" : "text"
-            }
-          ],
-          "type" : "paragraph"
-        },
-        {
-          "anchor" : "Troubleshooting",
-          "level" : 2,
-          "text" : "Troubleshooting",
-          "type" : "heading"
-        },
-        {
-          "inlineContent" : [
-            {
-              "text" : "If you run into issues relating to templates, you may want to try updating the default templates:",
+              "text" : " command that can be used to convert xcodeprojs and xcworkspaces to Swift Bundler projects.",
               "type" : "text"
             }
           ],
@@ -166,10 +127,87 @@
         },
         {
           "code" : [
-            "swift bundler templates update"
+            "swift-bundler convert .\/MyProject.xcodeproj --out .\/MySwiftBundlerProject",
+            "cd MySwiftBundlerProject"
           ],
           "syntax" : "sh",
           "type" : "codeListing"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Please note that the ",
+              "type" : "text"
+            },
+            {
+              "code" : "convert",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " command is very experimental, and its output often requires manual fix ups to get your app compiling as intended, but it should generally provide a good starting point if it manages to parse and understand your project.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "To test out whether your migration has succeeded, try running your app, and loop until you’ve fixed all of the issues.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "code" : [
+            "# Run your app (make sure to execute this inside the output directory you gave",
+            "# to the convert command)",
+            "swift-bundler run"
+          ],
+          "syntax" : "sh",
+          "type" : "codeListing"
+        },
+        {
+          "anchor" : "Migrating-from-arbitrary-build-systems-to-Swift-Bundler",
+          "level" : 2,
+          "text" : "Migrating from arbitrary build systems to Swift Bundler",
+          "type" : "heading"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "If you’re not using Xcode and you’re not using SwiftPM then you’ll be a bit more on your own.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Our recommended approach is to first convert your project into a SwiftPM package, and then follow the SwiftPM instructions in the section above.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
+        },
+        {
+          "inlineContent" : [
+            {
+              "text" : "Alternatively, you can create a new Swift Bundler project with ",
+              "type" : "text"
+            },
+            {
+              "code" : "swift-bundler create MyProject --template SwiftCrossUI",
+              "type" : "codeVoice"
+            },
+            {
+              "text" : " and then copy your code across to the new project, but that is perhaps more disruptive if you’re only wanting to try out hot reloading.",
+              "type" : "text"
+            }
+          ],
+          "type" : "paragraph"
         }
       ],
       "kind" : "content"
@@ -191,8 +229,8 @@
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/installation",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/creating-an-app",
         "doc:\/\/swift-bundler\/documentation\/swift-bundler\/configuration",
-        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/migrating-to-swift-bundler",
-        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers"
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/bundlers",
+        "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates"
       ],
       "title" : "Getting started"
     }
@@ -200,7 +238,7 @@
   "variants" : [
     {
       "paths" : [
-        "\/documentation\/swift-bundler\/package-templates"
+        "\/documentation\/swift-bundler\/migrating-to-swift-bundler"
       ],
       "traits" : [
         {
@@ -253,20 +291,6 @@
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler\/creating-an-app"
 },
-"doc://swift-bundler/documentation/swift-bundler/custom-templates": {
-  "abstract" : [
-    {
-      "text" : "Custom templates are a great way to tailor Swift Bundler to your workflow.",
-      "type" : "text"
-    }
-  ],
-  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/custom-templates",
-  "kind" : "article",
-  "role" : "article",
-  "title" : "Custom templates",
-  "type" : "topic",
-  "url" : "\/documentation\/swift-bundler\/custom-templates"
-},
 "doc://swift-bundler/documentation/swift-bundler/installation": {
   "abstract" : [
     {
@@ -281,19 +305,19 @@
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler\/installation"
 },
-"doc://swift-bundler/documentation/swift-bundler/migrating-to-swift-bundler": {
+"doc://swift-bundler/documentation/swift-bundler/package-templates": {
   "abstract" : [
     {
-      "text" : "A quick guide on migrating projects from other build systems to Swift Bundler.",
+      "text" : "Easily create common types of apps from templates.",
       "type" : "text"
     }
   ],
-  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/migrating-to-swift-bundler",
+  "identifier" : "doc:\/\/swift-bundler\/documentation\/swift-bundler\/package-templates",
   "kind" : "article",
   "role" : "article",
-  "title" : "Migrating projects to Swift Bundler",
+  "title" : "Package templates",
   "type" : "topic",
-  "url" : "\/documentation\/swift-bundler\/migrating-to-swift-bundler"
+  "url" : "\/documentation\/swift-bundler\/package-templates"
 },
 "doc://swift-bundler/documentation/swift-bundler": {
   "abstract" : [
@@ -308,18 +332,6 @@
   "title" : "swift-bundler",
   "type" : "topic",
   "url" : "\/documentation\/swift-bundler"
-},
-"https://github.com/moreSwift/swift-bundler-templates": {
-  "identifier" : "https:\/\/github.com\/moreSwift\/swift-bundler-templates",
-  "title" : "the swift-bundler-templates repository",
-  "titleInlineContent" : [
-    {
-      "text" : "the swift-bundler-templates repository",
-      "type" : "text"
-    }
-  ],
-  "type" : "link",
-  "url" : "https:\/\/github.com\/moreSwift\/swift-bundler-templates"
 }
 }
 }

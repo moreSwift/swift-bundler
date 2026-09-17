@@ -26,6 +26,11 @@
             "type" : "article"
           },
           {
+            "path" : "\/documentation\/swift-bundler\/migrating-to-swift-bundler",
+            "title" : "Migrating projects to Swift Bundler",
+            "type" : "article"
+          },
+          {
             "children" : [
               {
                 "title" : "Darwin bundlers (Apple platforms)",
