@@ -20,6 +20,7 @@ That said, Swift Bundler doesn't lock you into any particular framework; everyth
 - <doc:installation>
 - <doc:creating-an-app>
 - <doc:configuration>
+- <doc:migrating-to-swift-bundler>
 - <doc:bundlers>
 - <doc:package-templates>
 
