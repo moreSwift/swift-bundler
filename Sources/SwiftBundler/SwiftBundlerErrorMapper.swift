@@ -1,3 +1,4 @@
+import ArgumentParser
 import ErrorKit
 import Foundation
 import TOMLKit
@@ -35,6 +36,8 @@ public enum SwiftBundlerErrorMapper: ErrorMapper {
         return """
           TOML decoding error: \(error.debugDescription)
           """
+      case let error as ArgumentParser.ValidationError:
+        return error.message
       case let error where "\(type(of: error))" == "ParsingError":
         return String(describing: error)
       default:
