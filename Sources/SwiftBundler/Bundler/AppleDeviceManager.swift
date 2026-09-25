@@ -42,10 +42,14 @@ enum AppleDeviceManager {
       omittingEmptySubsequences: false
     ).map(String.init)
 
+    // Xcode 27 renamed the section from "Available destinations" to "Destinations compatible".
     guard
       let startIndex =
         lines.firstIndex(
-          of: "\tAvailable destinations for the \"\(dummyProjectName)\" scheme:"
+          where: {
+            $0 == "\tAvailable destinations for the \"\(dummyProjectName)\" scheme:"
+              || $0 == "\tDestinations compatible with the \"\(dummyProjectName)\" scheme:"
+          }
         )?.advanced(by: 1),
       let endIndex = lines[startIndex...].firstIndex(of: "")
     else {
