@@ -88,7 +88,6 @@ enum SimulatorManager {
       case .apple(_):
         try await Error.catch {
           try await AppleSimulatorManager.bootSimulator(id: simulator.id)
-          log.info("Opening 'Simulator.app'")
           try await AppleSimulatorManager.openSimulatorApp()
         }
       case .android:
