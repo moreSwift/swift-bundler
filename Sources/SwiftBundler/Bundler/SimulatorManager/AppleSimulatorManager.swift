@@ -138,16 +138,24 @@ enum AppleSimulatorManager {
     }
   }
 
-  /// Opens the latest booted simulator in the simulator app.
+  /// Opens the latest booted simulator in Device Hub (Xcode 27 and later) or
+  /// Simulator.
   /// - Returns: A failure if an error occurs.
   static func openSimulatorApp() async throws(Error) {
     try await Error.catch(withMessage: .failedToOpenSimulator) {
-      try await Process.create(
-        "/usr/bin/open",
-        arguments: [
-          "-a", "Simulator",
-        ]
-      ).runAndWait()
+      do {
+        try await Process.create(
+          "/usr/bin/open",
+          arguments: ["-a", "DeviceHub"]
+        ).runAndWait()
+        log.info("Opening Device Hub")
+      } catch {
+        try await Process.create(
+          "/usr/bin/open",
+          arguments: ["-a", "Simulator"]
+        ).runAndWait()
+        log.info("Opening Simulator")
+      }
     }
   }
 }

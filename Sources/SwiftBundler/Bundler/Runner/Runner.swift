@@ -420,7 +420,6 @@ enum Runner {
       log.info("Installing app")
       try await AppleSimulatorManager.installApp(bundlerOutput.bundle, simulatorId: simulatorId)
 
-      log.info("Opening Simulator")
       try await AppleSimulatorManager.openSimulatorApp()
 
       log.info("Launching \(bundleIdentifier)")
