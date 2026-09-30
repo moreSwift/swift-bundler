@@ -1,6 +1,7 @@
 import MacroToolkit
 import SwiftSyntax
 import SwiftSyntaxMacros
+import Version
 
 public struct ConfigurationMacro {}
 
@@ -15,6 +16,7 @@ struct ConfigurationProperty {
   var excludeFromFlat: Bool
   var condition: Expr?
   var key: String
+  var minimumConfigVersion: Version?
 
   var identifier: String {
     property.identifier
@@ -89,6 +91,101 @@ extension ConfigurationMacro: ExtensionMacro {
 
     return extensions
   }
+
+  static func generateConfigurationStructDecodableInit(
+    properties: [ConfigurationProperty],
+    overlayable: Bool
+  ) throws -> DeclSyntax {
+    let initializer = try InitializerDeclSyntax("init(from decoder: Decoder) throws") {
+      StmtSyntax("let container = try decoder.container(keyedBy: CodingKeys.self)\n")
+
+      for property in properties {
+        if property.type.hasSuffix("?") || property.type.hasPrefix("Optional<") {
+          StmtSyntax(
+            """
+            if container.contains(.\(raw: property.identifier)) {
+              self.\(raw: property.identifier) = try container.decode(
+                \(raw: property.type).self,
+                forKey: .\(raw: property.identifier)
+              )
+            } else {
+              self.\(raw: property.identifier) = nil
+            }
+
+            """
+          )
+        } else {
+          StmtSyntax(
+            """
+            self.\(raw: property.identifier) = try container.decode(
+              \(raw: property.type).self,
+              forKey: .\(raw: property.identifier)
+            )
+
+            """
+          )
+        }
+
+        if let minimumConfigVersion = property.minimumConfigVersion {
+          StmtSyntax(
+            """
+            if let version = decoder.userInfo[.swiftBundlerConfigVersion] as? Version,
+              version < \(raw: minimumConfigVersion.asSwiftExpression),
+              self.\(raw: property.identifier) != nil
+            {
+              throw PackageConfiguration.Error(
+                .propertyNotSupportedByConfigVersion(
+                  version,
+                  \(raw: minimumConfigVersion.asSwiftExpression),
+                  CodingPath(decoder.codingPath + [CodingKeys.\(raw: property.identifier)])
+                )
+              )
+            }
+            """
+          )
+        }
+      }
+
+      if overlayable {
+        StmtSyntax(
+          """
+          if container.contains(.overlays) {
+            self.overlays = try container.decode(
+              [Overlay].self,
+              forKey: .overlays
+            )
+          }
+
+          """
+        )
+      }
+    }
+    return DeclSyntax(initializer)
+  }
+
+  static func generateConfigurationMemberwiseInit(
+    properties: [ConfigurationProperty]
+  ) throws -> DeclSyntax {
+    let parameters = properties.map { property in
+      var decl = "\(property.identifier): \(property.type)"
+      if property.type.hasSuffix("?") || property.type.hasPrefix("Optional<") {
+        decl.append(" = nil")
+      }
+      return decl
+    }.joined(separator: ", ")
+
+    let initializer = try InitializerDeclSyntax("init(\(raw: parameters))") {
+      for property in properties {
+        StmtSyntax(
+          """
+          self.\(raw: property.identifier) = \(raw: property.identifier)
+
+          """
+        )
+      }
+    }
+    return DeclSyntax(initializer)
+  }
 }
 
 extension ConfigurationMacro: MemberMacro {
@@ -120,9 +217,10 @@ extension ConfigurationMacro: MemberMacro {
 
     let properties = try extractConfigurationProperties(type)
 
+    let mainStructDecodableProperties = properties.filter { $0.condition == nil }
     var members: [DeclSyntax] = [
       DeclSyntax(try EnumDeclSyntax("enum CodingKeys: String, CodingKey") {
-        for property in properties where property.condition == nil {
+        for property in mainStructDecodableProperties {
           try EnumCaseDeclSyntax(
             "case \(raw: property.identifier) = \(StringLiteralExprSyntax(content: property.key))"
           )
@@ -130,7 +228,12 @@ extension ConfigurationMacro: MemberMacro {
         if overlayable {
           try EnumCaseDeclSyntax("case overlays")
         }
-      })
+      }),
+      try generateConfigurationMemberwiseInit(properties: mainStructDecodableProperties),
+      try generateConfigurationStructDecodableInit(
+        properties: mainStructDecodableProperties,
+        overlayable: overlayable
+      ),
     ]
 
     if overlayable {
@@ -529,6 +632,7 @@ extension ConfigurationMacro {
       var validation: ClosureExprSyntax?
       var excludeFromOverlay = false
       var excludeFromFlat = false
+      var minimumConfigVersion: Version?
       for attribute in property.attributes {
         guard let attribute = attribute.attribute?.asMacroAttribute else {
           continue
@@ -565,6 +669,21 @@ extension ConfigurationMacro {
           }
 
           condition = argument.expr
+        } else if attribute.name.description == "Introduced" {
+          guard minimumConfigVersion == nil else {
+            throw MacroError("Only apply @Introduced once per property")
+          }
+
+          guard
+            let argument = destructureSingle(attribute.arguments),
+            argument.label == "in",
+            let versionString = argument.expr.asStringLiteral?.value,
+            let version = Version(versionString)
+          else {
+            throw MacroError("usage: @Introduced(\"3.1.0\")")
+          }
+
+          minimumConfigVersion = version
         } else if attribute.name.description == "Validate" {
           guard validation == nil else {
             throw MacroError("Only apply @Validation once per property")
@@ -612,7 +731,8 @@ extension ConfigurationMacro {
         excludeFromOverlay: excludeFromOverlay,
         excludeFromFlat: excludeFromFlat,
         condition: condition,
-        key: explicitKey ?? lowerCamelCaseToSnakeCase(property.identifier)
+        key: explicitKey ?? lowerCamelCaseToSnakeCase(property.identifier),
+        minimumConfigVersion: minimumConfigVersion
       )
     }
   }
@@ -731,5 +851,11 @@ extension Type {
       default:
         nil
     }
+  }
+}
+
+extension Version {
+  var asSwiftExpression: String {
+    "Version(\(major), \(minor), \(patch))"
   }
 }

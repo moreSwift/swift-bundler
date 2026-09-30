@@ -1,5 +1,5 @@
 {
-  "originHash" : "02d97f2a6f1016c5a117aac6ab8d1bc5b92af43b54cb4c86948cc3cf3785f9fd",
+  "originHash" : "ff01c3ae9f0cd9686e416ffe2714a2d1badd72ff84fc91ea0dc856bbaf519892",
   "pins" : [
     {
       "identity" : "aexml",
@@ -330,8 +330,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/stackotter/TOMLKit",
       "state" : {
-        "revision" : "6206c73fc5adb16b0f75665a1c5fcf1f7da4be1b",
-        "version" : "0.7.1"
+        "revision" : "cc89e8fd33d96b5fad7e578add25534d5b236362",
+        "version" : "0.7.2"
       }
     },
     {

@@ -1,4 +1,4 @@
-@attached(member, names: named(Overlay), named(CodingKeys), named(overlays))
+@attached(member, names: named(Overlay), named(CodingKeys), named(overlays), named(init))
 @attached(
   extension,
   conformances: Flattenable, Mergeable,
@@ -29,6 +29,12 @@ macro ConfigurationKey(_ key: String) = #externalMacro(
 macro Available(_ condition: OverlayCondition) = #externalMacro(
   module: "SwiftBundlerMacrosPlugin",
   type: "AvailableMacro"
+)
+
+@attached(peer)
+macro Introduced(in version: Version) = #externalMacro(
+  module: "SwiftBundlerMacrosPlugin",
+  type: "IntroducedMacro"
 )
 
 @attached(peer)

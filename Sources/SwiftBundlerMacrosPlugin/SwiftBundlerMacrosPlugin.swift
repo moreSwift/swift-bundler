@@ -8,6 +8,7 @@ struct SwiftBundlerMacrosPlugin: CompilerPlugin {
     MergeableMacro.self,
     ConfigurationKeyMacro.self,
     AvailableMacro.self,
+    IntroducedMacro.self,
     AggregateMacro.self,
     ValidateMacro.self,
     ExcludeFromOverlayMacro.self,
