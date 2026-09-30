@@ -22,6 +22,13 @@ protocol Bundler {
   /// incompatibility.
   static func checkHostCompatibility() throws(Error)
 
+  /// Validates the context. This is where bundlers should check for
+  /// bundler-specific configuration errors etc.
+  static func validateContext(
+    _ context: BundlerContext,
+    _ additionalContext: Context
+  ) async throws(Error)
+
   /// Computes the bundler's own context given the generic bundler context
   /// and Swift bundler's parsed command-line arguments, options, and flags.
   ///
@@ -68,6 +75,13 @@ protocol Bundler {
     in context: BundlerContext,
     _ additionalContext: Context
   ) -> BundlerOutputStructure
+}
+
+extension Bundler {
+  static func validateContext(
+    _ context: BundlerContext,
+    _ additionalContext: Context
+  ) async throws(Error) {}
 }
 
 extension Bundler {

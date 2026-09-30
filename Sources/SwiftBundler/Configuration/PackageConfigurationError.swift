@@ -33,6 +33,11 @@ extension PackageConfiguration {
       _ configVersion: Version,
       CodingPath
     )
+    case propertyNotSupportedByConfigVersion(
+      _ configVersion: Version,
+      _ requiredConfigVersion: Version,
+      CodingPath
+    )
 
     var userFriendlyMessage: String {
       switch self {
@@ -122,6 +127,15 @@ extension PackageConfiguration {
           return """
             The required_config_version of \(requiredVersion) at \(codingPath) is \
             redundant because config_version is \(configVersion)
+            """
+        case .propertyNotSupportedByConfigVersion(
+          let configVersion,
+          let requiredConfigVersion,
+          let codingPath
+        ):
+          return """
+            The property at '\(codingPath)' requires a config version of \
+            \(requiredConfigVersion), but the config version is \(configVersion)
             """
       }
     }

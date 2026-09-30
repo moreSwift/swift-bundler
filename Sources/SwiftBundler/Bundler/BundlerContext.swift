@@ -6,6 +6,8 @@ struct BundlerContext {
   var appName: String
   /// The name of the package.
   var packageName: String
+  /// The package's configuration.
+  var configuration: PackageConfiguration.Flat
   /// The app's configuration.
   var appConfiguration: AppConfiguration.Flat
 

@@ -31,8 +31,11 @@ macro Available(_ condition: OverlayCondition) = #externalMacro(
   type: "AvailableMacro"
 )
 
+/// Marks a property as only available from a particular Swift Bundler version onwards.
+///
+/// - Parameter version: A semantic version that ``Version`` can parse.
 @attached(peer)
-macro Introduced(in version: Version) = #externalMacro(
+macro Introduced(in version: String) = #externalMacro(
   module: "SwiftBundlerMacrosPlugin",
   type: "IntroducedMacro"
 )

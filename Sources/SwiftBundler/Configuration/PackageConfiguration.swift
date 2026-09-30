@@ -382,3 +382,18 @@ extension CodingUserInfoKey {
   /// The Swift Bundler version to parse the config as.
   static let swiftBundlerConfigVersion = Self(rawValue: "swiftBundlerConfigVersion")!
 }
+
+extension PackageConfiguration.Flat {
+  /// The effective Swift Bundler version of the package manifest. Used when
+  /// determining which version of Swift Bundler behaviour to emulate (particularly
+  /// in relation to feature availability).
+  var effectiveVersion: Version {
+    if let configVersion {
+      configVersion
+    } else if formatVersion != nil {
+      Version(3, 0, 0)
+    } else {
+      Version(2, 0, 0)
+    }
+  }
+}

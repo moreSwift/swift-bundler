@@ -36,6 +36,10 @@ struct TargetConfiguration: Codable, Hashable, Sendable {
     /// Additional AAPT options.
     var aapt: AAPTOptions?
 
+    /// The app's entry point. Must be a C ABI function. Overrides entry points
+    /// defined by dependencies of the app's main executable.
+    var entryPoint: String?
+
     // https://developer.android.com/reference/tools/gradle-api/8.1/com/android/build/api/dsl/AndroidResources
     @Mergeable
     struct AAPTOptions: Codable, Hashable, Sendable, Flattenable {

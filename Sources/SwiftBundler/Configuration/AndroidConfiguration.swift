@@ -39,6 +39,10 @@ struct AndroidConfiguration: Codable, Hashable, Sendable {
   /// [permissions]: https://developer.android.com/reference/android/Manifest.permission
   var permissions: [Permission]?
 
+  /// The app's entry point. Must be a C ABI function.
+  @Introduced(in: "3.1.0")
+  var entryPoint: String?
+
   /// An Android manifest permission request.
   struct Permission: Codable, TriviallyFlattenable, Hashable, Sendable {
     var name: String

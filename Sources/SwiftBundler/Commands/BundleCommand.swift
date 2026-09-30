@@ -968,6 +968,7 @@ struct BundleCommand: ErrorHandledCommand {
       var bundlerContext = BundlerContext(
         appName: context.appName,
         packageName: context.manifest.name,
+        configuration: context.configuration,
         appConfiguration: context.appConfiguration,
         packageDirectory: context.packageDirectory,
         productsDirectory: productsDirectory,
@@ -1016,6 +1017,22 @@ struct BundleCommand: ErrorHandledCommand {
         )
       }
       bundlerContext.packageGraph = packageGraph
+
+      func validateContext<B: Bundler>(with bundler: B.Type)
+        async throws(RichError<SwiftBundlerError>)
+      {
+        try await RichError<SwiftBundlerError>.catch {
+          try await bundler.validateContext(
+            bundlerContext,
+            try bundler.computeContext(
+              context: bundlerContext,
+              command: self,
+              manifest: context.manifest
+            )
+          )
+        }
+      }
+      try await validateContext(with: context.bundler.bundler)
 
       let dependenciesScratchDirectory = outputDirectory / "projects"
 

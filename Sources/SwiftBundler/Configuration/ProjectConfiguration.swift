@@ -30,7 +30,7 @@ struct ProjectConfiguration: Codable, Hashable, Sendable {
   var builder: Builder?
 
   @ExcludeFromOverlay
-  var products: [String: Product]
+  var products: [String: Product]?
 
   @Aggregate("source")
   func flattenSource(with context: ConfigurationFlattener.Context)

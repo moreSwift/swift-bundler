@@ -625,6 +625,7 @@ extension ConfigurationMacro {
     return (flatType, flatTypeDefaultValue)
   }
 
+  // swiftlint:disable:next cyclomatic_complexity
   static func extractConfigurationProperties(_ type: Struct) throws -> [ConfigurationProperty] {
     return try type.properties.filter { property in
       property.isStored && !property.isStatic

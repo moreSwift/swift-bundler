@@ -261,8 +261,6 @@ extension SwiftPackageManager {
     /// all targets that the given target depends on either directly or
     /// indirectly.
     ///
-    /// The same target may appear twice, but only with different conditions.
-    ///
     /// Excludes macro and plugin dependencies, as the code from those does
     /// not end up in the final executable, which is all that Swift Bundler
     /// cares about.

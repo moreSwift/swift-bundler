@@ -32,6 +32,11 @@ extension APKBundler {
     case unsupportedAAPTResources(SwiftPackageManager.TargetReference)
     case cannotBundleAPKWithoutSwiftAndroidSDK
     case cannotBuildAPKWithoutTargetAndroidPlatformVersion
+    case multipleAndroidEntryPointCandidates([(
+      target: SwiftPackageManager.TargetReference,
+      entryPoint: String
+    )])
+    case androidEntryPointNotSpecified
 
     var userFriendlyMessage: String {
       switch self {
@@ -115,6 +120,22 @@ extension APKBundler {
           return "Cannot bundle APK without Swift Android SDK"
         case .cannotBuildAPKWithoutTargetAndroidPlatformVersion:
           return "Cannot build APK without target Android platform version"
+        case .multipleAndroidEntryPointCandidates(let candidates):
+          let candidateString = candidates.map { (target, entryPoint) in
+            "\(entryPoint) in \(target)"
+          }.joinedGrammatically()
+          return """
+            Found multiple Android entry points in package graph \
+            (\(candidateString)). Choose one by specifying your chosen function in your app's \
+            configuration object with the 'android.entry_point' field.
+            """
+        case .androidEntryPointNotSpecified:
+          return """
+            None of your app's dependencies specify an Android entry point. \
+            Make sure that your chosen UI framework supports Android \
+            and Swift Bundler, or specify a custom Android entry point using \
+            the 'android.entry_point' field of your app's configuration object.
+            """
       }
     }
   }

@@ -7,6 +7,8 @@ enum APKBundler: Bundler {
   static let outputIsRunnable = true
   static let requiresBuildAsDylib = true
 
+  static let legacyDefaultEntryPoint = "AndroidBackend_entrypoint"
+
   typealias Context = Void
 
   static func computeContext(
@@ -39,6 +41,21 @@ enum APKBundler: Bundler {
     forAppIdentifier appIdentifier: String
   ) -> String {
     appIdentifier.lowercased()
+  }
+
+  static func validateContext(
+    _ context: BundlerContext,
+    _ additionalContext: Context
+  ) async throws(Error) {
+    // Ensure that a valid entry point has been configured
+    _ =  try inferEntrypoint(
+      packageGraph: context.packageGraph,
+      targetPlatform: context.platform,
+      product: context.appConfiguration.product,
+      package: context.packageGraph.rootPackage.reference,
+      appConfiguration: context.appConfiguration,
+      effectiveConfigVersion: context.configuration.effectiveVersion
+    )
   }
 
   static func bundle(
@@ -202,7 +219,14 @@ enum APKBundler: Bundler {
     let mainActivity = generateMainActivity(packageIdentifier: packageIdentifier)
     let shimSource = generateShimSource(
       packageIdentifier: packageIdentifier,
-      swiftEntryPoint: "AndroidBackend_entrypoint",
+      swiftEntryPoint: try inferEntrypoint(
+        packageGraph: context.packageGraph,
+        targetPlatform: context.platform,
+        product: context.appConfiguration.product,
+        package: context.packageGraph.rootPackage.reference,
+        appConfiguration: context.appConfiguration,
+        effectiveConfigVersion: context.configuration.effectiveVersion
+      ),
       projectStructure: project
     )
     let shimHeader = generateShimHeader(
@@ -363,6 +387,95 @@ enum APKBundler: Bundler {
       bundle: outputAPK,
       executable: outputAPK
     )
+  }
+
+  private static func inferEntrypoint(
+    packageGraph: SwiftPackageManager.PackageGraph,
+    targetPlatform: Platform,
+    product: String,
+    package: SwiftPackageManager.PackageReference,
+    appConfiguration: AppConfiguration.Flat,
+    effectiveConfigVersion: Version
+  ) throws(Error) -> String {
+    // An explicit app-level entry point overrides any entry points defined by
+    // dependencies.
+    if let entryPoint = appConfiguration.android?.entryPoint {
+      return entryPoint
+    }
+
+    // We use a custom visitor to visit every target included in the app's main executable.
+    class Visitor: SwiftPackageManager.TargetDependencyVisitor {
+      var candidates: [(target: SwiftPackageManager.TargetReference, entryPoint: String)] = []
+      var containsPre310Configuration = false
+      var effectiveConfigVersion: Version
+
+      init(effectiveConfigVersion: Version) {
+        self.effectiveConfigVersion = effectiveConfigVersion
+      }
+
+      override func visit(
+        _ target: SwiftPackageManager.TargetReference,
+        packageGraph: SwiftPackageManager.PackageGraph
+      ) throws(SwiftPackageManager.Error) -> Bool {
+        containsPre310Configuration = containsPre310Configuration
+          || effectiveConfigVersion <= Version(3, 1, 0)
+
+        let configuration = try packageGraph.configuration(ofTarget: target)
+        guard let entryPoint = configuration?.android?.entryPoint else {
+          return true
+        }
+
+        candidates.append((target, entryPoint))
+
+        // If a target defines an Android entry point, then we can skip its children,
+        // because entry points defined by parents always trump those defined by
+        // their descendants.
+        return false
+      }
+    }
+
+    let visitor = Visitor(effectiveConfigVersion: effectiveConfigVersion)
+    try Error.catch {
+      try visitor.visit(
+        product: product,
+        inPackage: package,
+        inPackageGraph: packageGraph,
+        targetPlatform: targetPlatform
+      )
+    }
+
+    let candidates = visitor.candidates
+    if candidates.count == 0 {
+      // NB: This case would ideally just be an error, but due to an oversight
+      //   in the initial Android support implementation we ended up hardcoding
+      //   the name of the Android entry point that Swift Bundler uses, and
+      //   didn't give developers a nice way to provide their own entry points.
+      //   This means that we have to detect whether the current package could
+      //   potentially depend on an old version of a library such as SwiftCrossUI,
+      //   and then act conservatively if we do detect such a scenario.
+
+      let effectiveVersion = effectiveConfigVersion
+      print(visitor.containsPre310Configuration)
+      if effectiveVersion < Version(4, 0, 0) || visitor.containsPre310Configuration {
+        if effectiveVersion >= Version(3, 1, 0) {
+          log.warning(
+            """
+            None of your app's dependencies specify an Android entry point. Swift \
+            Bundler has inferred an entry point of '\(legacyDefaultEntryPoint)' due \
+            to legacy behavior. This will be an error in 4.0.0 for projects that \
+            don't have any pre-3.1.0 dependencies.
+            """
+          )
+        }
+        return legacyDefaultEntryPoint
+      } else {
+        throw Error(.androidEntryPointNotSpecified)
+      }
+    } else if candidates.count == 1 {
+      return candidates[0].entryPoint
+    } else {
+      throw Error(.multipleAndroidEntryPointCandidates(candidates))
+    }
   }
 
   /// Copies Java and Kotlin sources from the given package graph to a Gradle

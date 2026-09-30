@@ -8,7 +8,7 @@ public struct SwiftBundler: AsyncParsableCommand {
   private static let _version = Version(3, 0, 0)
 
   /// The effective version of Swift Bundler. Under normal use this will match
-  /// ``_version``, but the `SBUN_EFFECTIVE_VERSION` environment variable can
+  /// ``_version``, but the `_SBUN_EFFECTIVE_VERSION` environment variable can
   /// be used to override the version that this build of Swift Bundler believes
   /// it is. Overriding Swift Bundler's effective version is generally only done
   /// to test configuration field deprecations and similar conditional behavior.
