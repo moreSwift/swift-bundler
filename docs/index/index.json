@@ -86,7 +86,7 @@
             ],
             "path" : "\/documentation\/swift-bundler\/bundlers",
             "title" : "Bundlers",
-            "type" : "symbol"
+            "type" : "collection"
           },
           {
             "path" : "\/documentation\/swift-bundler\/package-templates",
