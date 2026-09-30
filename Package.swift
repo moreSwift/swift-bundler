@@ -236,6 +236,7 @@ let package = Package(
       name: "SwiftBundlerTests",
       dependencies: [
         "SwiftBundler",
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(
           name: "ConcurrencyExtras",
           package: "swift-concurrency-extras",

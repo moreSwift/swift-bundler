@@ -1,3 +1,4 @@
+import ArgumentParser
 import Testing
 import TOMLKit
 import XMLCoder
@@ -8,6 +9,17 @@ import Version
 
 @Suite(.serialized)
 struct SwiftBundlerTests {
+  @Test(.bug("https://github.com/moreSwift/swift-bundler/issues/121"))
+  func testArgumentParserValidationErrorMapping() {
+    let message = "A specific validation failure"
+
+    #expect(
+      SwiftBundlerErrorMapper.userFriendlyMessage(
+        for: ArgumentParser.ValidationError(message)
+      ) == message
+    )
+  }
+
   @Test func testCommandLineParsing() throws {
     let commandLine = CommandLine.lenientParse(
       "./path/to/my\\ command arg1 'arg2 with spaces' \"arg3 with spaces\" arg4\\ with\\ spaces"
