@@ -139,6 +139,8 @@ enum ConfigurationFlattener {
         context.architectures.map(\.rawValue).contains(identifier)
       case .false:
         false
+      case .true:
+        true
     }
   }
 }

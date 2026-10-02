@@ -13,7 +13,7 @@ public enum SwiftBundlerErrorMapper: ErrorMapper {
         if codingKey.stringValue == "bundle_identifier" {
           return "'bundle_identifier' is required for app configuration to be migrated"
         } else {
-          let path = CodingPath(context.codingPath + [codingKey])
+          let path = CodingPath(context.codingPath)
           return "Expected a value at '\(path)'"
         }
       case let error as UnexpectedKeysError:

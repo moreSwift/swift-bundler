@@ -487,7 +487,7 @@ extension ConfigurationMacro {
         StmtSyntax(
           """
           if let requiredConfigVersion,
-            requiredConfigVersion > SwiftBundler.version
+            SwiftBundler.version < requiredConfigVersion
           {
             self.condition = .false
             \(raw: initPropertiesToNil)
@@ -505,7 +505,17 @@ extension ConfigurationMacro {
           """
         )
 
-        StmtSyntax("self.condition = try container.decode(OverlayCondition.self, forKey: StringCodingKey(CodingKeys.condition.stringValue))\n")
+        StmtSyntax(
+          """
+          let conditionKey = StringCodingKey(CodingKeys.condition.stringValue)
+          if requiredConfigVersion == nil || container.contains(conditionKey) {
+            self.condition = try container.decode(OverlayCondition.self, forKey: conditionKey)
+          } else {
+            self.condition = .true
+          }
+
+          """
+        )
 
         for property in properties {
           StmtSyntax(

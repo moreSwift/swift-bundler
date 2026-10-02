@@ -133,6 +133,7 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
   case bundler(String)
   case arch(String)
   case `false`
+  case `true`
 
   var description: String {
     switch self {
@@ -144,6 +145,8 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
         return "arch(\(arch))"
       case .false:
         return "false"
+      case .true:
+        return "true"
     }
   }
 
@@ -201,6 +204,10 @@ enum OverlayCondition: Codable, Hashable, CustomStringConvertible {
       Parse {
         "false"
       }.map { OverlayCondition.false }
+
+      Parse {
+        "true"
+      }.map { OverlayCondition.true }
     }
 
     self = try parser.parse(value)
