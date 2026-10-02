@@ -58,6 +58,33 @@ enum APKBundler: Bundler {
     )
   }
 
+  /// The Gradle assemble task for `configuration` and the APK that task writes
+  /// under `projectRoot`.
+  ///
+  /// Release builds produced by the generated project are unsigned.
+  /// `build.gradle.kts` does not configure signing, so Android Gradle Plugin
+  /// writes `<appName>-release-unsigned.apk`. Debug builds are signed with the
+  /// debug keystore and written as `<appName>-debug.apk`. `appName` is copied
+  /// into the file name verbatim; it is not inspected for a build variant.
+  static func gradleTaskAndAPK(
+    for configuration: BuildConfiguration,
+    appName: String,
+    projectRoot: URL
+  ) -> (task: String, apk: URL) {
+    switch configuration {
+      case .debug:
+        return (
+          task: "assembleDebug",
+          apk: projectRoot / "build/outputs/apk/debug/\(appName)-debug.apk"
+        )
+      case .release:
+        return (
+          task: "assembleRelease",
+          apk: projectRoot / "build/outputs/apk/release/\(appName)-release-unsigned.apk"
+        )
+    }
+  }
+
   static func bundle(
     _ context: BundlerContext,
     _ additionalContext: Context
@@ -350,9 +377,14 @@ enum APKBundler: Bundler {
       targetPlatform: context.platform
     )
 
-    // Run Gradle build
-    let task = "assembleDebug"
-    var gradleArguments = [task]
+    // Run Gradle build. Task and source APK come from the same configuration so
+    // a release build cannot copy a debug artifact (or the reverse).
+    let gradlePackaging = gradleTaskAndAPK(
+      for: context.buildConfiguration,
+      appName: context.appName,
+      projectRoot: project.root
+    )
+    var gradleArguments = [gradlePackaging.task]
     if log.logLevel <= .debug {
       gradleArguments.append("--debug")
     }
@@ -365,7 +397,7 @@ enum APKBundler: Bundler {
     let inputPipe = Pipe()
     process.standardInput = inputPipe
 
-    log.info("Running gradle \(task) task")
+    log.info("Running gradle \(gradlePackaging.task) task")
     try await Error.catch {
       // If we don't close the writing end of stdin, then gradlew hangs for reasons
       // unknown to me. It seems related to gradle having interactive output, but
@@ -377,10 +409,9 @@ enum APKBundler: Bundler {
       try await process.runAndWait()
     }
 
-    // Copy APK to output location
-    let apk = project.root / "build/outputs/apk/debug/\(context.appName)-debug.apk"
-    try Error.catch(withMessage: .failedToCopyAPK(apk, outputAPK)) {
-      try FileManager.default.copyItem(at: apk, to: outputAPK)
+    // Copy APK to output location. A missing file reports this source and destination.
+    try Error.catch(withMessage: .failedToCopyAPK(gradlePackaging.apk, outputAPK)) {
+      try FileManager.default.copyItem(at: gradlePackaging.apk, to: outputAPK)
     }
 
     return BundlerOutputStructure(
