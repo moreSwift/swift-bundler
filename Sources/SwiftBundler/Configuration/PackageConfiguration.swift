@@ -21,6 +21,14 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
   /// The file name for Swift Bundler configuration files.
   static let configurationFileName = "Bundler.toml"
 
+  /// The effective configuration version, used during decoding. it's a TaskLocal
+  /// so that we can propagate it while decoding, and sot that we can change the
+  /// effective configuration version when decoding a version-conditional overlay.
+  ///
+  /// Not intended for use outside of configuration decoding.
+  @TaskLocal
+  static var effectiveConfigVersion: Version?
+
   /// The configuration format version.
   var formatVersion: Int?
 
@@ -198,14 +206,15 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
 
       // Parse the config file as a post-v2 configuration
       configuration = try Error.catch(withMessage: .failedToDeserializeConfiguration) {
-        var decoder = TOMLDecoder(strictDecoding: true)
-        // Tolerant version parsing
-        decoder.userInfo[.decodingMethod] = DecodingMethod.tolerant
-        decoder.userInfo[.swiftBundlerConfigVersion] = effectiveConfigVersion
-        return try decoder.decode(
-          PackageConfiguration.self,
-          from: table
-        )
+        try Self.$effectiveConfigVersion.withValue(effectiveConfigVersion) {
+          var decoder = TOMLDecoder(strictDecoding: true)
+          // Tolerant version parsing
+          decoder.userInfo[.decodingMethod] = DecodingMethod.tolerant
+          return try decoder.decode(
+            PackageConfiguration.self,
+            from: table
+          )
+        }
       }
 
       if migrateConfiguration {

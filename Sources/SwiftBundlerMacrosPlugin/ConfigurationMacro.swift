@@ -129,7 +129,7 @@ extension ConfigurationMacro: ExtensionMacro {
         if let minimumConfigVersion = property.minimumConfigVersion {
           StmtSyntax(
             """
-            if let version = decoder.userInfo[.swiftBundlerConfigVersion] as? Version,
+            if let version = PackageConfiguration.effectiveConfigVersion as? Version,
               version < \(raw: minimumConfigVersion.asSwiftExpression),
               self.\(raw: property.identifier) != nil
             {
@@ -461,7 +461,7 @@ extension ConfigurationMacro {
         StmtSyntax(
           """
           if let requiredConfigVersion {
-            if let version = decoder.userInfo[.swiftBundlerConfigVersion] as? Version,
+            if let version = PackageConfiguration.effectiveConfigVersion as? Version,
               version < Version(3, 1, 0)
             {
               throw PackageConfiguration.Error(
@@ -469,7 +469,7 @@ extension ConfigurationMacro {
               )
             }
 
-            if let version = decoder.userInfo[.swiftBundlerConfigVersion] as? Version,
+            if let version = PackageConfiguration.effectiveConfigVersion as? Version,
               requiredConfigVersion <= version
             {
               throw PackageConfiguration.Error(
@@ -502,6 +502,9 @@ extension ConfigurationMacro {
             self.lazyContent = [:]
           }
 
+          let effectiveConfigVersion = requiredConfigVersion
+            ?? PackageConfiguration.effectiveConfigVersion
+
           """
         )
 
@@ -509,7 +512,10 @@ extension ConfigurationMacro {
           """
           let conditionKey = StringCodingKey(CodingKeys.condition.stringValue)
           if requiredConfigVersion == nil || container.contains(conditionKey) {
-            self.condition = try container.decode(OverlayCondition.self, forKey: conditionKey)
+            self.condition = try PackageConfiguration.$effectiveConfigVersion
+              .withValue(effectiveConfigVersion) {
+                try container.decode(OverlayCondition.self, forKey: conditionKey)
+              }
           } else {
             self.condition = .true
           }
@@ -521,10 +527,13 @@ extension ConfigurationMacro {
           StmtSyntax(
             """
             if container.contains(StringCodingKey(CodingKeys.\(raw: property.identifier).stringValue)) {
-              self.\(raw: property.identifier) = try container.decode(
-                \(raw: property.overlayType).self,
-                forKey: StringCodingKey(CodingKeys.\(raw: property.identifier).stringValue)
-              )
+              self.\(raw: property.identifier) = try PackageConfiguration.$effectiveConfigVersion
+                .withValue(effectiveConfigVersion) {
+                  try container.decode(
+                    \(raw: property.overlayType).self,
+                    forKey: StringCodingKey(CodingKeys.\(raw: property.identifier).stringValue)
+                  )
+                }
             } else {
               self.\(raw: property.identifier) = nil
             }
