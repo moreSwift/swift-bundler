@@ -42,7 +42,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $true
 
-          swift build --product swift-bundler
+          swift build --product swift-bundler -v
 
       # The tests work locally in my Windows VM, but fail in CI...
       # - name: Test
