@@ -1,4 +1,5 @@
 import Foundation
+import ImageFormats
 import Version
 import Parsing
 
@@ -83,6 +84,17 @@ enum APKBundler: Bundler {
           apk: projectRoot / "build/outputs/apk/release/\(appName)-release-unsigned.apk"
         )
     }
+  }
+
+  /// Converts icon image data to PNG for use as `res/mipmap/icon.png`. AAPT
+  /// rejects non-PNG data in a `.png` resource for release builds. PNG input
+  /// is returned unchanged.
+  static func pngIconData(from data: Data) throws -> Data {
+    let bytes = Array(data)
+    if Image<RGBA>.detectFormat(of: bytes) == .png {
+      return data
+    }
+    return Data(try Image<RGBA>.load(from: bytes).encodeToPNG())
   }
 
   static func bundle(
@@ -270,13 +282,14 @@ enum APKBundler: Bundler {
     if let iconPath = context.appConfiguration.icon {
       let icon = context.packageDirectory / iconPath
       do {
-        try FileManager.default.copyItem(at: icon, to: project.icon)
+        let iconData = try pngIconData(from: Data(contentsOf: icon))
+        try iconData.write(to: project.icon)
       } catch {
         throw Error(.failedToCopyIcon(source: icon, destination: project.icon), cause: error)
       }
     } else {
-      let iconData = Data(PackageResources.DefaultAndroidIcon_webp)
       try Error.catch(withMessage: .failedToCreateDefaultIcon(project.icon)) {
+        let iconData = try pngIconData(from: Data(PackageResources.DefaultAndroidIcon_webp))
         try iconData.write(to: project.icon)
       }
     }

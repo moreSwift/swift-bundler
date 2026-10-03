@@ -250,6 +250,14 @@ struct SwiftBundlerTests {
     )
   }
 
+  @Test(.bug("https://github.com/moreSwift/swift-bundler/issues/237"))
+  func testAndroidIconIsConvertedToPNG() throws {
+    let webp = Data(PackageResources.DefaultAndroidIcon_webp)
+    let png = try APKBundler.pngIconData(from: webp)
+    #expect(png.starts(with: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    #expect(try APKBundler.pngIconData(from: png) == png)
+  }
+
   @Test func testHexParsing() throws {
     #expect(Array(fromHex: "AB5D87") == [0xab, 0x5d, 0x87])
     #expect(Array(fromHex: "ab5d87") == [0xab, 0x5d, 0x87])
