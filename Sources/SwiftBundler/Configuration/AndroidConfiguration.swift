@@ -43,6 +43,10 @@ struct AndroidConfiguration: Codable, Hashable, Sendable {
   @Introduced(in: "3.1.0")
   var entryPoint: String?
 
+  /// The app's main activity. Must be the fully qualified name of a Java or Kotlin class.
+  @Introduced(in: "3.1.0")
+  var mainActivity: String?
+
   /// An Android manifest permission request.
   struct Permission: Codable, TriviallyFlattenable, Hashable, Sendable {
     var name: String

@@ -129,7 +129,7 @@ extension ConfigurationMacro: ExtensionMacro {
         if let minimumConfigVersion = property.minimumConfigVersion {
           StmtSyntax(
             """
-            if let version = PackageConfiguration.effectiveConfigVersion as? Version,
+            if let version = PackageConfiguration.effectiveConfigVersion,
               version < \(raw: minimumConfigVersion.asSwiftExpression),
               self.\(raw: property.identifier) != nil
             {
@@ -461,7 +461,7 @@ extension ConfigurationMacro {
         StmtSyntax(
           """
           if let requiredConfigVersion {
-            if let version = PackageConfiguration.effectiveConfigVersion as? Version,
+            if let version = PackageConfiguration.effectiveConfigVersion,
               version < Version(3, 1, 0)
             {
               throw PackageConfiguration.Error(
@@ -469,7 +469,7 @@ extension ConfigurationMacro {
               )
             }
 
-            if let version = PackageConfiguration.effectiveConfigVersion as? Version,
+            if let version = PackageConfiguration.effectiveConfigVersion,
               requiredConfigVersion <= version
             {
               throw PackageConfiguration.Error(

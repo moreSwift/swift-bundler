@@ -56,6 +56,16 @@ enum APKBundler: Bundler {
       appConfiguration: context.appConfiguration,
       effectiveConfigVersion: context.configuration.effectiveVersion
     )
+
+    // Ensure that there aren't any main activity ambiguities
+    _ = try inferMainActivity(
+      packageGraph: context.packageGraph,
+      targetPlatform: context.platform,
+      product: context.appConfiguration.product,
+      package: context.packageGraph.rootPackage.reference,
+      appConfiguration: context.appConfiguration,
+      effectiveConfigVersion: context.configuration.effectiveVersion
+    )
   }
 
   static func bundle(
@@ -193,6 +203,24 @@ enum APKBundler: Bundler {
     let gradleProperties = generateGradleProperties()
     let localProperties = generateLocalProperties(androidSDK: androidSDK)
 
+    // Generate source code files
+    let advertisedMainActivityClass = try inferMainActivity(
+      packageGraph: context.packageGraph,
+      targetPlatform: context.platform,
+      product: context.appConfiguration.product,
+      package: context.packageGraph.rootPackage.reference,
+      appConfiguration: context.appConfiguration,
+      effectiveConfigVersion: context.configuration.effectiveVersion
+    )
+    if advertisedMainActivityClass == nil {
+      let mainActivity = generateMainActivity(packageIdentifier: packageIdentifier)
+      try Error.catch(withMessage: .failedToCreateGradleProjectSourceFiles) {
+        try mainActivity.write(to: project.defaultMainActivitySource)
+      }
+    }
+    let mainActivityIdentifier = advertisedMainActivityClass
+      ?? "\(packageIdentifier).\(project.defaultMainActivityName)"
+
     let themeName = "AppTheme"
     let parentTheme = "Theme.Material3.DayNight.NoActionBar"
     let appNameStringKey = "app_name"
@@ -200,6 +228,7 @@ enum APKBundler: Bundler {
       targetAPI: targetSDK,
       themeName: themeName,
       appNameStringKey: appNameStringKey,
+      mainActivityIdentifier: mainActivityIdentifier,
       projectStructure: project,
       permissions: context.appConfiguration.android?.permissions ?? []
     )
@@ -215,10 +244,7 @@ enum APKBundler: Bundler {
       try cmakeLists.write(to: project.cmakeLists)
     }
 
-    // Generate source code files
-    let mainActivity = generateMainActivity(packageIdentifier: packageIdentifier)
     let shimSource = generateShimSource(
-      packageIdentifier: packageIdentifier,
       swiftEntryPoint: try inferEntrypoint(
         packageGraph: context.packageGraph,
         targetPlatform: context.platform,
@@ -227,15 +253,14 @@ enum APKBundler: Bundler {
         appConfiguration: context.appConfiguration,
         effectiveConfigVersion: context.configuration.effectiveVersion
       ),
+      mainActivityIdentifier: mainActivityIdentifier,
       projectStructure: project
     )
     let shimHeader = generateShimHeader(
-      packageIdentifier: packageIdentifier,
-      mainActivityName: project.mainActivityName
+      mainActivityIdentifier: mainActivityIdentifier
     )
 
     try Error.catch(withMessage: .failedToCreateGradleProjectSourceFiles) {
-      try mainActivity.write(to: project.mainActivitySource)
       try shimSource.write(to: project.shimSource)
       try shimHeader.write(to: project.shimHeader)
     }
@@ -389,6 +414,39 @@ enum APKBundler: Bundler {
     )
   }
 
+  private static func inferMainActivity(
+    packageGraph: SwiftPackageManager.PackageGraph,
+    targetPlatform: Platform,
+    product: String,
+    package: SwiftPackageManager.PackageReference,
+    appConfiguration: AppConfiguration.Flat,
+    effectiveConfigVersion: Version
+  ) throws(Error) -> String? {
+    // An explicit app-level main activity overrides any main activity defined by
+    // dependencies.
+    if let mainActivity = appConfiguration.android?.mainActivity {
+      return mainActivity == "" ? nil : mainActivity
+    }
+
+    let (candidates, _) = try discoverAdvertisements(
+      of: \.android?.mainActivity,
+      introducedIn: Version(3, 1, 0),
+      packageGraph: packageGraph,
+      targetPlatform: targetPlatform,
+      product: product,
+      package: package
+    )
+
+    if candidates.count == 0 {
+      return nil
+    } else if candidates.count == 1 {
+      let value = candidates[0].value
+      return value == "" ? nil : value
+    } else {
+      throw Error(.multipleAndroidMainActivityCandidates(candidates))
+    }
+  }
+
   private static func inferEntrypoint(
     packageGraph: SwiftPackageManager.PackageGraph,
     targetPlatform: Platform,
@@ -403,48 +461,15 @@ enum APKBundler: Bundler {
       return entryPoint
     }
 
-    // We use a custom visitor to visit every target included in the app's main executable.
-    class Visitor: SwiftPackageManager.TargetDependencyVisitor {
-      var candidates: [(target: SwiftPackageManager.TargetReference, entryPoint: String)] = []
-      var containsPre310Configuration = false
-      var effectiveConfigVersion: Version
+    let (candidates, containsPreIntroductionConfiguration) = try discoverAdvertisements(
+      of: \.android?.entryPoint,
+      introducedIn: Version(3, 1, 0),
+      packageGraph: packageGraph,
+      targetPlatform: targetPlatform,
+      product: product,
+      package: package
+    )
 
-      init(effectiveConfigVersion: Version) {
-        self.effectiveConfigVersion = effectiveConfigVersion
-      }
-
-      override func visit(
-        _ target: SwiftPackageManager.TargetReference,
-        packageGraph: SwiftPackageManager.PackageGraph
-      ) throws(SwiftPackageManager.Error) -> Bool {
-        containsPre310Configuration = containsPre310Configuration
-          || effectiveConfigVersion <= Version(3, 1, 0)
-
-        let configuration = try packageGraph.configuration(ofTarget: target)
-        guard let entryPoint = configuration?.android?.entryPoint else {
-          return true
-        }
-
-        candidates.append((target, entryPoint))
-
-        // If a target defines an Android entry point, then we can skip its children,
-        // because entry points defined by parents always trump those defined by
-        // their descendants.
-        return false
-      }
-    }
-
-    let visitor = Visitor(effectiveConfigVersion: effectiveConfigVersion)
-    try Error.catch {
-      try visitor.visit(
-        product: product,
-        inPackage: package,
-        inPackageGraph: packageGraph,
-        targetPlatform: targetPlatform
-      )
-    }
-
-    let candidates = visitor.candidates
     if candidates.count == 0 {
       // NB: This case would ideally just be an error, but due to an oversight
       //   in the initial Android support implementation we ended up hardcoding
@@ -455,9 +480,8 @@ enum APKBundler: Bundler {
       //   and then act conservatively if we do detect such a scenario.
 
       let effectiveVersion = effectiveConfigVersion
-      print(visitor.containsPre310Configuration)
-      if effectiveVersion < Version(4, 0, 0) || visitor.containsPre310Configuration {
-        if effectiveVersion >= Version(3, 1, 0) {
+      if effectiveVersion < Version(4, 0, 0) || containsPreIntroductionConfiguration {
+        if effectiveVersion >= Version(3, 1, 0) && !containsPreIntroductionConfiguration {
           log.warning(
             """
             None of your app's dependencies specify an Android entry point. Swift \
@@ -472,7 +496,7 @@ enum APKBundler: Bundler {
         throw Error(.androidEntryPointNotSpecified)
       }
     } else if candidates.count == 1 {
-      return candidates[0].entryPoint
+      return candidates[0].value
     } else {
       throw Error(.multipleAndroidEntryPointCandidates(candidates))
     }
@@ -1051,6 +1075,7 @@ enum APKBundler: Bundler {
     targetAPI: Int,
     themeName: String,
     appNameStringKey: String,
+    mainActivityIdentifier: String,
     projectStructure: ProjectStructure,
     permissions: [AndroidConfiguration.Permission.Flat]
   ) throws(Error) -> Data {
@@ -1064,7 +1089,7 @@ enum APKBundler: Bundler {
         targetAPI: targetAPI,
         activities: [
           AndroidManifest.Activity(
-            name: ".\(projectStructure.mainActivityName)",
+            name: mainActivityIdentifier,
             exported: true,
             intentFilters: [
               AndroidManifest.IntentFilter(
@@ -1145,24 +1170,22 @@ enum APKBundler: Bundler {
   }
 
   private static func getSetupFunctionName(
-    packageIdentifier: String,
-    mainActivityName: String
+    mainActivityIdentifier: String
   ) -> String {
-    let namespace = packageIdentifier.replacingOccurrences(of: ".", with: "_")
-    return "Java_\(namespace)_\(mainActivityName)_setup"
+    let name = mainActivityIdentifier.replacingOccurrences(of: ".", with: "_")
+    return "Java_\(name)_setup"
   }
 
   private static func generateShimSource(
-    packageIdentifier: String,
     swiftEntryPoint: String,
+    mainActivityIdentifier: String,
     projectStructure: ProjectStructure
   ) -> String {
     let header = projectStructure.shimHeader.path(
       relativeTo: projectStructure.shimSource.deletingLastPathComponent()
     )
     let setupFunction = getSetupFunctionName(
-      packageIdentifier: packageIdentifier,
-      mainActivityName: projectStructure.mainActivityName
+      mainActivityIdentifier: mainActivityIdentifier
     )
     return """
       #include "\(header)"
@@ -1178,12 +1201,10 @@ enum APKBundler: Bundler {
   }
 
   private static func generateShimHeader(
-    packageIdentifier: String,
-    mainActivityName: String
+    mainActivityIdentifier: String
   ) -> String {
     let setupFunction = getSetupFunctionName(
-      packageIdentifier: packageIdentifier,
-      mainActivityName: mainActivityName
+      mainActivityIdentifier: mainActivityIdentifier
     )
     return """
       #include <jni.h>
@@ -1269,5 +1290,75 @@ enum APKBundler: Bundler {
       </resources>
 
       """
+  }
+}
+
+extension APKBundler {
+  // We use a custom visitor to visit every target included in the app's main executable
+  // when dicovering advertised Android entry points and main activities. When a target
+  // has an advertisement then we don't visit its dependencies.
+  class TargetAdvertisementVisitor<Value>: SwiftPackageManager.TargetDependencyVisitor {
+    var candidates: [(target: SwiftPackageManager.TargetReference, value: Value)] = []
+    var containsPreIntroductionConfiguration = false
+    var property: KeyPath<TargetConfiguration.Flat, Value?>
+    var propertyIntroduction: Version
+
+    init(
+      property: KeyPath<TargetConfiguration.Flat, Value?>,
+      propertyIntroduction: Version
+    ) {
+      self.property = property
+      self.propertyIntroduction = propertyIntroduction
+    }
+
+    override func visit(
+      _ target: SwiftPackageManager.TargetReference,
+      packageGraph: SwiftPackageManager.PackageGraph
+    ) throws(SwiftPackageManager.Error) -> Bool {
+      let packageConfiguration = try packageGraph.configuration(ofPackage: target.package)
+      if let effectiveConfigVersion = packageConfiguration?.effectiveVersion {
+        containsPreIntroductionConfiguration = containsPreIntroductionConfiguration
+          || effectiveConfigVersion <= propertyIntroduction
+      }
+
+      let configuration = try packageGraph.configuration(ofTarget: target)
+      guard let value = configuration?[keyPath: property] else {
+        return true
+      }
+
+      candidates.append((target, value))
+
+      // If a target defines an Android entry point, then we can skip its children,
+      // because entry points defined by parents always trump those defined by
+      // their descendants.
+      return false
+    }
+  }
+
+  private static func discoverAdvertisements<Value>(
+    of property: KeyPath<TargetConfiguration.Flat, Value?>,
+    introducedIn propertyIntroduction: Version,
+    packageGraph: SwiftPackageManager.PackageGraph,
+    targetPlatform: Platform,
+    product: String,
+    package: SwiftPackageManager.PackageReference
+  ) throws(Error) -> (
+    candidates: [(target: SwiftPackageManager.TargetReference, value: Value)],
+    containsPreIntroductionConfiguration: Bool
+  ) {
+    let visitor = TargetAdvertisementVisitor(
+      property: property,
+      propertyIntroduction: propertyIntroduction
+    )
+    try Error.catch {
+      try visitor.visit(
+        product: product,
+        inPackage: package,
+        inPackageGraph: packageGraph,
+        targetPlatform: targetPlatform
+      )
+    }
+
+    return (visitor.candidates, visitor.containsPreIntroductionConfiguration)
   }
 }
