@@ -34,9 +34,13 @@ extension APKBundler {
     case cannotBuildAPKWithoutTargetAndroidPlatformVersion
     case multipleAndroidEntryPointCandidates([(
       target: SwiftPackageManager.TargetReference,
-      entryPoint: String
+      value: String
     )])
     case androidEntryPointNotSpecified
+    case multipleAndroidMainActivityCandidates([(
+      target: SwiftPackageManager.TargetReference,
+      value: String
+    )])
 
     var userFriendlyMessage: String {
       switch self {
@@ -135,6 +139,21 @@ extension APKBundler {
             Make sure that your chosen UI framework supports Android \
             and Swift Bundler, or specify a custom Android entry point using \
             the 'android.entry_point' field of your app's configuration object.
+            """
+        case .multipleAndroidMainActivityCandidates(let candidates):
+          let candidateString = candidates.map { (target, mainActivity) in
+            if mainActivity == "" {
+              "<default> from \(target)"
+            } else {
+              "\(mainActivity) from \(target)"
+            }
+          }.joinedGrammatically()
+          return """
+            Found multiple Android main activities in package graph \
+            (\(candidateString)). Choose one by specifying your chosen main \
+            activity class by its fully qualified name in your app's configuration \
+            object with the 'android.main_activity' field. To select the default \
+            generated main activity (<default>), provide an empty string.
             """
       }
     }
