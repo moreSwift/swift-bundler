@@ -40,6 +40,16 @@ enum ConfigurationFlattener {
       )
     } ?? [:]
 
+    let flattenedCLIs = try configuration.clis?.mapValues {
+        (name, cli) throws(Error) -> CLIConfiguration.Flat in
+      try cli.flatten(
+        with:
+          context
+          .appendingCodingKey(PackageConfiguration.CodingKeys.clis)
+          .appendingCodingKey(name)
+      )
+    } ?? [:]
+
     let flattenedProjects = try configuration.projects?.mapValues {
         (name, project) throws(Error) -> ProjectConfiguration.Flat in
       guard name != ProjectConfiguration.rootProjectName else {
@@ -87,6 +97,7 @@ enum ConfigurationFlattener {
       formatVersion: configuration.formatVersion,
       configVersion: configuration.configVersion,
       apps: flattenedApps,
+      clis: flattenedCLIs,
       projects: flattenedProjects,
       builders: flattenedBuilders,
       targets: flattenedTargets,
