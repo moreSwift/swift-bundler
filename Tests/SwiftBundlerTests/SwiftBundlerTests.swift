@@ -220,6 +220,44 @@ struct SwiftBundlerTests {
     }
   }
 
+  /// Issue #237: Gradle packaging must follow the Swift build configuration.
+  /// Names containing spaces and hyphens are preserved and are not treated as variants.
+  @Test(.bug("https://github.com/moreSwift/swift-bundler/issues/237"))
+  func testGradleTaskAndAPKHonorBuildConfiguration() {
+    let projectDirectory = URL(fileURLWithPath: "/tmp/Android Project-Dir")
+    let appName = "Hello World-App"
+
+    let debug = APKBundler.gradleTaskAndAPK(
+      for: .debug,
+      appName: appName,
+      projectRoot: projectDirectory
+    )
+    #expect(debug.task == "assembleDebug")
+    #expect(
+      debug.apk.path
+        == "/tmp/Android Project-Dir/build/outputs/apk/debug/Hello World-App-debug.apk"
+    )
+
+    let release = APKBundler.gradleTaskAndAPK(
+      for: .release,
+      appName: appName,
+      projectRoot: projectDirectory
+    )
+    #expect(release.task == "assembleRelease")
+    #expect(
+      release.apk.path
+        == "/tmp/Android Project-Dir/build/outputs/apk/release/Hello World-App-release-unsigned.apk"
+    )
+  }
+
+  @Test(.bug("https://github.com/moreSwift/swift-bundler/issues/237"))
+  func testAndroidIconIsConvertedToPNG() throws {
+    let webp = Data(PackageResources.DefaultAndroidIcon_webp)
+    let png = try APKBundler.pngIconData(from: webp)
+    #expect(png.starts(with: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    #expect(try APKBundler.pngIconData(from: png) == png)
+  }
+
   @Test func testHexParsing() throws {
     #expect(Array(fromHex: "AB5D87") == [0xab, 0x5d, 0x87])
     #expect(Array(fromHex: "ab5d87") == [0xab, 0x5d, 0x87])
