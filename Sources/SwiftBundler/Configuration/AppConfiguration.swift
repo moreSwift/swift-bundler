@@ -50,13 +50,13 @@ struct AppConfiguration: Codable, Hashable, Sendable {
   var dependencies: [Dependency]?
 
   /// MSI bundler related configuration properties.
-  var msi: MSIBundlerConfiguration?
+  var msi: MSI?
 
   /// Android related configuration properties.
-  var android: AndroidConfiguration?
+  var android: Android?
 
   /// Windows related configuration properties.
-  var windows: WindowsConfiguration?
+  var windows: Windows?
 
   /// Only available in overlays with `platform(linux)` or stronger. Sets whether
   /// Swift Bundler generates a D-Bus service file for the application or not.
@@ -256,6 +256,6 @@ extension AppConfiguration.Flat {
   }
 
   var androidMinSDKOrDefault: Int {
-    android?.minSDK ?? AndroidConfiguration.defaultMinSDK
+    android?.minSDK ?? AppConfiguration.Android.defaultMinSDK
   }
 }
