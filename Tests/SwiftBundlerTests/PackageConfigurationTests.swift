@@ -174,7 +174,7 @@ struct PackageConfigurationTests {
             identifier: "com.example.HelloWorld",
             product: "HelloWorld",
             version: Version(0, 1, 0),
-            android: AndroidConfiguration(
+            android: AppConfiguration.Android(
               minSDK: nil,
               targetSDK: nil,
               compileSDK: 37,
