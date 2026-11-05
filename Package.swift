@@ -47,6 +47,11 @@ let package = Package(
     .package(url: "https://github.com/mxcl/Version", from: "2.0.0"),
     .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/tuist/XcodeProj", from: "8.16.0"),
+    // XcodeProj depends on AEXML. AEXML introduced a breaking change in 4.7.2
+    // when they bumped their macOS deployment target to 10.14. We have to depend
+    // on AEXML ourselves just to avoid SwiftPM occasionally resolving a version
+    // greater than 4.7.1. It's done it in CI before.
+    .package(url: "https://github.com/tadija/AEXML", "4.6.1"..<"4.7.2"),
     .package(url: "https://github.com/yonaskolb/XcodeGen", from: "2.42.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax", "601.0.0"..<"604.0.0"),
     .package(url: "https://github.com/swhitty/FlyingFox", from: "0.22.0"),
@@ -136,6 +141,9 @@ let package = Package(
           package: "XcodeGen",
           condition: .when(platforms: [.macOS])
         ),
+        // Depended on transitively by XcodeProj, we just depend on it ourselves
+        // to silence a warning related to our AEXML dependency version workaround
+        "AEXML",
 
         // Hot reloading related dependencies
         .product(
