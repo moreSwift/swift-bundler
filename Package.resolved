@@ -1,5 +1,5 @@
 {
-  "originHash" : "ff01c3ae9f0cd9686e416ffe2714a2d1badd72ff84fc91ea0dc856bbaf519892",
+  "originHash" : "9e3fd86f90b9f1745d0d431d531f3fb0f48261053207087d00f4d110418f3c15",
   "pins" : [
     {
       "identity" : "aexml",
@@ -65,21 +65,21 @@
       }
     },
     {
-      "identity" : "jpeg",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/stackotter/jpeg",
-      "state" : {
-        "revision" : "a27e47f49479993b2541bc5f5c95d9354ed567a0",
-        "version" : "1.0.2"
-      }
-    },
-    {
       "identity" : "jsonutilities",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/yonaskolb/JSONUtilities.git",
       "state" : {
         "revision" : "128d2ffc22467f69569ef8ff971683e2393191a0",
         "version" : "4.2.0"
+      }
+    },
+    {
+      "identity" : "libjpegturbo",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stackotter/libjpegturbo",
+      "state" : {
+        "revision" : "4bdf4c397c7f1c30d5fd9906a661bcb87575c9db",
+        "version" : "0.1.0"
       }
     },
     {
@@ -231,8 +231,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/stackotter/swift-ico",
       "state" : {
-        "revision" : "033883c75b92af91c9b010b629ad6e0135aa3d64",
-        "version" : "0.2.0"
+        "revision" : "f31bb31f8544cfe6783ad135ed98d2e63034fc67",
+        "version" : "0.3.0"
       }
     },
     {
@@ -240,8 +240,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/stackotter/swift-image-formats",
       "state" : {
-        "revision" : "d735e0ed3d4a4aed50f4042494e7c769b5b70229",
-        "version" : "0.5.0"
+        "revision" : "21ff552df7b156706ccda59f9dc7fd299610f951",
+        "version" : "0.6.0"
       }
     },
     {
