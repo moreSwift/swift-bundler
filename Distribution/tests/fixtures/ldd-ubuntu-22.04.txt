@@ -1,0 +1,6 @@
+	linux-vdso.so.1 (0x00007ffc1a5f0000)
+	libswiftCore.so.1 => /usr/lib/swift/linux/libswiftCore.so.1 (0x00007f2b3c000000)
+	libFoundation.so.6 => /usr/lib/swift/linux/libFoundation.so.6 (0x00007f2b3b000000)
+	libcurl.so.4 => /lib/x86_64-linux-gnu/libcurl.so.4 (0x00007f2b3a000000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f2b39000000)
+	libmissing.so.1 => not found

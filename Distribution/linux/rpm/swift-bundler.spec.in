@@ -1,0 +1,62 @@
+Name:           swift-bundler
+Version:        @@VERSION@@
+Release:        @@RELEASE@@
+Summary:        @@SUMMARY@@
+License:        MIT AND Apache-2.0
+URL:            https://swiftbundler.dev
+BuildArch:      @@ARCH@@
+
+# Swift Bundler ships pre-built Swift runtime libraries. Prevent RPM's
+# post-install processing from stripping or otherwise modifying the ELF
+# files; the same workaround is used by RPMBundler for bundled apps.
+%global debug_package %{nil}
+%global _enable_debug_package 0
+%global __os_install_post %{nil}
+%global _build_id_links none
+
+Recommends:     git
+Recommends:     patchelf
+Recommends:     rpm-build
+
+%description
+@@DESCRIPTION@@
+
+%prep
+
+%build
+
+%install
+rm -rf "%{buildroot}"
+mkdir -p "%{buildroot}%{_bindir}"
+mkdir -p "%{buildroot}%{_libdir}/swift-bundler"
+
+install -m 0755 "%{_stagedir}/usr/bin/swift-bundler" "%{buildroot}%{_bindir}/swift-bundler"
+install -m 0644 %{_stagedir}/usr/lib/swift-bundler/*.so* "%{buildroot}%{_libdir}/swift-bundler/"
+
+install -D -m 0644 "%{_stagedir}/usr/share/bash-completion/completions/swift-bundler" \
+  "%{buildroot}%{_datadir}/bash-completion/completions/swift-bundler"
+install -D -m 0644 "%{_stagedir}/usr/share/zsh/vendor-completions/_swift-bundler" \
+  "%{buildroot}%{_datadir}/zsh/site-functions/_swift-bundler"
+install -D -m 0644 "%{_stagedir}/usr/share/fish/vendor_completions.d/swift-bundler.fish" \
+  "%{buildroot}%{_datadir}/fish/vendor_completions.d/swift-bundler.fish"
+
+install -D -m 0644 "%{_stagedir}/usr/share/doc/swift-bundler/LICENSE" \
+  "%{buildroot}%{_datadir}/doc/swift-bundler/LICENSE"
+install -D -m 0644 "%{_stagedir}/usr/share/doc/swift-bundler/README.md" \
+  "%{buildroot}%{_datadir}/doc/swift-bundler/README.md"
+install -D -m 0644 "%{_stagedir}/usr/share/doc/swift-bundler/THIRD_PARTY_NOTICES.md" \
+  "%{buildroot}%{_datadir}/doc/swift-bundler/THIRD_PARTY_NOTICES.md"
+
+%files
+%defattr(-,root,root,-)
+%attr(0755,root,root) %{_bindir}/swift-bundler
+%dir %{_libdir}/swift-bundler
+%{_libdir}/swift-bundler/*.so*
+%{_datadir}/bash-completion/completions/swift-bundler
+%{_datadir}/zsh/site-functions/_swift-bundler
+%{_datadir}/fish/vendor_completions.d/swift-bundler.fish
+%{_datadir}/doc/swift-bundler/LICENSE
+%{_datadir}/doc/swift-bundler/README.md
+%{_datadir}/doc/swift-bundler/THIRD_PARTY_NOTICES.md
+
+%changelog

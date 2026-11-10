@@ -1,0 +1,28 @@
+Swift Bundler Third-Party Notices
+=================================
+
+Swift Bundler itself is licensed under the MIT License (see LICENSE).
+
+Swift runtime
+-------------
+This distribution bundles dynamic libraries from the Swift runtime so that the
+swift-bundler executable does not depend on the exact Swift toolchain that was
+used to build it. The Swift runtime is distributed under the Apache License 2.0
+with the Swift Runtime Library Exception.
+
+The canonical license text is available at:
+https://github.com/swiftlang/swift/blob/main/LICENSE.txt
+
+Copyright (c) 2014-2026 the Swift project authors. All rights reserved.
+
+Microsoft Visual C++ runtime
+----------------------------
+This distribution may include Microsoft Visual C++ runtime DLLs (for example
+msvcp140.dll and vcruntime140.dll) from the Microsoft Visual Studio
+redistributable. Their use is governed by the Microsoft Visual Studio license
+terms. They are redistributable under those terms.
+
+System libraries
+----------------
+Libraries that are part of Windows itself are not redistributed. They are
+provided by the operating system.
