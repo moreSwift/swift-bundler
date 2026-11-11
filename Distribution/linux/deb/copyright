@@ -23,14 +23,11 @@ License: MIT
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 
-Files: usr/lib/swift-bundler/*
-Copyright: 2014-2026 the Swift project authors
-License: Apache-2.0-with-Swift-Runtime-Exception
- The bundled files are dynamic libraries from the Swift runtime.
- .
- On Debian systems the complete text of the Apache License 2.0 can be found in
- /usr/share/common-licenses/Apache-2.0.
- .
- The Swift Runtime Library Exception accompanies the Apache License 2.0 in the
- Swift source repository:
- https://github.com/swiftlang/swift/blob/main/LICENSE.txt
+Files: usr/bin/swift-bundler
+Copyright: moreSwift and Swift Bundler contributors; Swift project authors;
+ musl authors; curl authors; libxml2 authors; zlib authors
+License: MIT
+ This executable is statically linked with the Swift runtime and support
+ libraries from the Static Swift Linux SDK, including musl, curl, libxml2 and
+ zlib. Those components remain under their respective licenses. See
+ /usr/share/doc/swift-bundler/THIRD_PARTY_NOTICES.md for details and links.

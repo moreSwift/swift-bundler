@@ -3,7 +3,6 @@ Version: @@VERSION@@-@@REVISION@@
 Architecture: @@ARCH@@
 Maintainer: @@MAINTAINER@@
 Installed-Size: @@INSTALLED_SIZE@@
-Depends: @@DEPENDS@@
 Recommends: git, patchelf, rpm
 Section: devel
 Priority: optional

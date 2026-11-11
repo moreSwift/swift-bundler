@@ -2,21 +2,30 @@
 
 Swift Bundler itself is licensed under the MIT License (see `LICENSE`).
 
-## Swift runtime
+## Static Swift Linux SDK
 
-This distribution bundles dynamic libraries from the Swift runtime so that the
-`swift-bundler` executable does not depend on the exact Swift toolchain that was
-used to build it. The Swift runtime is distributed under the Apache License 2.0
-with the Swift Runtime Library Exception.
+This distribution was built with the Static Swift Linux SDK. The executable is
+fully statically linked: it does not load a Swift runtime, C library, or other
+system libraries at runtime.
 
-The canonical license text is available in the Swift source repository:
+Components statically linked into the executable may include:
 
-- https://github.com/swiftlang/swift/blob/main/LICENSE.txt
+- **Swift runtime** — Apache License 2.0 with the Swift Runtime Library Exception.
+  https://github.com/swiftlang/swift/blob/main/LICENSE.txt
+- **musl libc** — MIT License.
+  https://musl.libc.org/license.html
+- **curl** — curl License (MIT-like).
+  https://curl.se/docs/copyright.html
+- **libxml2** — MIT License.
+  https://gitlab.gnome.org/GNOME/libxml2/-/blob/master/Copyright
+- **zlib** — zlib License.
+  https://zlib.net/zlib_license.html
 
-Copyright © 2014-2026 the Swift project authors. All rights reserved.
+Copyright notices and full license texts for these components are available
+from the upstream projects linked above and from the Static Swift Linux SDK
+artifact used to build this package.
 
 ## System libraries
 
-Libraries that belong to the host system ABI (libc, libm, libpthread, libdl,
-librt, libgcc_s, libstdc++, and the dynamic loader) are not redistributed. They
-are provided by the operating system and are declared as package dependencies.
+No system libraries are required at runtime. The Linux kernel system call
+interface is the only operating-system dependency.

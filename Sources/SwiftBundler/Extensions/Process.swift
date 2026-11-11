@@ -2,7 +2,11 @@ import Foundation
 import Mutex
 
 #if os(Linux)
-  import Glibc
+  #if canImport(Glibc)
+    import Glibc
+  #elseif canImport(Musl)
+    import Musl
+  #endif
   import ProcessSpawnSync
   public typealias Process = PSProcess
 #endif

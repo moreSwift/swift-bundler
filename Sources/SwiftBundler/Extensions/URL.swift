@@ -1,7 +1,11 @@
 import Foundation
 
 #if os(Linux)
-  import Glibc
+  #if canImport(Glibc)
+    import Glibc
+  #elseif canImport(Musl)
+    import Musl
+  #endif
 #endif
 
 extension URL {

@@ -58,13 +58,14 @@ Common:
 
 Linux:
 
-- `patchelf` for runpath patching.
-- `dpkg-deb` and `dpkg-shlibdeps` for `.deb`.
+- `dpkg-deb` for `.deb`.
 - `rpmbuild` for `.rpm` (the `rpm` package on Debian/Ubuntu, `rpm-build` on
   Fedora).
-- Build on the oldest distribution the Swift toolchain supports to keep the
-  glibc floor low. Ubuntu 22.04 is a good default for `.deb` and the loose
-  tarball.
+- Network access the first time the Static Linux SDK is downloaded.
+- The script automatically downloads and installs the matching Static Linux
+  SDK when it is not already present. Set `SBUN_STATIC_LINUX_SDK` to an
+  installed SDK selector to use an existing installation and skip the
+  download.
 
 Windows:
 
@@ -91,10 +92,9 @@ Package revisions can be set with `--deb-revision` / `--rpm-release`, or
 
 ## Runtime libraries
 
-- **Linux:** Swift runtime libraries are copied into `/usr/lib/swift-bundler`
-  and found through a `$ORIGIN` runpath. System ABI libraries (libc, libm,
-  libpthread, libdl, librt, libgcc_s, libstdc++, the dynamic loader) are not
-  bundled and are declared as package dependencies.
+- **Linux:** Swift Bundler is built with the official Static Swift Linux SDK,
+  producing a fully statically linked executable with no runtime library
+  dependencies. The script downloads and installs the matching SDK if needed.
 - **Windows:** Swift and MSVC runtime DLLs are placed next to
   `swift-bundler.exe`. Windows finds them automatically.
 - **macOS:** the Swift runtime is provided by macOS; the package contains a

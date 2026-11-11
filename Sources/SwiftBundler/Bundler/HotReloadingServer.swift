@@ -9,6 +9,8 @@
     import Darwin
   #elseif canImport(Glibc)
     import Glibc
+  #elseif canImport(Musl)
+    import Musl
   #elseif canImport(WinSDK)
     import WinSDK.WinSock2
   #endif
@@ -88,7 +90,7 @@
         )
       } catch let error as SocketError {
         let addrInUse: Int32
-        #if canImport(Darwin) || canImport(Glibc)
+        #if canImport(Darwin) || canImport(Glibc) || canImport(Musl)
           addrInUse = EADDRINUSE
         #elseif canImport(WinSDK)
           addrInUse = WSAEADDRINUSE

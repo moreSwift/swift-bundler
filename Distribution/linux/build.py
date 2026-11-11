@@ -121,13 +121,15 @@ def main() -> int:
             logging.info("Would build loose tarball in %s", output_dir)
         return 0
 
-    binary, products_directory = staging.build_swift_bundler(
+    binary, _products_directory = staging.build_swift_bundler(
+        version,
+        arch,
+        output_dir,
         configuration=arguments.configuration,
         skip_build=arguments.skip_build,
     )
     stage = staging.stage_linux_tree(
         binary,
-        products_directory,
         output_dir,
         version,
         arch,

@@ -18,6 +18,8 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import urllib.error
+import urllib.request
 import zipfile
 from pathlib import Path, PurePosixPath
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
@@ -290,6 +292,20 @@ def render_template_file(
     rendered = render_template(contents, replacements, source_name=str(path))
     ensure_directory(destination.parent)
     destination.write_text(rendered, encoding="utf-8")
+
+
+def download_file(url: str, destination: Path) -> Path:
+    logging.info("Downloading %s", url)
+    ensure_directory(destination.parent)
+    try:
+        with urllib.request.urlopen(url, timeout=120) as response:
+            with destination.open("wb") as file:
+                shutil.copyfileobj(response, file)
+    except (OSError, urllib.error.URLError) as error:
+        if destination.exists():
+            destination.unlink()
+        raise PackagingError(f"Failed to download {url}: {error}") from error
+    return destination
 
 
 def sha256_file(path: Path) -> str:
