@@ -21,6 +21,13 @@ def _generate_completions(binary: Path, payload: Path) -> None:
             / "bash-completion"
             / "completions"
             / "swift-bundler",
+            payload
+            / "usr"
+            / "local"
+            / "share"
+            / "bash-completion"
+            / "completions"
+            / "sbun",
             0o644,
         ),
         "zsh": (
@@ -31,6 +38,13 @@ def _generate_completions(binary: Path, payload: Path) -> None:
             / "zsh"
             / "site-functions"
             / "_swift-bundler",
+            payload
+            / "usr"
+            / "local"
+            / "share"
+            / "zsh"
+            / "site-functions"
+            / "_sbun",
             0o644,
         ),
         "fish": (
@@ -41,17 +55,30 @@ def _generate_completions(binary: Path, payload: Path) -> None:
             / "fish"
             / "vendor_completions.d"
             / "swift-bundler.fish",
+            payload
+            / "usr"
+            / "local"
+            / "share"
+            / "fish"
+            / "vendor_completions.d"
+            / "sbun.fish",
             0o644,
         ),
     }
-    for shell, (destination, mode) in locations.items():
+    for shell, (destination, alias_destination, mode) in locations.items():
         result = support.run(
             [str(binary), "--generate-completion-script", shell],
             capture=True,
         )
+        contents = result.stdout or ""
         support.ensure_directory(destination.parent)
-        destination.write_text(result.stdout or "", encoding="utf-8")
+        destination.write_text(contents, encoding="utf-8")
+        alias_contents = support.rename_completion_script(
+            contents, "swift-bundler", "sbun"
+        )
+        alias_destination.write_text(alias_contents, encoding="utf-8")
         os.chmod(destination, mode)
+        os.chmod(alias_destination, mode)
 
 
 def _create_payload(universal: Path, output_dir: Path, version: str) -> Path:
@@ -61,6 +88,7 @@ def _create_payload(universal: Path, output_dir: Path, version: str) -> Path:
 
     binary = payload / "usr" / "local" / "bin" / "swift-bundler"
     support.copy_file(universal, binary, mode=0o755)
+    os.symlink("swift-bundler", binary.parent / "sbun")
 
     docs = payload / "usr" / "local" / "share" / "doc" / "swift-bundler"
     support.ensure_directory(docs)

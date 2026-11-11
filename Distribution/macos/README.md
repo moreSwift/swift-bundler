@@ -11,8 +11,9 @@ the result (ad-hoc by default), and creates:
 Distribution/out/macos/swift-bundler-<version>-macos-universal.pkg
 ```
 
-The package installs `swift-bundler` into `/usr/local/bin` and shell
-completions under `/usr/local/share/`. It requires macOS 13 or newer.
+The package installs `swift-bundler` and the `sbun` symlink into
+`/usr/local/bin`, plus shell completions for both names under
+`/usr/local/share/`. It requires macOS 13 or newer.
 
 Signing and notarization are opt-in:
 

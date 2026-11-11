@@ -47,6 +47,20 @@ class SupportTests(unittest.TestCase):
         with self.assertRaises(support.PackagingError):
             support.render_template("@@MISSING@@", {})
 
+    def test_rename_completion_script(self) -> None:
+        script = (
+            "#compdef swift-bundler\n"
+            "_swift-bundler() { :; }\n"
+            "complete -F _swift-bundler swift-bundler\n"
+        )
+        renamed = support.rename_completion_script(
+            script, "swift-bundler", "sbun"
+        )
+        self.assertIn("#compdef sbun", renamed)
+        self.assertIn("_sbun()", renamed)
+        self.assertIn("complete -F _sbun sbun", renamed)
+        self.assertNotIn("swift-bundler", renamed)
+
     def test_installed_size(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

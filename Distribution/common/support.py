@@ -238,8 +238,13 @@ def copy_file(source: Path, destination: Path, mode: Optional[int] = None) -> No
         os.chmod(destination, mode)
 
 
-def copy_tree(source: Path, destination: Path) -> None:
-    shutil.copytree(source, destination, dirs_exist_ok=True)
+def copy_tree(source: Path, destination: Path, *, symlinks: bool = False) -> None:
+    shutil.copytree(
+        source,
+        destination,
+        dirs_exist_ok=True,
+        symlinks=symlinks,
+    )
 
 
 def is_relative_to(path: Path, parent: Path) -> bool:
@@ -248,6 +253,18 @@ def is_relative_to(path: Path, parent: Path) -> bool:
         return True
     except ValueError:
         return False
+
+
+def rename_completion_script(
+    script: str, from_command: str, to_command: str
+) -> str:
+    """Produce a completion script for an alias of a command.
+
+    ``swift-argument-parser`` hardcodes the command name in the generated
+    completion script. Replacing it (including the generated function names)
+    yields a valid script for the ``sbun`` alias.
+    """
+    return script.replace(from_command, to_command)
 
 
 def render_template(
@@ -294,6 +311,9 @@ def write_checksum(path: Path, checksum_path: Optional[Path] = None) -> Path:
 def installed_size_kb(root: Path) -> int:
     total = 0
     for path in root.rglob("*"):
+        # Don't count symlink targets twice (for example the `sbun` alias).
+        if path.is_symlink():
+            continue
         if path.is_file():
             total += path.stat().st_size
     return max(1, (total + 1023) // 1024)

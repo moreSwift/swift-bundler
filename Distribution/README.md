@@ -8,6 +8,10 @@ This directory builds portable Swift Bundler installers and loose distributions:
 | Linux | `.deb`, `.rpm` | `.tar.gz` |
 | Windows | `.msi` (WiX 6) | `.zip` |
 
+Every package installs a short `sbun` alias alongside `swift-bundler`:
+a symlink on Linux/macOS and a `sbun.cmd` launcher on Windows. Linux and
+macOS packages also install shell completions for both command names.
+
 All drivers are Python 3.9+ scripts using only the standard library. They invoke
 the platform's native packaging tools (`wix`, `dpkg-deb`, `rpmbuild`,
 `pkgbuild`, `productbuild`) rather than reimplementing their formats.

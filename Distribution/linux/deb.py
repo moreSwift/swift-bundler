@@ -121,7 +121,7 @@ def build_deb(
     ) as temporary:
         work = Path(temporary)
         package_root = work / "package"
-        support.copy_tree(stage.root, package_root)
+        support.copy_tree(stage.root, package_root, symlinks=True)
 
         doc_directory = package_root / "usr" / "share" / "doc" / "swift-bundler"
         support.ensure_directory(doc_directory)

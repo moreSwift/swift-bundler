@@ -257,6 +257,10 @@ def stage_linux_tree(
     main_executable = binary_directory / "swift-bundler"
     support.copy_file(binary, main_executable, mode=0o755)
 
+    # `sbun` is the short alias for `swift-bundler`.
+    alias = binary_directory / "sbun"
+    os.symlink("swift-bundler", alias)
+
     dependencies = discover_linux_dependencies(binary, products_directory)
     logging.info("Bundling %d dynamic librar%s", len(dependencies), "y" if len(dependencies) == 1 else "ies")
     for soname, source in dependencies:
@@ -270,14 +274,31 @@ def stage_linux_tree(
     )
 
     completions = {
-        "bash": (bash_directory / "swift-bundler", 0o644),
-        "zsh": (zsh_directory / "_swift-bundler", 0o644),
-        "fish": (fish_directory / "swift-bundler.fish", 0o644),
+        "bash": (
+            bash_directory / "swift-bundler",
+            bash_directory / "sbun",
+            0o644,
+        ),
+        "zsh": (
+            zsh_directory / "_swift-bundler",
+            zsh_directory / "_sbun",
+            0o644,
+        ),
+        "fish": (
+            fish_directory / "swift-bundler.fish",
+            fish_directory / "sbun.fish",
+            0o644,
+        ),
     }
-    for shell, (destination, mode) in completions.items():
+    for shell, (destination, alias_destination, mode) in completions.items():
         contents = _generate_completion(main_executable, shell)
         destination.write_text(contents, encoding="utf-8")
+        alias_contents = support.rename_completion_script(
+            contents, "swift-bundler", "sbun"
+        )
+        alias_destination.write_text(alias_contents, encoding="utf-8")
         os.chmod(destination, mode)
+        os.chmod(alias_destination, mode)
 
     support.copy_file(
         support.REPO_ROOT / "LICENSE", docs_directory / "LICENSE", mode=0o644
@@ -314,9 +335,9 @@ def stage_linux_loose(stage: Stage, output_dir: Path) -> Tuple[Path, Path]:
     support.remove_path(root)
     support.ensure_directory(root)
 
-    support.copy_tree(stage.root / "usr" / "bin", root / "bin")
-    support.copy_tree(stage.root / "usr" / "lib", root / "lib")
-    support.copy_tree(stage.root / "usr" / "share", root / "share")
+    support.copy_tree(stage.root / "usr" / "bin", root / "bin", symlinks=True)
+    support.copy_tree(stage.root / "usr" / "lib", root / "lib", symlinks=True)
+    support.copy_tree(stage.root / "usr" / "share", root / "share", symlinks=True)
 
     readme = f"""Swift Bundler {stage.version} (Linux {stage.arch})
 ====================================================
@@ -327,13 +348,16 @@ libraries in `lib/swift-bundler`, so keep this directory together.
 Run it directly:
 
     ./bin/swift-bundler --help
+    ./bin/sbun --help
 
 Or add this directory's `bin` folder to PATH:
 
     export PATH="$PWD/bin:$PATH"
     swift-bundler --version
+    sbun --version
 
-The shell completion scripts live under `share/`.
+`sbun` is a symlink to `swift-bundler`. The shell completion scripts live
+under `share/`.
 """
     (root / "README.md").write_text(readme, encoding="utf-8")
 

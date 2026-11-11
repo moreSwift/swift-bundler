@@ -253,6 +253,14 @@ def build_stage(
         runtime_paths,
     )
 
+    # Batch shim for the `sbun` alias. Windows symlinks require elevation and
+    # developer mode, so a tiny launcher is the portable equivalent.
+    (stage_root / "sbun.cmd").write_bytes(
+        b"@echo off\r\n"
+        b"\"%~dp0swift-bundler.exe\" %*\r\n"
+        b"exit /b %ERRORLEVEL%\r\n"
+    )
+
     for name in ("LICENSE", "README.md"):
         support.copy_file(
             support.REPO_ROOT / name,
