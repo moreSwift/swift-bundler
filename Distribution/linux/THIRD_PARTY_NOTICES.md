@@ -1,6 +1,7 @@
 # Third-Party Notices
 
-Swift Bundler itself is licensed under the MIT License (see `LICENSE`).
+Swift Bundler itself is licensed under the Apache License, Version 2.0
+(see `LICENSE`).
 
 ## Static Swift Linux SDK
 

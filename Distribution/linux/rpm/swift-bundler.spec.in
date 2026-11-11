@@ -2,7 +2,7 @@ Name:           swift-bundler
 Version:        @@VERSION@@
 Release:        @@RELEASE@@
 Summary:        @@SUMMARY@@
-License:        MIT AND Apache-2.0
+License:        Apache-2.0 AND MIT AND curl AND Zlib
 URL:            https://swiftbundler.dev
 BuildArch:      @@ARCH@@
 
