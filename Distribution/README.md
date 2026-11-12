@@ -145,7 +145,7 @@ The pure parsing/template logic is covered by standard-library `unittest`
 tests:
 
 ```sh
-python3 -m unittest discover -s Distribution/tests -t Distribution
+python3 Distribution/test.py            # add -v for each test name
 python3 -m compileall -q Distribution
 ```
 
@@ -154,6 +154,7 @@ python3 -m compileall -q Distribution
 ```
 Distribution/
   build.py                  # optional cross-platform dispatcher
+  test.py                   # discovers and runs the unittest suite
   common/support.py         # version, process, template, archive helpers
   macos/                    # universal build + .pkg
   linux/                    # staging + .deb/.rpm/.tar.gz

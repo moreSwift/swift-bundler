@@ -31,38 +31,15 @@ def build_architecture(
         return destination
 
     env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
-    build_command = [
-        "swift",
-        "build",
-        "--enable-experimental-prebuilts",
-        "-c",
+    products_directory = support.swift_build(
         configuration,
-        "--product",
-        "swift-bundler",
-        "--arch",
-        arch,
-    ]
-    if not skip_build:
-        support.run(build_command, env=env)
-
-    output = support.command_stdout(
-        [
-            "swift",
-            "build",
-            "--show-bin-path",
-            "-c",
-            configuration,
-            "--arch",
-            arch,
-        ],
-        env=env,
+        product="swift-bundler",
+        arch=arch,
+        prebuilts=True,
+        environment=env,
+        skip_build=skip_build,
     )
-    lines = [line.strip() for line in output.splitlines() if line.strip()]
-    if not lines:
-        raise support.PackagingError(
-            f"`swift build --show-bin-path -c {configuration} --arch {arch}` produced no output"
-        )
-    binary = Path(lines[-1]) / "swift-bundler"
+    binary = products_directory / "swift-bundler"
     support.require_file(binary, f"built {arch} swift-bundler executable")
 
     support.copy_file(binary, destination, mode=0o755)
@@ -158,17 +135,12 @@ def print_plan(version: str, output_dir: Path, configuration: str) -> None:
     for arch in ARCHITECTURES:
         logging.info("+ %s", env)
         support.log_command(
-            [
-                "swift",
-                "build",
-                "--enable-experimental-prebuilts",
-                "-c",
+            support.swift_build_arguments(
                 configuration,
-                "--product",
-                "swift-bundler",
-                "--arch",
-                arch,
-            ]
+                product="swift-bundler",
+                arch=arch,
+                prebuilts=True,
+            )
         )
     support.log_command(
         ["lipo", "-create", "-output", "<universal>", "<arm64>", "<x86_64>"]

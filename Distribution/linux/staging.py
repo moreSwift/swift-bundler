@@ -272,7 +272,7 @@ def verify_cross_toolchain(selector: str, env: dict) -> None:
         (sources / "main.swift").write_text(CROSS_PROBE_SOURCE, encoding="utf-8")
 
         result = support.run(
-            ["swift", "build", "-c", "debug", "--swift-sdk", selector],
+            support.swift_build_arguments("debug", swift_sdk=selector),
             cwd=root,
             env=env,
             capture=True,
@@ -308,41 +308,21 @@ def build_swift_bundler(
     if cross_compiling() and not skip_build:
         verify_cross_toolchain(selector, env)
 
-    build_command = [
-        "swift",
-        "build",
-        "-c",
-        configuration,
-        "--product",
-        "swift-bundler",
-        "--swift-sdk",
-        selector,
-        "--disable-experimental-prebuilts",
-    ]
-    show_path_command = [
-        "swift",
-        "build",
-        "--show-bin-path",
-        "-c",
-        configuration,
-        "--swift-sdk",
-        selector,
-        "--disable-experimental-prebuilts",
-    ]
-
     if not skip_build:
         # Ensure checkouts exist before applying the Yams workaround. SwiftPM
         # will not overwrite an existing checkout during the subsequent build.
         support.run(["swift", "package", "resolve"], env=env)
         _patch_yams_for_static_sdk()
         _patch_tomlkit_for_static_sdk()
-        support.run(build_command, env=env)
 
-    output = support.command_stdout(show_path_command, env=env)
-    lines = [line.strip() for line in output.splitlines() if line.strip()]
-    if not lines:
-        raise support.PackagingError("`swift build --show-bin-path` produced no output")
-    products_directory = Path(lines[-1])
+    products_directory = support.swift_build(
+        configuration,
+        product="swift-bundler",
+        swift_sdk=selector,
+        prebuilts=False,
+        environment=env,
+        skip_build=skip_build,
+    )
     binary = products_directory / "swift-bundler"
     support.require_file(binary, "built swift-bundler executable")
 
@@ -371,28 +351,14 @@ def build_host_completion_binary(
 
     logging.info("Building a host binary to generate shell completions")
     env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
-    support.run(
-        [
-            "swift",
-            "build",
-            "-c",
+    binary = (
+        support.swift_build(
             configuration,
-            "--product",
-            "swift-bundler",
-        ],
-        env=env,
-    )
-    output = support.command_stdout(
-        ["swift", "build", "--show-bin-path", "-c", configuration],
-        env=env,
-    )
-    lines = [line.strip() for line in output.splitlines() if line.strip()]
-    if not lines:
-        raise support.PackagingError(
-            "`swift build --show-bin-path` produced no output for the host "
-            "completion binary"
+            product="swift-bundler",
+            environment=env,
         )
-    binary = Path(lines[-1]) / "swift-bundler"
+        / "swift-bundler"
+    )
     support.require_file(binary, "host completion-generation binary")
     built_version = support.command_stdout([binary, "--version"])
     if version not in built_version:
@@ -568,27 +534,18 @@ def print_plan(
         )
     logging.info("Would ensure the Static Linux SDK for Swift is installed")
     support.log_command(
-        [
-            "swift",
-            "build",
-            "-c",
+        support.swift_build_arguments(
             configuration,
-            "--product",
-            "swift-bundler",
-            "--swift-sdk",
-            static_sdk_selector(arch),
-            "--disable-experimental-prebuilts",
-        ]
+            product="swift-bundler",
+            swift_sdk=static_sdk_selector(arch),
+            prebuilts=False,
+        )
     )
     support.log_command(
-        [
-            "swift",
-            "build",
-            "--show-bin-path",
-            "-c",
+        support.swift_build_arguments(
             configuration,
-            "--swift-sdk",
-            static_sdk_selector(arch),
-        ]
+            swift_sdk=static_sdk_selector(arch),
+            show_bin_path=True,
+        )
     )
     logging.info("Would stage %s for Linux %s in %s", version, arch, output_dir)

@@ -128,6 +128,82 @@ def build_environment(extra: Optional[Mapping[str, str]] = None) -> Dict[str, st
     return environment
 
 
+def swift_build_arguments(
+    configuration: str,
+    *,
+    product: Optional[str] = None,
+    arch: Optional[str] = None,
+    swift_sdk: Optional[str] = None,
+    prebuilts: Optional[bool] = None,
+    show_bin_path: bool = False,
+) -> List[str]:
+    """Return the ``swift build`` invocation implied by the given options.
+
+    ``prebuilts`` enables SwiftPM's experimental prebuilt dependencies when
+    true, disables them when false, and leaves SwiftPM's default alone when
+    ``None``. ``arch`` and ``swift_sdk`` select the destination, while
+    ``show_bin_path`` asks SwiftPM where the products would be written instead
+    of building them.
+    """
+    arguments = ["swift", "build", "-c", configuration]
+    if show_bin_path:
+        arguments.append("--show-bin-path")
+    if product is not None:
+        arguments += ["--product", product]
+    if arch is not None:
+        arguments += ["--arch", arch]
+    if swift_sdk is not None:
+        arguments += ["--swift-sdk", swift_sdk]
+    if prebuilts is not None:
+        arguments.append(
+            "--enable-experimental-prebuilts"
+            if prebuilts
+            else "--disable-experimental-prebuilts"
+        )
+    return arguments
+
+
+def swift_build(
+    configuration: str = "release",
+    *,
+    product: Optional[str] = None,
+    arch: Optional[str] = None,
+    swift_sdk: Optional[str] = None,
+    prebuilts: Optional[bool] = None,
+    environment: Optional[Mapping[str, str]] = None,
+    skip_build: bool = False,
+) -> Path:
+    """Run ``swift build`` and return the directory containing its products.
+
+    ``--show-bin-path`` is always queried, so a caller that passes
+    ``skip_build`` still gets the directory of an existing build.
+    """
+    if not skip_build:
+        run(
+            swift_build_arguments(
+                configuration,
+                product=product,
+                arch=arch,
+                swift_sdk=swift_sdk,
+                prebuilts=prebuilts,
+            ),
+            env=environment,
+        )
+
+    show_command = swift_build_arguments(
+        configuration,
+        product=product,
+        arch=arch,
+        swift_sdk=swift_sdk,
+        show_bin_path=True,
+    )
+    output = command_stdout(show_command, env=environment)
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    if not lines:
+        raise PackagingError(f"`{shlex.join(show_command)}` produced no output")
+    return Path(lines[-1])
+
+
 def require_command(name: str, hint: Optional[str] = None) -> str:
     path = shutil.which(name)
     if path is None:

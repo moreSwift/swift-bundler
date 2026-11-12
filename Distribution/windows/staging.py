@@ -73,25 +73,12 @@ def build_swift_bundler(
     configuration: str = "release", skip_build: bool = False
 ) -> Tuple[Path, Path]:
     env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
-    build_command = [
-        "swift",
-        "build",
-        "-c",
+    products_directory = support.swift_build(
         configuration,
-        "--product",
-        "swift-bundler",
-    ]
-    if not skip_build:
-        support.run(build_command, env=env)
-
-    output = support.command_stdout(
-        build_command[:2] + ["--show-bin-path", "-c", configuration],
-        env=env,
+        product="swift-bundler",
+        environment=env,
+        skip_build=skip_build,
     )
-    lines = [line.strip() for line in output.splitlines() if line.strip()]
-    if not lines:
-        raise support.PackagingError("`swift build --show-bin-path` produced no output")
-    products_directory = Path(lines[-1])
     binary = products_directory / "swift-bundler.exe"
     support.require_file(binary, "built swift-bundler executable")
 
@@ -291,17 +278,16 @@ def print_plan(
 ) -> None:
     logging.info("+ $env:SBUN_NO_SCHEMA_GEN=1")
     support.log_command(
-        [
-            "swift",
-            "build",
-            "-c",
+        support.swift_build_arguments(
             configuration,
-            "--product",
-            "swift-bundler",
-        ]
+            product="swift-bundler",
+        )
     )
     support.log_command(
-        ["swift", "build", "--show-bin-path", "-c", configuration]
+        support.swift_build_arguments(
+            configuration,
+            show_bin_path=True,
+        )
     )
     support.log_command(["dumpbin", "/DEPENDENTS", "<swift-bundler.exe>"])
     logging.info("Would stage %s for Windows %s in %s", version, arch, output_dir)
