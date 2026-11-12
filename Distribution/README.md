@@ -141,8 +141,7 @@ with `SBUN_WINDOWS_TIMESTAMP_URL`.
 
 ## Tests
 
-The pure parsing/template logic is covered by standard-library `unittest`
-tests:
+The pure parsing/template logic is covered by unit tests:
 
 ```sh
 python3 Distribution/test.py            # add -v for each test name
