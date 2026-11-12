@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 import re
+import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -21,6 +24,92 @@ STATIC_SDK_TRIPLES = {
 STATIC_SDK_BUNDLE_VERSIONS = ("0.1.0", "0.0.1")
 
 YAMS_PATCH_MARKER = "import var _float.DBL_DECIMAL_DIG"
+
+MACOS_LINKER_TOOLS = (
+    "swift-autolink-extract",
+    "ld.lld",
+    "ld64.lld",
+    "lld",
+)
+
+
+def cross_compiling() -> bool:
+    return platform.system() == "Darwin"
+
+
+def _toolchain_bin_directories() -> List[Path]:
+    roots = [
+        Path("/Library/Developer/Toolchains"),
+        Path.home() / "Library" / "Developer" / "Toolchains",
+        Path.home() / ".swiftly" / "toolchains",
+        Path.home() / ".local" / "share" / "swiftly" / "toolchains",
+    ]
+    directories = []
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for toolchain in sorted(root.iterdir()):
+            binary_directory = toolchain / "usr" / "bin"
+            if binary_directory.is_dir():
+                directories.append(binary_directory)
+    return directories
+
+
+def _create_macos_linker_shims(output_dir: Path, toolchain_bin: Path) -> Path:
+    shims = output_dir / "tool-shims"
+    support.remove_path(shims)
+    support.ensure_directory(shims)
+    for tool in MACOS_LINKER_TOOLS:
+        source = toolchain_bin / tool
+        if source.is_file():
+            os.symlink(source, shims / tool)
+    missing = [
+        tool
+        for tool in ("swift-autolink-extract", "ld.lld")
+        if not (shims / tool).is_file()
+    ]
+    if missing:
+        raise support.PackagingError(
+            f"Toolchain at {toolchain_bin} is missing: {', '.join(missing)}"
+        )
+    logging.info("Using Linux linker tools from %s", toolchain_bin)
+    return shims
+
+
+def macos_linker_environment(output_dir: Path) -> dict:
+    """Return env overrides needed to cross-link Linux binaries on macOS."""
+    env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
+    path = env.get("PATH", os.environ.get("PATH", ""))
+
+    custom = os.environ.get("SBUN_LINUX_LINKER_TOOLS")
+    if custom:
+        directory = Path(custom).expanduser()
+        shims = _create_macos_linker_shims(output_dir, directory)
+        env["PATH"] = str(shims) + os.pathsep + path
+        return env
+
+    if all(
+        shutil.which(tool, path=path)
+        for tool in ("swift-autolink-extract", "ld.lld")
+    ):
+        return env
+
+    for toolchain_bin in reversed(_toolchain_bin_directories()):
+        if not (toolchain_bin / "swift-autolink-extract").is_file():
+            continue
+        if not (toolchain_bin / "ld.lld").is_file():
+            continue
+        shims = _create_macos_linker_shims(output_dir, toolchain_bin)
+        env["PATH"] = str(shims) + os.pathsep + path
+        return env
+
+    raise support.PackagingError(
+        "Could not find the Linux linker tools (swift-autolink-extract and "
+        "ld.lld). Xcode's Swift toolchain does not ship them; install an "
+        "open-source Swift toolchain from https://www.swift.org/install/macos/ "
+        "and select it with SBUN_TOOLCHAIN_BIN, or point "
+        "SBUN_LINUX_LINKER_TOOLS at a directory that contains both tools."
+    )
 
 
 @dataclass
@@ -269,6 +358,63 @@ def _patch_swift_inotify_for_static_sdk() -> None:
         )
 
 
+CROSS_PROBE_PACKAGE = """// swift-tools-version:5.9
+import PackageDescription
+
+let package = Package(
+    name: "static-linux-probe",
+    targets: [.executableTarget(name: "probe")]
+)
+"""
+
+CROSS_PROBE_SOURCE = """import Foundation
+
+print(FileManager.default.currentDirectoryPath)
+"""
+
+
+def verify_cross_toolchain(selector: str, env: dict) -> None:
+    """Compile a tiny Foundation program for the Static Linux SDK.
+
+    Xcode's Swift toolchain cannot read the SDK's prebuilt modules (they are
+    built by the open-source toolchain) and lacks the Linux linker, so the real
+    build would fail minutes in with an opaque serialized-module error. Probe
+    first so failures are immediate and explain the fix.
+    """
+    with tempfile.TemporaryDirectory(
+        prefix="swift-bundler-cross-probe-"
+    ) as temporary:
+        root = Path(temporary)
+        sources = root / "Sources" / "probe"
+        support.ensure_directory(sources)
+        (root / "Package.swift").write_text(CROSS_PROBE_PACKAGE, encoding="utf-8")
+        (sources / "main.swift").write_text(CROSS_PROBE_SOURCE, encoding="utf-8")
+
+        result = support.run(
+            ["swift", "build", "-c", "debug", "--swift-sdk", selector],
+            cwd=root,
+            env=env,
+            capture=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            return
+
+        output = ((result.stdout or "") + (result.stderr or "")).strip()
+        raise support.PackagingError(
+            "Cannot cross-compile for Linux with the selected Swift toolchain.\n"
+            f"Probe output:\n{output}\n\n"
+            "The Static Linux SDK ships modules built by the open-source Swift "
+            "toolchain. Xcode's toolchain cannot read them (and ships without "
+            "the Linux linker). Install the matching open-source toolchain and "
+            "select it with SBUN_TOOLCHAIN_BIN, for example:\n"
+            "  swiftly install 6.3.1\n"
+            "  export SBUN_TOOLCHAIN_BIN="
+            '"$HOME/Library/Developer/Toolchains/'
+            'swift-6.3.1-RELEASE.xctoolchain/usr/bin"'
+        )
+
+
 def build_swift_bundler(
     version: str,
     arch: str,
@@ -277,7 +423,13 @@ def build_swift_bundler(
     skip_build: bool = False,
 ) -> Tuple[Path, Path]:
     selector = ensure_static_linux_sdk(output_dir, arch)
-    env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
+    env = (
+        macos_linker_environment(output_dir)
+        if cross_compiling()
+        else support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
+    )
+    if cross_compiling() and not skip_build:
+        verify_cross_toolchain(selector, env)
 
     build_command = [
         "swift",
@@ -318,9 +470,62 @@ def build_swift_bundler(
     binary = products_directory / "swift-bundler"
     support.require_file(binary, "built swift-bundler executable")
 
-    built_version = support.command_stdout([binary, "--version"])
-    logging.info("Built %s with the Static Linux SDK", built_version)
+    if cross_compiling():
+        logging.info(
+            "Built Swift Bundler %s for Linux %s with the Static Linux SDK",
+            version,
+            arch,
+        )
+    else:
+        built_version = support.command_stdout([binary, "--version"])
+        logging.info("Built %s with the Static Linux SDK", built_version)
     return binary, products_directory
+
+
+def build_host_completion_binary(
+    version: str,
+    configuration: str = "release",
+) -> Path:
+    """Build a host-native binary for generating completion scripts."""
+    override = os.environ.get("SBUN_COMPLETIONS_BINARY")
+    if override:
+        binary = Path(override).expanduser().resolve()
+        support.require_file(binary, "completion-generation binary")
+        return binary
+
+    logging.info("Building a host binary to generate shell completions")
+    env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
+    support.run(
+        [
+            "swift",
+            "build",
+            "-c",
+            configuration,
+            "--product",
+            "swift-bundler",
+        ],
+        env=env,
+    )
+    output = support.command_stdout(
+        ["swift", "build", "--show-bin-path", "-c", configuration],
+        env=env,
+    )
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    if not lines:
+        raise support.PackagingError(
+            "`swift build --show-bin-path` produced no output for the host "
+            "completion binary"
+        )
+    binary = Path(lines[-1]) / "swift-bundler"
+    support.require_file(binary, "host completion-generation binary")
+    built_version = support.command_stdout([binary, "--version"])
+    if version not in built_version:
+        logging.warning(
+            "Host completion binary reports %s (expected %s)",
+            built_version,
+            version,
+        )
+    return binary
 
 
 def _generate_completion(binary: Path, shell: str) -> str:
@@ -338,6 +543,9 @@ def _assert_statically_linked(binary: Path) -> None:
             f"SDK, but `file` reported:\n{description}"
         )
 
+    if cross_compiling():
+        return
+
     result = support.run(["ldd", str(binary)], capture=True, check=False)
     combined = (result.stdout or "") + (result.stderr or "")
     if "not a dynamic executable" not in combined and "statically linked" not in combined:
@@ -351,6 +559,7 @@ def stage_linux_tree(
     output_dir: Path,
     version: str,
     arch: str,
+    completion_binary: Optional[Path] = None,
 ) -> Stage:
     stage_root = output_dir / f"stage-{arch}"
     support.remove_path(stage_root)
@@ -392,8 +601,9 @@ def stage_linux_tree(
             0o644,
         ),
     }
+    completion_source = completion_binary or main_executable
     for shell, (destination, alias_destination, mode) in completions.items():
-        contents = _generate_completion(main_executable, shell)
+        contents = _generate_completion(completion_source, shell)
         destination.write_text(contents, encoding="utf-8")
         alias_contents = support.rename_completion_script(
             contents, "swift-bundler", "sbun"
@@ -414,7 +624,8 @@ def stage_linux_tree(
         mode=0o644,
     )
 
-    support.run([str(main_executable), "--version"])
+    if not cross_compiling():
+        support.run([str(main_executable), "--version"])
 
     return Stage(
         root=stage_root,
@@ -470,6 +681,11 @@ def print_plan(
 ) -> None:
     env_note = "SBUN_NO_SCHEMA_GEN=1"
     logging.info("+ %s", env_note)
+    if cross_compiling():
+        logging.info(
+            "Would cross-compile on macOS using the Static Linux SDK and "
+            "host-provided Linux linker tools"
+        )
     logging.info("Would ensure the Static Linux SDK for Swift is installed")
     support.log_command(
         [

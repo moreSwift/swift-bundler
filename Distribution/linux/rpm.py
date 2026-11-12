@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import platform
 import shutil
 import tempfile
 from pathlib import Path
@@ -15,6 +17,65 @@ DESCRIPTION = (
     "Swift Bundler builds, bundles and runs Swift applications without "
     "requiring an Xcode project."
 )
+
+# Directories that Homebrew's rpm maps to its own prefix by default. The
+# generated packages must use the FHS layout, so override every one of them.
+CROSS_PREFIX_DEFINES = (
+    ("_prefix", "/usr"),
+    ("_exec_prefix", "/usr"),
+    ("_bindir", "/usr/bin"),
+    ("_sbindir", "/usr/sbin"),
+    ("_libdir", "/usr/lib64"),
+    ("_libexecdir", "/usr/libexec"),
+    ("_datadir", "/usr/share"),
+    ("_sysconfdir", "/etc"),
+    ("_localstatedir", "/var"),
+    ("_sharedstatedir", "/var/lib"),
+    ("_infodir", "/usr/share/info"),
+    ("_mandir", "/usr/share/man"),
+    ("_docdir", "/usr/share/doc"),
+    ("_defaultdocdir", "/usr/share/doc"),
+)
+
+
+def write_cross_rpmrc(
+    rpmrc: Path,
+    rpm_config_directory: Path,
+    host_arch: str,
+    target_arch: str,
+) -> Path:
+    """Write an `rpmrc` that lets a host `rpmbuild` target a Linux arch.
+
+    Homebrew's rpm reports `compatible archs: <host> noarch`, so building for
+    a foreign architecture fails with "No compatible architectures found for
+    build". Nothing is actually compiled—the spec only copies staged files—so
+    declaring the target architecture compatible is safe.
+    """
+    shutil.copyfile(rpm_config_directory / "rpmrc", rpmrc)
+    os.chmod(rpmrc, 0o644)
+    if host_arch != target_arch:
+        with rpmrc.open("a", encoding="utf-8") as file:
+            file.write(f"\nbuildarch_compat: {host_arch}: {target_arch} noarch\n")
+    return rpmrc
+
+
+def macos_cross_arguments(topdir: Path, target_arch: str) -> list:
+    """Return the extra `rpmbuild` arguments needed to cross-build on macOS."""
+    rpm_config_directory = Path(
+        support.command_stdout(["rpm", "--eval", "%{_rpmconfigdir}"])
+    )
+    host_arch = support.command_stdout(["rpm", "--eval", "%{_build_arch}"])
+    rpmrc = write_cross_rpmrc(
+        topdir / "rpmrc", rpm_config_directory, host_arch, target_arch
+    )
+    arguments = ["--rcfile", str(rpmrc), "--target", f"{target_arch}-linux"]
+    # RPM 6 requires the owning group of every packaged file, so a root-owned
+    # package would gain an unsatisfiable `Requires: group(root)` on older
+    # rpm-based distributions. Dilute it into a recommendation.
+    arguments += ["--define", "_use_weak_usergroup_deps 1"]
+    for name, value in CROSS_PREFIX_DEFINES:
+        arguments += ["--define", f"{name} {value}"]
+    return arguments
 
 
 def build_rpm(
@@ -60,18 +121,20 @@ def build_rpm(
         spec_path = topdir / "SPECS" / "swift-bundler.spec"
         spec_path.write_text(spec, encoding="utf-8")
 
-        support.run(
-            [
-                "rpmbuild",
-                "--define",
-                f"_topdir {topdir}",
-                "--define",
-                f"_stagedir {stage.root}",
-                "-bb",
-                str(spec_path),
-            ],
-            cwd=topdir,
-        )
+        command = [
+            "rpmbuild",
+            "--define",
+            f"_topdir {topdir}",
+            "--define",
+            f"_stagedir {stage.root}",
+        ]
+        if platform.system() == "Darwin":
+            command += macos_cross_arguments(
+                topdir, support.rpm_arch(stage.arch)
+            )
+        command += ["-bb", str(spec_path)]
+
+        support.run(command, cwd=topdir)
 
         rpm_files = sorted((topdir / "RPMS").rglob("*.rpm"))
         if not rpm_files:

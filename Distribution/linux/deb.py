@@ -29,7 +29,8 @@ def build_deb(
 
     support.require_command(
         "dpkg-deb",
-        "Debian packages can only be built on a dpkg-based host.",
+        "Install dpkg (for example `apt install dpkg`, `dnf install dpkg`, or "
+        "`brew install dpkg`).",
     )
 
     with tempfile.TemporaryDirectory(

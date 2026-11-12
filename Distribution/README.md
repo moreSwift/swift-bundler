@@ -43,8 +43,10 @@ python Distribution\build.py windows msi
 
 Run any script with `--help` for the full option list. `--dry-run` prints the
 commands that would be executed, and `--skip-build` reuses an existing build.
-Linux and Windows packages are built natively; requesting a different target
+Windows packages are built natively; requesting a different target
 architecture is rejected rather than silently producing a mislabelled package.
+Linux packages are also built natively, but can be cross-compiled on macOS
+(`--arch` defaults to `x86_64` there); see `linux/README.md`.
 
 ## Prerequisites
 
@@ -66,6 +68,11 @@ Linux:
   SDK when it is not already present. Set `SBUN_STATIC_LINUX_SDK` to an
   installed SDK selector to use an existing installation and skip the
   download.
+
+Cross-compiling Linux on macOS additionally needs the Linux linker tools from
+an open-source Swift toolchain (`swift-autolink-extract` and `ld.lld`), plus
+`dpkg-deb` and `rpmbuild` from Homebrew (`brew install dpkg rpm`). See
+`linux/README.md` for details.
 
 Windows:
 

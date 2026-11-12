@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import platform
 import sys
 from pathlib import Path
 
@@ -36,7 +37,10 @@ def add_common_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--arch",
-        help="Target architecture: x86_64 or aarch64 (default: host)",
+        help=(
+            "Target architecture: x86_64 or aarch64 (default: host, or "
+            "x86_64 when cross-compiling on macOS)"
+        ),
     )
     parser.add_argument(
         "--deb-revision",
@@ -83,15 +87,22 @@ def main() -> int:
     support.setup_logging(arguments.verbose)
 
     version = support.resolve_version(arguments.version)
-    arch = support.resolve_arch(arguments.arch)
+    host_is_macos = platform.system() == "Darwin"
+    default_arch = "x86_64" if host_is_macos else None
+    arch = support.resolve_arch(arguments.arch or default_arch)
     output_dir = support.resolve_output_dir(arguments.output_dir, "linux")
 
-    host = support.host_arch()
-    if arch != host:
-        raise support.PackagingError(
-            f"Cross-architecture Linux packaging is not supported: host is "
-            f"{host}, requested {arch}. Run the script on the target "
-            "architecture (or add Swift SDK-based cross-compilation)."
+    if not host_is_macos:
+        host = support.host_arch()
+        if arch != host:
+            raise support.PackagingError(
+                f"Cross-architecture Linux packaging is not supported on this "
+                f"host: host is {host}, requested {arch}. Run on macOS or on "
+                "the target architecture."
+            )
+    else:
+        logging.info(
+            "Cross-compiling Linux artifacts on macOS for %s", arch
         )
 
     logging.info("Swift Bundler %s for Linux %s", version, arch)
@@ -128,11 +139,19 @@ def main() -> int:
         configuration=arguments.configuration,
         skip_build=arguments.skip_build,
     )
+    completion_binary = None
+    if staging.cross_compiling():
+        completion_binary = staging.build_host_completion_binary(
+            version,
+            configuration=arguments.configuration,
+        )
+
     stage = staging.stage_linux_tree(
         binary,
         output_dir,
         version,
         arch,
+        completion_binary=completion_binary,
     )
 
     artifacts = []
