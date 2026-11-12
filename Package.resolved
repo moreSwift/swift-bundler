@@ -1,5 +1,5 @@
 {
-  "originHash" : "2e9353005e346a513e2cce69be455a24aacca3a004a5424f23215a3b413453a6",
+  "originHash" : "70df11674cb98ebcc6fbb0dd9fab2969c1e9dc1aed0445c4186900774e492f3d",
   "pins" : [
     {
       "identity" : "aexml",
@@ -222,8 +222,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sersoft-gmbh/swift-filestreamer.git",
       "state" : {
-        "revision" : "b01ff214cc629718a8729f33d2a8b88e47532dbd",
-        "version" : "0.6.0"
+        "revision" : "4111650d3620389a058ee40a7d2f123a7e50f224",
+        "version" : "0.11.2"
       }
     },
     {
@@ -249,8 +249,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sersoft-gmbh/swift-inotify",
       "state" : {
-        "revision" : "aaaaff43d5ddfe05f18c373fd811cc45f9301c86",
-        "version" : "0.4.0"
+        "revision" : "cc6af8aad72ee86ffedb524358cd5ef9163f8b9e",
+        "version" : "0.9.2"
       }
     },
     {

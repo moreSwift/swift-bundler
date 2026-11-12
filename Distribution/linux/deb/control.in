@@ -1,0 +1,12 @@
+Package: swift-bundler
+Version: @@VERSION@@-@@REVISION@@
+Architecture: @@ARCH@@
+Maintainer: @@MAINTAINER@@
+Installed-Size: @@INSTALLED_SIZE@@
+Recommends: git, patchelf, rpm
+Section: devel
+Priority: optional
+Homepage: https://swiftbundler.dev
+Description: A tool for creating apps from Swift packages
+ Swift Bundler builds, bundles and runs Swift applications on macOS, Linux
+ and Windows without requiring an Xcode project.

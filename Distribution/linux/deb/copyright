@@ -1,0 +1,18 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: swift-bundler
+Source: https://github.com/moreSwift/swift-bundler
+
+Files: *
+Copyright: moreSwift and Swift Bundler contributors
+License: Apache-2.0
+ On Debian systems the complete text of the Apache License 2.0 can be found
+ in /usr/share/common-licenses/Apache-2.0.
+
+Files: usr/bin/swift-bundler
+Copyright: moreSwift and Swift Bundler contributors; Swift project authors;
+ musl authors; curl authors; libxml2 authors; zlib authors
+License: Apache-2.0
+ This executable is statically linked with the Swift runtime and support
+ libraries from the Static Swift Linux SDK, including musl, curl, libxml2 and
+ zlib. Those components remain under their respective licenses. See
+ /usr/share/doc/swift-bundler/THIRD_PARTY_NOTICES.md for details and links.

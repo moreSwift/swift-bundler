@@ -7,3 +7,9 @@ xcuserdata/
 .vscode
 /docs
 /HelloWorld
+
+# Distribution build artifacts
+Distribution/out/
+Distribution/windows/.wix/
+__pycache__/
+*.pyc

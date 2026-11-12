@@ -116,6 +116,8 @@ public enum FileSystemWatcher {
       errorHandler: @escaping @Sendable (any Swift.Error) -> Void
     ) async {
       do {
+        // `Inotifier` is an actor in swift-inotify 0.9, so `events(for:)` is
+        // actor-isolated even though it is not itself `async`.
         let stream = try await notifier.events(for: FilePath(path))
         let filteredStream = stream.filter { event in
           return !event.flags.intersection([
