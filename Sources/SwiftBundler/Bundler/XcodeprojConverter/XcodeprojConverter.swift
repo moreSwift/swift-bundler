@@ -86,6 +86,10 @@ enum XcodeprojConverter {
       // Extract and convert targets
       let targets = try await extractTargets(from: project, rootDirectory: projectRootDirectory)
 
+      if targets.isEmpty {
+        throw Error(.noTargets)
+      }
+
       for target in targets {
         try copyTarget(target, to: sourcesDirectory)
       }
@@ -182,9 +186,9 @@ enum XcodeprojConverter {
         log.info("Loading target '\(name)'")
 
         // Enumerate the target's source files
-        let sources: [XcodeFile]
+        let explicitSources: [XcodeFile]
         do {
-          sources = try target.sourceFiles().compactMap { file -> XcodeFile in
+          explicitSources = try target.sourceFiles().compactMap { file -> XcodeFile in
             return try XcodeFile.from(file, relativeTo: rootDirectory)
           }
         } catch {
@@ -192,9 +196,20 @@ enum XcodeprojConverter {
         }
 
         // Enumerate the target's resource files
-        let resources = try? target.resourcesBuildPhase()?.files?.map { file -> XcodeFile in
+        let explicitResources = try? target.resourcesBuildPhase()?.files?.map { file -> XcodeFile in
           return try XcodeFile.from(file, relativeTo: rootDirectory)
         }
+
+        // Xcode 16 projects can use file system synchronized groups to include files without
+        // listing them in the project file. Such files aren't returned by `sourceFiles()`.
+        let synchronizedFiles = try extractFileSystemSynchronizedGroupFiles(
+          from: target,
+          rootDirectory: rootDirectory
+        )
+
+        let sources = (explicitSources + synchronizedFiles.sources).uniqued(by: \.absolutePath)
+        let resources = ((explicitResources ?? []) + synchronizedFiles.resources)
+          .uniqued(by: \.absolutePath)
 
         let dependencies = target.dependencies.compactMap(\.target?.name)
         let packageDependencies = extractPackageDependencies(
@@ -234,7 +249,7 @@ enum XcodeprojConverter {
               identifier: identifier.asyncMap(evaluate),
               version: version,
               sources: sources,
-              resources: resources ?? [],
+              resources: resources,
               dependencies: dependencies,
               packageDependencies: packageDependencies,
               macOSDeploymentVersion: macOSDeploymentVersion,
@@ -251,7 +266,7 @@ enum XcodeprojConverter {
               identifier: identifier,
               version: version,
               sources: sources,
-              resources: resources ?? [],
+              resources: resources,
               dependencies: dependencies,
               packageDependencies: packageDependencies
             )
@@ -286,6 +301,116 @@ enum XcodeprojConverter {
       }
 
       return targets
+    }
+
+    /// File extensions that Xcode treats as source files in file system synchronized groups.
+    private static let sourceFileExtensions: Set<String> = [
+      "c", "cc", "cpp", "cxx", "h", "hh", "hpp", "hxx", "m", "metal", "mm", "s", "swift",
+    ]
+
+    /// Directory extensions that should be copied as a single resource rather than traversed.
+    private static let bundledDirectoryExtensions: Set<String> = [
+      "appex", "atlas", "bundle", "framework", "icon", "mlmodelc", "playground", "rcproject",
+      "scnassets", "xcassets", "xcdatamodeld", "xcmappingmodel", "xcstickers",
+    ]
+
+    /// Extracts the source and resource files of a target's file system synchronized groups.
+    /// - Parameters:
+    ///   - target: The target to extract the files from.
+    ///   - rootDirectory: The Xcode project's root directory.
+    /// - Returns: The target's source and resource files.
+    private static func extractFileSystemSynchronizedGroupFiles(
+      from target: PBXNativeTarget,
+      rootDirectory: URL
+    ) throws(Error) -> (sources: [XcodeFile], resources: [XcodeFile]) {
+      var sources: [XcodeFile] = []
+      var resources: [XcodeFile] = []
+
+      for group in target.fileSystemSynchronizedGroups ?? [] {
+        let groupPath: String?
+        do {
+          groupPath = try group.fullPath(sourceRoot: rootDirectory.path)
+        } catch {
+          throw Error(.failedToEnumerateSources(target: target.name), cause: error)
+        }
+
+        guard let groupPath else {
+          throw Error(.failedToEnumerateSources(target: target.name))
+        }
+
+        let groupDirectory = URL(fileURLWithPath: groupPath)
+        guard groupDirectory.exists(withType: .directory) else {
+          throw Error(.failedToEnumerateSources(target: target.name))
+        }
+
+        let excludedPaths = membershipExceptions(for: target, in: group)
+        guard let enumerator = FileManager.default.enumerator(
+          at: groupDirectory,
+          includingPropertiesForKeys: [.isDirectoryKey],
+          options: [.skipsHiddenFiles]
+        ) else {
+          throw Error(.failedToEnumerateSources(target: target.name))
+        }
+
+        while let file = enumerator.nextObject() as? URL {
+          let pathInGroup = normalizePath(file.path(relativeTo: groupDirectory))
+          let isDirectory = file.exists(withType: .directory)
+
+          let isExcluded = excludedPaths.contains { excludedPath in
+            pathInGroup == excludedPath || pathInGroup.hasPrefix(excludedPath + "/")
+          }
+
+          guard !isExcluded else {
+            if isDirectory {
+              enumerator.skipDescendants()
+            }
+            continue
+          }
+
+          // The path is relative to the project root, which is also the base of the file in
+          // the generated Swift Bundler project.
+          let relativePath = normalizePath(file.path(relativeTo: rootDirectory))
+          let xcodeFile = XcodeFile(
+            relativePath: relativePath,
+            base: rootDirectory,
+            navigatorPath: relativePath
+          )
+
+          if isDirectory {
+            if bundledDirectoryExtensions.contains(file.pathExtension.lowercased()) {
+              resources.append(xcodeFile)
+              enumerator.skipDescendants()
+            }
+          } else if sourceFileExtensions.contains(file.pathExtension.lowercased()) {
+            sources.append(xcodeFile)
+          } else {
+            resources.append(xcodeFile)
+          }
+        }
+      }
+
+      return (sources, resources)
+    }
+
+    private static func membershipExceptions(
+      for target: PBXNativeTarget,
+      in group: PBXFileSystemSynchronizedRootGroup
+    ) -> [String] {
+      return (group.exceptions ?? [])
+        .compactMap { $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet }
+        .filter { $0.target?.uuid == target.uuid }
+        .flatMap { $0.membershipExceptions ?? [] }
+        .map(normalizePath)
+    }
+
+    /// Normalizes a relative path by removing redundant separators and `.` components.
+    ///
+    /// Specifically tailored for the output of ``URL/path(relativeTo:)`` (a helper that
+    /// we provide), so this shouldn't be used as a generic path normalization function.
+    /// - Parameter path: The path to normalize.
+    /// - Returns: The normalized path.
+    private static func normalizePath(_ path: String) -> String {
+      return path.split(separator: "/").filter { $0 != "." }.joined(separator: "/")
     }
 
     /// Evaluates the Xcode variables (e.g. `$PRODUCT_NAME`) in a build setting string.
