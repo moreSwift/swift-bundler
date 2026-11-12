@@ -22,7 +22,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path, PurePosixPath
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Mapping, Optional, Sequence
 
 DISTRIBUTION_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = DISTRIBUTION_ROOT.parent

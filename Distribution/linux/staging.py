@@ -6,7 +6,6 @@ import logging
 import os
 import platform
 import re
-import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,91 +24,9 @@ STATIC_SDK_BUNDLE_VERSIONS = ("0.1.0", "0.0.1")
 
 YAMS_PATCH_MARKER = "import var _float.DBL_DECIMAL_DIG"
 
-MACOS_LINKER_TOOLS = (
-    "swift-autolink-extract",
-    "ld.lld",
-    "ld64.lld",
-    "lld",
-)
-
 
 def cross_compiling() -> bool:
     return platform.system() == "Darwin"
-
-
-def _toolchain_bin_directories() -> List[Path]:
-    roots = [
-        Path("/Library/Developer/Toolchains"),
-        Path.home() / "Library" / "Developer" / "Toolchains",
-        Path.home() / ".swiftly" / "toolchains",
-        Path.home() / ".local" / "share" / "swiftly" / "toolchains",
-    ]
-    directories = []
-    for root in roots:
-        if not root.is_dir():
-            continue
-        for toolchain in sorted(root.iterdir()):
-            binary_directory = toolchain / "usr" / "bin"
-            if binary_directory.is_dir():
-                directories.append(binary_directory)
-    return directories
-
-
-def _create_macos_linker_shims(output_dir: Path, toolchain_bin: Path) -> Path:
-    shims = output_dir / "tool-shims"
-    support.remove_path(shims)
-    support.ensure_directory(shims)
-    for tool in MACOS_LINKER_TOOLS:
-        source = toolchain_bin / tool
-        if source.is_file():
-            os.symlink(source, shims / tool)
-    missing = [
-        tool
-        for tool in ("swift-autolink-extract", "ld.lld")
-        if not (shims / tool).is_file()
-    ]
-    if missing:
-        raise support.PackagingError(
-            f"Toolchain at {toolchain_bin} is missing: {', '.join(missing)}"
-        )
-    logging.info("Using Linux linker tools from %s", toolchain_bin)
-    return shims
-
-
-def macos_linker_environment(output_dir: Path) -> dict:
-    """Return env overrides needed to cross-link Linux binaries on macOS."""
-    env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
-    path = env.get("PATH", os.environ.get("PATH", ""))
-
-    custom = os.environ.get("SBUN_LINUX_LINKER_TOOLS")
-    if custom:
-        directory = Path(custom).expanduser()
-        shims = _create_macos_linker_shims(output_dir, directory)
-        env["PATH"] = str(shims) + os.pathsep + path
-        return env
-
-    if all(
-        shutil.which(tool, path=path)
-        for tool in ("swift-autolink-extract", "ld.lld")
-    ):
-        return env
-
-    for toolchain_bin in reversed(_toolchain_bin_directories()):
-        if not (toolchain_bin / "swift-autolink-extract").is_file():
-            continue
-        if not (toolchain_bin / "ld.lld").is_file():
-            continue
-        shims = _create_macos_linker_shims(output_dir, toolchain_bin)
-        env["PATH"] = str(shims) + os.pathsep + path
-        return env
-
-    raise support.PackagingError(
-        "Could not find the Linux linker tools (swift-autolink-extract and "
-        "ld.lld). Xcode's Swift toolchain does not ship them; install an "
-        "open-source Swift toolchain from https://www.swift.org/install/macos/ "
-        "and select it with SBUN_TOOLCHAIN_BIN, or point "
-        "SBUN_LINUX_LINKER_TOOLS at a directory that contains both tools."
-    )
 
 
 @dataclass
@@ -374,12 +291,13 @@ print(FileManager.default.currentDirectoryPath)
 
 
 def verify_cross_toolchain(selector: str, env: dict) -> None:
-    """Compile a tiny Foundation program for the Static Linux SDK.
+    """Compile and link a tiny Foundation program for the Static Linux SDK.
 
     Xcode's Swift toolchain cannot read the SDK's prebuilt modules (they are
     built by the open-source toolchain) and lacks the Linux linker, so the real
     build would fail minutes in with an opaque serialized-module error. Probe
-    first so failures are immediate and explain the fix.
+    first so failures are immediate and explain the fix; linking also proves the
+    toolchain's `swift-autolink-extract` and `ld.lld` are reachable.
     """
     with tempfile.TemporaryDirectory(
         prefix="swift-bundler-cross-probe-"
@@ -423,11 +341,7 @@ def build_swift_bundler(
     skip_build: bool = False,
 ) -> Tuple[Path, Path]:
     selector = ensure_static_linux_sdk(output_dir, arch)
-    env = (
-        macos_linker_environment(output_dir)
-        if cross_compiling()
-        else support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
-    )
+    env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
     if cross_compiling() and not skip_build:
         verify_cross_toolchain(selector, env)
 
@@ -648,13 +562,17 @@ def stage_linux_loose(stage: Stage, output_dir: Path) -> Tuple[Path, Path]:
 ====================================================
 
 This distribution was built with the Static Swift Linux SDK. The binary is
-fully statically linked, so it does not need any Swift runtime or system
-libraries at runtime.
+fully statically linked, so it does not require the Swift runtime or any system
+libraries.
 
-Run it directly:
+Run Swift Bundler directly:
 
     ./bin/swift-bundler --help
     ./bin/sbun --help
+
+Or install swift-bundler and sbun to a directory on your path:
+
+    sudo cp swift-bundler sbun /usr/local/bin
 
 Or add this directory's `bin` folder to PATH:
 
@@ -683,8 +601,8 @@ def print_plan(
     logging.info("+ %s", env_note)
     if cross_compiling():
         logging.info(
-            "Would cross-compile on macOS using the Static Linux SDK and "
-            "host-provided Linux linker tools"
+            "Would cross-compile on macOS using the Static Linux SDK and an "
+            "open-source Swift toolchain"
         )
     logging.info("Would ensure the Static Linux SDK for Swift is installed")
     support.log_command(

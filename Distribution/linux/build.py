@@ -93,6 +93,11 @@ def main() -> int:
     output_dir = support.resolve_output_dir(arguments.output_dir, "linux")
 
     if not host_is_macos:
+        if platform.system() != "Linux":
+            raise support.PackagingError(
+                "Linux bundling is only supported on macOS and Linux hosts."
+            )
+
         host = support.host_arch()
         if arch != host:
             raise support.PackagingError(

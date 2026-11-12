@@ -69,10 +69,10 @@ Linux:
   installed SDK selector to use an existing installation and skip the
   download.
 
-Cross-compiling Linux on macOS additionally needs the Linux linker tools from
-an open-source Swift toolchain (`swift-autolink-extract` and `ld.lld`), plus
-`dpkg-deb` and `rpmbuild` from Homebrew (`brew install dpkg rpm`). See
-`linux/README.md` for details.
+Cross-compiling Linux on macOS additionally needs an open-source Swift
+toolchain of the same version as the Static Linux SDK (it supplies the Linux
+linker and readable SDK modules), plus `dpkg-deb` and `rpmbuild` from Homebrew
+(`brew install dpkg rpm`). See `linux/README.md` for details.
 
 Windows:
 

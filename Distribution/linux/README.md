@@ -71,20 +71,10 @@ Requirements on macOS:
   (On macOS, swiftly installs toolchains under
   `~/Library/Developer/Toolchains`; adjust the path if yours lives elsewhere.)
 
-  The script probes the toolchain by building a tiny Foundation program for
+  The toolchain also provides the Linux linker (`swift-autolink-extract` and
+  `ld.lld`), and the script probes it by building a tiny Foundation program for
   Linux before the real build, so an unusable toolchain fails immediately with
   this explanation instead of an opaque serialized-module error.
-- **Linux linker tools.** The toolchain provides `swift-autolink-extract` and
-  `ld.lld`; the script finds them on `PATH` (which `SBUN_TOOLCHAIN_BIN` feeds),
-  or falls back to scanning `/Library/Developer/Toolchains`,
-  `~/Library/Developer/Toolchains`, and `~/.swiftly/toolchains`. Point
-  `SBUN_LINUX_LINKER_TOOLS` at a directory containing them to override the
-  search:
-
-  ```sh
-  SBUN_LINUX_LINKER_TOOLS="/path/to/toolchain/usr/bin" \
-    python3 Distribution/linux/build.py all
-  ```
 - **`dpkg-deb` and `rpmbuild`.** Both package foreign architectures from macOS:
 
   ```sh

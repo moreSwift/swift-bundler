@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import platform
 import sys
 from pathlib import Path
 
@@ -72,6 +73,11 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    if platform.system() != "Windows":
+        raise support.PackagingError(
+            "Windows packaging is only supported on Windows hosts."
+        )
+
     parser = create_parser()
     arguments = parser.parse_args()
     support.setup_logging(arguments.verbose)

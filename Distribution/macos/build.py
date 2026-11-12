@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import shutil
+import platform
 import sys
 from pathlib import Path
 
@@ -60,7 +60,7 @@ def build_architecture(
     lines = [line.strip() for line in output.splitlines() if line.strip()]
     if not lines:
         raise support.PackagingError(
-            f"`swift build --show-bin-path --arch {arch}` produced no output"
+            f"`swift build --show-bin-path -c {configuration} --arch {arch}` produced no output"
         )
     binary = Path(lines[-1]) / "swift-bundler"
     support.require_file(binary, f"built {arch} swift-bundler executable")
@@ -124,7 +124,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--version",
-        help="Override the version (defaults to Sources/SwiftBundler/SwiftBundler.swift)",
+        help="Override the version (defaults to parsing from Sources/SwiftBundler/SwiftBundler.swift)",
     )
     parser.add_argument(
         "--output-dir",
@@ -173,12 +173,19 @@ def print_plan(version: str, output_dir: Path, configuration: str) -> None:
     support.log_command(
         ["lipo", "-create", "-output", "<universal>", "<arm64>", "<x86_64>"]
     )
-    support.log_command(["codesign", "--force", "--sign", "<identity or ->", "<universal>"])
-    logging.info("Would render distribution.xml and run pkgbuild/productbuild in %s", output_dir)
+    support.log_command(
+        ["codesign", "--force", "--sign", "<identity or ->", "<universal>"]
+    )
+    logging.info(
+        "Would render distribution.xml and run pkgbuild/productbuild in %s", output_dir
+    )
     logging.info("Would emit swift-bundler-%s-macos-universal.pkg", version)
 
 
 def main() -> int:
+    if platform.system() != "Darwin":
+        raise support.PackagingError("macOS packaging is only supported on macOS hosts.")
+
     parser = create_parser()
     arguments = parser.parse_args()
     support.setup_logging(arguments.verbose)

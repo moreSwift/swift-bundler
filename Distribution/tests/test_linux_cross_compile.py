@@ -14,38 +14,6 @@ from common import support
 from linux import rpm, staging
 
 
-class MacosLinkerShimTests(unittest.TestCase):
-    def make_toolchain(self, root: Path, tools: list) -> Path:
-        binary = root / "toolchain" / "usr" / "bin"
-        binary.mkdir(parents=True)
-        for tool in tools:
-            (binary / tool).write_text("", encoding="utf-8")
-        return binary
-
-    def test_creates_symlinks_for_available_tools(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            binary = self.make_toolchain(
-                root, ["swift-autolink-extract", "ld.lld", "lld"]
-            )
-            output = root / "out"
-            with mock.patch.object(staging.Path, "home", return_value=root):
-                shims = staging._create_macos_linker_shims(output, binary)
-
-            self.assertTrue((shims / "swift-autolink-extract").is_symlink())
-            self.assertTrue((shims / "ld.lld").is_symlink())
-            self.assertTrue((shims / "lld").is_symlink())
-            self.assertFalse((shims / "ld64.lld").exists())
-
-    def test_reports_missing_tools(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            binary = self.make_toolchain(root, ["swift-autolink-extract"])
-            with self.assertRaises(support.PackagingError) as raised:
-                staging._create_macos_linker_shims(root / "out", binary)
-            self.assertIn("ld.lld", str(raised.exception))
-
-
 class CrossToolchainProbeTests(unittest.TestCase):
     def test_successful_probe_returns_silently(self) -> None:
         completed = subprocess.CompletedProcess([], 0, "", "")

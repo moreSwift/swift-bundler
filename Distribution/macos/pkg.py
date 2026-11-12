@@ -38,13 +38,7 @@ def _generate_completions(binary: Path, payload: Path) -> None:
             / "zsh"
             / "site-functions"
             / "_swift-bundler",
-            payload
-            / "usr"
-            / "local"
-            / "share"
-            / "zsh"
-            / "site-functions"
-            / "_sbun",
+            payload / "usr" / "local" / "share" / "zsh" / "site-functions" / "_sbun",
             0o644,
         ),
         "fish": (
@@ -100,9 +94,9 @@ def _create_payload(universal: Path, output_dir: Path, version: str) -> Path:
 
 
 def _write_distribution(output_dir: Path, version: str, payload: Path) -> Path:
-    template = (
-        support.DISTRIBUTION_ROOT / "macos" / "distribution.xml.in"
-    ).read_text(encoding="utf-8")
+    template = (support.DISTRIBUTION_ROOT / "macos" / "distribution.xml.in").read_text(
+        encoding="utf-8"
+    )
     contents = support.render_template(
         template,
         {
@@ -120,9 +114,7 @@ def _finalize_installer(unsigned: Path, installer: Path) -> None:
     identity = os.environ.get("SBUN_INSTALLER_IDENTITY")
     support.remove_path(installer)
     if not identity:
-        logging.warning(
-            "SBUN_INSTALLER_IDENTITY is not set; the .pkg will be unsigned"
-        )
+        logging.warning("SBUN_INSTALLER_IDENTITY is not set; the .pkg will be unsigned")
         unsigned.rename(installer)
         return
 

@@ -14,7 +14,7 @@
       hostArchitectures="arm64,x86_64" />
 
   <allowed-os-versions>
-    <os-version min="13.0" />
+    <os-version min="10.15" />
   </allowed-os-versions>
 
   <welcome file="welcome.html" />
