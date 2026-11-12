@@ -80,7 +80,7 @@ let package = Package(
     ),
 
     // File watcher dependencies
-    .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
+    .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.9.0"..<"0.10.0"),
     // swift-system 1.7.0 breaks builds on Linux systems with kernels <5.11
     //   src: https://github.com/apple/swift-system/issues/385
     .package(url: "https://github.com/apple/swift-system", "1.2.0"..<"1.7.0"),
@@ -236,6 +236,11 @@ let package = Package(
         .product(
           name: "AsyncAlgorithms",
           package: "swift-async-algorithms",
+          condition: .when(platforms: [.linux])
+        ),
+        .product(
+          name: "Mutex",
+          package: "swift-mutex",
           condition: .when(platforms: [.linux])
         ),
       ]

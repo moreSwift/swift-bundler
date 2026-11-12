@@ -151,6 +151,10 @@ def _patch_yams_for_static_sdk() -> None:
     ``_Builtin_float`` export it. Upstream fixed this in Yams 6.2.2 with an
     explicit import. We apply the same one-line workaround to the resolved
     checkout without changing the repository's dependency pins.
+
+    Upgrading to Yams 6.2.2 is currently impossible because the ``XcodeGen``
+    dependency still requires Yams 5.x, and SwiftPM resolves one version for
+    the whole graph.
     """
     representer = (
         support.REPO_ROOT
@@ -230,47 +234,6 @@ def _patch_tomlkit_for_static_sdk() -> None:
         logging.info(
             "Applied TOMLKit Static Linux SDK compatibility workaround to "
             "%d file(s)",
-            patched,
-        )
-
-
-def _patch_swift_inotify_for_static_sdk() -> None:
-    """Teach swift-inotify to import Musl when Glibc is unavailable."""
-    sources = (
-        support.REPO_ROOT
-        / ".build"
-        / "checkouts"
-        / "swift-inotify"
-        / "Sources"
-        / "Inotify"
-    )
-    if not sources.is_dir():
-        return
-
-    old = "#if os(Linux)\nimport Glibc\n#else\nimport Darwin.C\n#endif\n"
-    new = (
-        "#if canImport(Glibc)\n"
-        "import Glibc\n"
-        "#elseif canImport(Musl)\n"
-        "import Musl\n"
-        "#else\n"
-        "import Darwin.C\n"
-        "#endif\n"
-    )
-
-    patched = 0
-    for path in sources.rglob("*.swift"):
-        contents = path.read_text(encoding="utf-8")
-        if "canImport(Musl)" in contents or old not in contents:
-            continue
-        os.chmod(path, 0o644)
-        path.write_text(contents.replace(old, new, 1), encoding="utf-8")
-        patched += 1
-
-    if patched:
-        logging.info(
-            "Applied swift-inotify Static Linux SDK compatibility workaround "
-            "to %d file(s)",
             patched,
         )
 
@@ -373,7 +336,6 @@ def build_swift_bundler(
         support.run(["swift", "package", "resolve"], env=env)
         _patch_yams_for_static_sdk()
         _patch_tomlkit_for_static_sdk()
-        _patch_swift_inotify_for_static_sdk()
         support.run(build_command, env=env)
 
     output = support.command_stdout(show_path_command, env=env)

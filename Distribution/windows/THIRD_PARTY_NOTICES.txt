@@ -6,10 +6,9 @@ Swift Bundler itself is licensed under the Apache License, Version 2.0
 
 Swift runtime
 -------------
-This distribution bundles dynamic libraries from the Swift runtime so that the
-swift-bundler executable does not depend on the exact Swift toolchain that was
-used to build it. The Swift runtime is distributed under the Apache License 2.0
-with the Swift Runtime Library Exception.
+This distribution bundles dynamic libraries from the Swift runtime. The Swift
+runtime is distributed under the Apache License 2.0 with the Swift Runtime
+Library Exception.
 
 The canonical license text is available at:
 https://github.com/swiftlang/swift/blob/main/LICENSE.txt
