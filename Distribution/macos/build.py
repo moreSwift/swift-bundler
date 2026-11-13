@@ -73,7 +73,8 @@ def build_universal(
         for arch in ARCHITECTURES
     ]
 
-    universal = output_dir / "swift-bundler"
+    universal = output_dir / f"swift-bundler-{version}-macos-universal"
+    support.remove_path(universal)
     support.run(
         [
             "lipo",
@@ -90,6 +91,9 @@ def build_universal(
     support.run(["otool", "-l", str(universal)], capture=True)
 
     sign_binary(universal)
+
+    support.write_checksum(universal)
+
     logging.info("Created universal binary %s", universal)
     return universal
 
@@ -143,15 +147,30 @@ def print_plan(version: str, output_dir: Path, configuration: str) -> None:
             )
         )
     support.log_command(
-        ["lipo", "-create", "-output", "<universal>", "<arm64>", "<x86_64>"]
+        [
+            "lipo",
+            "-create",
+            "-output",
+            f"<swift-bundler-{version}-macos-universal>",
+            "<arm64>",
+            "<x86_64>",
+        ]
     )
     support.log_command(
-        ["codesign", "--force", "--sign", "<identity or ->", "<universal>"]
+        [
+            "codesign",
+            "--force",
+            "--sign",
+            "<identity or ->",
+            f"<swift-bundler-{version}-macos-universal>",
+        ]
     )
     logging.info(
         "Would render distribution.xml and run pkgbuild/productbuild in %s", output_dir
     )
-    logging.info("Would emit swift-bundler-%s-macos-universal.pkg", version)
+    logging.info(
+        "Would emit swift-bundler-%s-macos-universal and its .pkg", version
+    )
 
 
 def main() -> int:
@@ -178,7 +197,9 @@ def main() -> int:
         skip_build=arguments.skip_build,
     )
     installer = pkg.build_pkg(universal, output_dir, version)
-    logging.info("Artifact: %s", installer)
+    logging.info("Artifacts:")
+    logging.info("  %s", universal)
+    logging.info("  %s", installer)
     return 0
 
 

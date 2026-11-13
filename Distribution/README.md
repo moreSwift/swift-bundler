@@ -4,7 +4,7 @@ This directory builds portable Swift Bundler installers and loose distributions:
 
 | Platform | Installer | Loose distribution |
 |----------|-----------|--------------------|
-| macOS | `.pkg` | — |
+| macOS | `.pkg` | universal CLI binary |
 | Linux | `.deb`, `.rpm` | `.tar.gz` |
 | Windows | `.msi` (WiX 6) | `.zip` |
 

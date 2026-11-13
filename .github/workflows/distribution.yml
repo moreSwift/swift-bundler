@@ -102,14 +102,16 @@ jobs:
         run: |
           python3 Distribution/macos/build.py
 
-      - name: Upload .pkg
+      - name: Upload CLI binary and .pkg
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: swift-bundler-macos
           if-no-files-found: error
           path: |
-            Distribution/out/macos/*.pkg
-            Distribution/out/macos/*.pkg.sha256
+            Distribution/out/macos/swift-bundler-*-macos-universal
+            Distribution/out/macos/swift-bundler-*-macos-universal.sha256
+            Distribution/out/macos/swift-bundler-*.pkg
+            Distribution/out/macos/swift-bundler-*.pkg.sha256
 
   linux:
     name: Linux (.deb, .rpm, .tar.gz)
