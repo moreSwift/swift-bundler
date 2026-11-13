@@ -4,7 +4,7 @@ This directory builds portable Swift Bundler installers and loose distributions:
 
 | Platform | Installer | Loose distribution |
 |----------|-----------|--------------------|
-| macOS | `.pkg` | — |
+| macOS | `.pkg` | universal CLI binary |
 | Linux | `.deb`, `.rpm` | `.tar.gz` |
 | Windows | `.msi` (WiX 6) | `.zip` |
 
@@ -138,6 +138,54 @@ python Distribution\windows\build.py msi --sign
 
 The timestamp server defaults to `http://timestamp.digicert.com`; override it
 with `SBUN_WINDOWS_TIMESTAMP_URL`.
+
+### In GitHub Actions
+
+`.github/workflows/distribution.yml` reads signing config from environment
+secrets and variables (see [Credential storage](#credential-storage) below).
+When given an empty environment, the workflow produces an unsigned installer.
+
+| Secret | Value |
+|--------|-------|
+| `MACOS_CERTIFICATES_P12` | base64 of a `.p12` containing both Developer ID identities and their private keys |
+| `MACOS_CERTIFICATES_PASSWORD` | the password of the `.p12` export |
+| `MACOS_ASC_KEY_P8` | base64 of an App Store Connect API key (`.p8`) for notarization |
+
+| Variable | Value |
+|----------|-------|
+| `MACOS_APP_IDENTITY` | `Developer ID Application: Name (TEAMID)` |
+| `MACOS_INSTALLER_IDENTITY` | `Developer ID Installer: Name (TEAMID)` |
+| `MACOS_NOTARY_PROFILE` | any profile name, e.g. `swift-bundler`; setting it enables notarization |
+| `MACOS_ASC_KEY_ID`, `MACOS_ASC_ISSUER_ID` | App Store Connect key ID and issuer ID (leave the issuer empty for individual keys) |
+
+The workflow imports the certificates into a temporary keychain, stores the
+notarization credentials under `MACOS_NOTARY_PROFILE`, and the build then signs,
+notarizes, staples, and Gatekeeper-assesses the `.pkg`.
+
+#### Tips
+
+You can discover the required `MACOS_INSTALLER_IDENTITY` and `MACOS_APP_IDENTITY`
+values after installing the relevant certificates locally: `security find-identity -v`.
+
+Encode your p12 (exported from Xcode) using the following command (which copies
+the result to your clipboard):
+
+```sh
+base64 -i certificates.p12 | pbcopy
+```
+
+### Credential storage
+
+The workflow reads the macOS signing secrets and variables from an environment named
+`distribution`. This allows us to require that a maintainer approves each run of the
+workflow, and that the workflow can only be dispatched on against the `main` branch.
+Both of those measures protect us against our signing credentials being leaked.
+
+Repository secrets are readable by any workflow run that a write-access
+collaborator can push to or dispatch from a branch, and a fork pull request
+runs with *no* secrets at all. The environment's branch rule and approval gate
+turn "has write access" into "cannot extract the certificates without another
+maintainer approving".
 
 ## Tests
 
