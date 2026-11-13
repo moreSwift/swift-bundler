@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package
+      Name="Swift Bundler"
+      Manufacturer="moreSwift"
+      Version="$(var.Version)"
+      UpgradeCode="A36C4146-13A0-55AB-94B9-67F5D630C19D"
+      Language="1033"
+      Scope="perMachine">
+
+    <MajorUpgrade
+        AllowSameVersionUpgrades="yes"
+        DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Intentionally no VersionNT launch condition. MSI can report
+         VersionNT 6.x on newer Windows builds when compatibility shims are
+         active, which would block otherwise-valid installs. Swift Bundler's
+         own executable will report a useful error on unsupported systems. -->
+
+    <Property Id="ARPCOMMENTS" Value="A tool for creating apps from Swift packages." />
+    <Property Id="ARPCONTACT" Value="moreSwift" />
+    <Property Id="ARPURLINFOABOUT" Value="https://swiftbundler.dev" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Swift Bundler" />
+    </StandardDirectory>
+
+    <!-- Harvest the flat staging directory. `wix build -b <stage>` supplies
+         the unnamed bind path that `**` is relative to. -->
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Files Include="**" Directory="INSTALLFOLDER">
+        <Exclude Files="**\*.pdb" />
+        <Exclude Files="**\*.lib" />
+        <Exclude Files="**\*.exp" />
+      </Files>
+    </ComponentGroup>
+
+    <!-- Add the install directory to the machine PATH. The registry value
+         gives the component a stable key path, as required by MSI. -->
+    <Component Id="PathComponent" Directory="INSTALLFOLDER" Guid="*">
+      <RegistryValue
+          Root="HKLM"
+          Key="Software\moreSwift\SwiftBundler"
+          Name="installed"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+      <Environment
+          Id="PathEntry"
+          Name="PATH"
+          Value="[INSTALLFOLDER]"
+          Permanent="no"
+          Part="last"
+          Action="set"
+          System="yes" />
+    </Component>
+
+    <Feature Id="ProductFeature" Title="Swift Bundler" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentRef Id="PathComponent" />
+    </Feature>
+
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+  </Package>
+</Wix>

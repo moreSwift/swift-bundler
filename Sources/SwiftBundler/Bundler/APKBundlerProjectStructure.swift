@@ -37,8 +37,8 @@ extension APKBundler {
     var resourceDirectory: URL
     /// The directory containing Java source files for the app's main package.
     var mainJavaPackageDirectory: URL
-    /// The `MainActivity.java` source file.
-    var mainActivitySource: URL
+    /// The default `MainActivity.java` source file.
+    var defaultMainActivitySource: URL
     /// The project's root `CMakeLists.txt` file.
     var cmakeLists: URL
     /// The directory containing the shim Swift Bundler uses to access
@@ -83,7 +83,7 @@ extension APKBundler {
     }
 
     /// The name of the app's main activity.
-    let mainActivityName = "MainActivity"
+    let defaultMainActivityName = "MainActivity"
 
     init(at root: URL, forAppWithIdentifier appIdentifier: String) {
       self.root = root
@@ -106,7 +106,7 @@ extension APKBundler {
       javaSourceDirectory = srcMain / "java"
       resourceDirectory = srcMain / "res"
       mainJavaPackageDirectory = javaSourceDirectory / identifierPath
-      mainActivitySource = mainJavaPackageDirectory / "\(mainActivityName).java"
+      defaultMainActivitySource = mainJavaPackageDirectory / "\(defaultMainActivityName).java"
       cmakeLists = srcMain / "CMakeLists.txt"
       shimDirectory = srcMain / "shim"
       shimSource = shimDirectory / "shim.c"

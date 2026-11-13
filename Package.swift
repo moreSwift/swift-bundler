@@ -47,6 +47,11 @@ let package = Package(
     .package(url: "https://github.com/mxcl/Version", from: "2.0.0"),
     .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/tuist/XcodeProj", from: "8.16.0"),
+    // XcodeProj depends on AEXML. AEXML introduced a breaking change in 4.7.2
+    // when they bumped their macOS deployment target to 10.14. We have to depend
+    // on AEXML ourselves just to avoid SwiftPM occasionally resolving a version
+    // greater than 4.7.1. It's done it in CI before.
+    .package(url: "https://github.com/tadija/AEXML", "4.6.1"..<"4.7.2"),
     .package(url: "https://github.com/yonaskolb/XcodeGen", from: "2.42.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax", "601.0.0"..<"604.0.0"),
     .package(url: "https://github.com/swhitty/FlyingFox", from: "0.22.0"),
@@ -64,10 +69,10 @@ let package = Package(
       .upToNextMinor(from: "0.9.0")
     ),
     .package(url: "https://github.com/swhitty/swift-mutex", .upToNextMinor(from: "0.0.6")),
-    .package(url: "https://github.com/stackotter/swift-ico", .upToNextMinor(from: "0.2.0")),
+    .package(url: "https://github.com/stackotter/swift-ico", .upToNextMinor(from: "0.3.0")),
     .package(
       url: "https://github.com/stackotter/swift-image-formats",
-      .upToNextMinor(from: "0.5.0")
+      .upToNextMinor(from: "0.6.0")
     ),
     .package(
       url: "https://github.com/gregcotten/ZIPFoundationModern",
@@ -75,7 +80,7 @@ let package = Package(
     ),
 
     // File watcher dependencies
-    .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.4.0"..<"0.5.0"),
+    .package(url: "https://github.com/sersoft-gmbh/swift-inotify", "0.9.0"..<"0.10.0"),
     // swift-system 1.7.0 breaks builds on Linux systems with kernels <5.11
     //   src: https://github.com/apple/swift-system/issues/385
     .package(url: "https://github.com/apple/swift-system", "1.2.0"..<"1.7.0"),
@@ -136,6 +141,9 @@ let package = Package(
           package: "XcodeGen",
           condition: .when(platforms: [.macOS])
         ),
+        // Depended on transitively by XcodeProj, we just depend on it ourselves
+        // to silence a warning related to our AEXML dependency version workaround
+        "AEXML",
 
         // Hot reloading related dependencies
         .product(
@@ -228,6 +236,11 @@ let package = Package(
         .product(
           name: "AsyncAlgorithms",
           package: "swift-async-algorithms",
+          condition: .when(platforms: [.linux])
+        ),
+        .product(
+          name: "Mutex",
+          package: "swift-mutex",
           condition: .when(platforms: [.linux])
         ),
       ]

@@ -24,8 +24,8 @@ jobs:
       - name: Setup
         uses: compnerd/gha-setup-swift@v0.2.3
         with:
-          branch: swift-6.2-release
-          tag: 6.2-RELEASE
+          branch: swift-6.3-release
+          tag: 6.3-RELEASE
 
       - name: Checkout
         uses: actions/checkout@v4

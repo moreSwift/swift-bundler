@@ -1,7 +1,9 @@
 #if os(macOS)
   import Darwin
-#elseif os(Linux)
+#elseif canImport(Glibc)
   import Glibc
+#elseif canImport(Musl)
+  import Musl
 #elseif os(Windows)
   import WinSDK
 #else
@@ -59,6 +61,17 @@ func trap(_ signal: Signal, action: @escaping @convention(c) () -> Void) {
       sa_mask: 0,
       sa_flags: 0
     )
+    sigaction(signal.rawValue, &signalAction, nil)
+  #elseif canImport(Musl)
+    var signalAction = SignalAction()
+    signalAction.__sa_handler = unsafeBitCast(
+      action,
+      to: sigaction.__Unnamed_union___sa_handler.self
+    )
+    var mask = __sigset_t()
+    sigemptyset(&mask)
+    signalAction.sa_mask = mask
+    signalAction.sa_flags = 0
     sigaction(signal.rawValue, &signalAction, nil)
   #elseif os(Linux)
     var signalAction = SignalAction()

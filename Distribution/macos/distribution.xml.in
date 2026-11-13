@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+  <title>Swift Bundler</title>
+  <organization>dev.moreswift</organization>
+
+  <domains
+      enable_anywhere="false"
+      enable_currentUserHome="false"
+      enable_localSystem="true" />
+
+  <options
+      customize="never"
+      require-scripts="false"
+      hostArchitectures="arm64,x86_64" />
+
+  <allowed-os-versions>
+    <os-version min="10.15" />
+  </allowed-os-versions>
+
+  <welcome file="welcome.html" />
+  <license file="LICENSE.txt" />
+  <conclusion file="conclusion.html" />
+
+  <choices-outline>
+    <line choice="default">
+      <line choice="swift-bundler" />
+    </line>
+  </choices-outline>
+
+  <choice id="default" />
+  <choice id="swift-bundler" visible="false">
+    <pkg-ref id="dev.moreswift.swift-bundler" />
+  </choice>
+
+  <pkg-ref
+      id="dev.moreswift.swift-bundler"
+      version="@@VERSION@@"
+      installKBytes="@@INSTALL_KBYTES@@"
+      onConclusion="none">component.pkg</pkg-ref>
+</installer-gui-script>

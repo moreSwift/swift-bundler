@@ -1,0 +1,80 @@
+Name:           swift-bundler
+Version:        @@VERSION@@
+Release:        @@RELEASE@@
+Summary:        @@SUMMARY@@
+License:        Apache-2.0 AND MIT AND curl AND Zlib
+URL:            https://swiftbundler.dev
+BuildArch:      @@ARCH@@
+# Homebrew's rpm 6 does not generate the arch-qualified provide itself.
+%ifarch x86_64
+Provides:       %{name}(x86-64) = %{version}-%{release}
+%endif
+%ifarch aarch64
+Provides:       %{name}(aarch64) = %{version}-%{release}
+%endif
+
+# Swift Bundler is built with the Static Swift Linux SDK and has no runtime
+# library dependencies. Prevent RPM's post-install processing from stripping
+# or otherwise modifying the static ELF.
+%global debug_package %{nil}
+%global _enable_debug_package 0
+%global __os_install_post %{nil}
+%global _build_id_links none
+
+Recommends:     git
+Recommends:     patchelf
+Recommends:     rpm-build
+
+%description
+@@DESCRIPTION@@
+
+%prep
+
+%build
+
+%install
+rm -rf "%{buildroot}"
+mkdir -p "%{buildroot}%{_bindir}"
+
+install -m 0755 "%{_stagedir}/usr/bin/swift-bundler" "%{buildroot}%{_bindir}/swift-bundler"
+ln -s swift-bundler "%{buildroot}%{_bindir}/sbun"
+
+mkdir -p "%{buildroot}%{_datadir}/bash-completion/completions"
+install -m 0644 "%{_stagedir}/usr/share/bash-completion/completions/swift-bundler" \
+  "%{buildroot}%{_datadir}/bash-completion/completions/swift-bundler"
+install -m 0644 "%{_stagedir}/usr/share/bash-completion/completions/sbun" \
+  "%{buildroot}%{_datadir}/bash-completion/completions/sbun"
+mkdir -p "%{buildroot}%{_datadir}/zsh/site-functions"
+install -m 0644 "%{_stagedir}/usr/share/zsh/vendor-completions/_swift-bundler" \
+  "%{buildroot}%{_datadir}/zsh/site-functions/_swift-bundler"
+install -m 0644 "%{_stagedir}/usr/share/zsh/vendor-completions/_sbun" \
+  "%{buildroot}%{_datadir}/zsh/site-functions/_sbun"
+mkdir -p "%{buildroot}%{_datadir}/fish/vendor_completions.d"
+install -m 0644 "%{_stagedir}/usr/share/fish/vendor_completions.d/swift-bundler.fish" \
+  "%{buildroot}%{_datadir}/fish/vendor_completions.d/swift-bundler.fish"
+install -m 0644 "%{_stagedir}/usr/share/fish/vendor_completions.d/sbun.fish" \
+  "%{buildroot}%{_datadir}/fish/vendor_completions.d/sbun.fish"
+
+mkdir -p "%{buildroot}%{_datadir}/doc/swift-bundler"
+install -m 0644 "%{_stagedir}/usr/share/doc/swift-bundler/LICENSE" \
+  "%{buildroot}%{_datadir}/doc/swift-bundler/LICENSE"
+install -m 0644 "%{_stagedir}/usr/share/doc/swift-bundler/README.md" \
+  "%{buildroot}%{_datadir}/doc/swift-bundler/README.md"
+install -m 0644 "%{_stagedir}/usr/share/doc/swift-bundler/THIRD_PARTY_NOTICES.md" \
+  "%{buildroot}%{_datadir}/doc/swift-bundler/THIRD_PARTY_NOTICES.md"
+
+%files
+%defattr(-,root,root,-)
+%attr(0755,root,root) %{_bindir}/swift-bundler
+%{_bindir}/sbun
+%{_datadir}/bash-completion/completions/swift-bundler
+%{_datadir}/bash-completion/completions/sbun
+%{_datadir}/zsh/site-functions/_swift-bundler
+%{_datadir}/zsh/site-functions/_sbun
+%{_datadir}/fish/vendor_completions.d/swift-bundler.fish
+%{_datadir}/fish/vendor_completions.d/sbun.fish
+%{_datadir}/doc/swift-bundler/LICENSE
+%{_datadir}/doc/swift-bundler/README.md
+%{_datadir}/doc/swift-bundler/THIRD_PARTY_NOTICES.md
+
+%changelog

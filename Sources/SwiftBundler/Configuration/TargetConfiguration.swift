@@ -36,9 +36,22 @@ struct TargetConfiguration: Codable, Hashable, Sendable {
     /// Additional AAPT options.
     var aapt: AAPTOptions?
 
-    /// The app's entry point. Must be a C ABI function. Overrides entry points
-    /// defined by dependencies of the app's main executable.
+    /// The Android entry point advertised by this target. Must be a C ABI function.
+    ///
+    /// If this is the only entry point advertised to an app, then it will be the app's
+    /// default Android entry point. This entry point smothers the entry points
+    /// defined by the target's dependencies.
+    @Introduced(in: "3.1.0")
     var entryPoint: String?
+
+    /// The Android main activity advertised by this target. Must be the fully
+    /// qualifieda name of a Java or Kotlin class.
+    ///
+    /// If this is the only main activity advertised to an app, then it will be the app's
+    /// default Android main activity. This main activity smothers the main activities
+    /// defined by the target's dependencies.
+    @Introduced(in: "3.1.0")
+    var mainActivity: String?
 
     // https://developer.android.com/reference/tools/gradle-api/8.1/com/android/build/api/dsl/AndroidResources
     @Mergeable

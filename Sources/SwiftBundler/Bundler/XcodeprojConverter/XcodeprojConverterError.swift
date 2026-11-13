@@ -20,6 +20,7 @@ extension XcodeprojConverter {
     case directoryAlreadyExists(URL)
     case failedToLoadXcodeWorkspace(URL)
     case failedToCreateAppConfiguration(target: String)
+    case noTargets
 
     #if SUPPORT_XCODEPROJ
       case unsupportedFilePathType(PBXSourceTree)
@@ -52,6 +53,8 @@ extension XcodeprojConverter {
           return "Failed to load xcworkspace from '\(file.relativePath)'"
         case .failedToCreateAppConfiguration(let target):
           return "Failed to create app configuration for '\(target)'"
+        case .noTargets:
+          return "Failed to locate any convertible targets"
         #if SUPPORT_XCODEPROJ
           case .unsupportedFilePathType(let pathType):
             return "Unsupported file path type '\(pathType.description)'"

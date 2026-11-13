@@ -110,6 +110,12 @@ struct CreateCommand: ErrorHandledCommand {
   var addVSCodeOverlay = false
 
   @Flag(
+    name: .customLong("no-auto-update"),
+    help: "Disables template auto updating."
+  )
+  var disableAutoUpdating = false
+
+  @Flag(
     name: .shortAndLong,
     help: "Print verbose error messages."
   )
@@ -146,6 +152,17 @@ struct CreateCommand: ErrorHandledCommand {
         infoPlistFile: infoPlistFile,
         iconFile: iconFile
       )
+    }
+
+    let shouldAutoUpdate = !disableAutoUpdating
+      && ProcessInfo.processInfo.environment["SBUN_AUTO_UPDATE_TEMPLATES"] != "0"
+    if shouldAutoUpdate {
+      log.info(
+        "Auto-updating templates (--no-auto-update or SBUN_AUTO_UPDATE_TEMPLATES=0 to disable)"
+      )
+      try await RichError<SwiftBundlerError>.catch {
+        try await Templater.updateTemplates()
+      }
     }
 
     var template: Template?

@@ -1,4 +1,4 @@
-# Generic Window bundler
+# Generic Windows bundler
 
 The default Windows bundler.
 

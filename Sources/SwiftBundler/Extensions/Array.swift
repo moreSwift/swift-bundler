@@ -152,3 +152,12 @@ extension Array where Element: Hashable {
     return filter { seen.insert($0).inserted }
   }
 }
+
+extension Array {
+  /// Return the array with all duplicates removed, where duplicates are
+  /// determined using the given key path.
+  public func uniqued<Key: Hashable>(by key: KeyPath<Element, Key>) -> [Element] {
+    var seen = Set<Key>()
+    return filter { seen.insert($0[keyPath: key]).inserted }
+  }
+}

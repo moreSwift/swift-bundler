@@ -1,0 +1,20 @@
+
+Microsoft (R) COFF/PE Dumper Version 14.38.33135.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file C:\scratch\swift-bundler.exe
+
+File Type: EXECUTABLE IMAGE
+
+  Image has the following dependencies:
+
+    KERNEL32.dll
+    swiftCore.dll
+    Foundation.dll
+    api-ms-win-crt-runtime-l1-1-0.dll
+
+  Summary
+
+        1000 .data
+        2000 .rdata
