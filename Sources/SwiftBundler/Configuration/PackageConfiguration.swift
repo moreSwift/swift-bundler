@@ -43,6 +43,10 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
   /// multiple apps). Maps app name to app configuration.
   var apps: [String: AppConfiguration]?
 
+  /// The configuration for each CLI in the package (packages can contain
+  /// multiple CLIs). Maps CLI name to app configuration.
+  var clis: [String: CLIConfiguration]?
+
   /// The configuration for each project in the package. Maps project name to
   /// project configuration. Generally used when integrating libraries built
   /// with different build systems such as CMake.
@@ -63,12 +67,14 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
   /// Creates a new package configuration.
   /// - Parameters
   ///   - apps: The package's apps.
+  ///   - clis: The package's CLIs.
   ///   - projects: The package's subprojects.
   ///   - builders: The package's project builders.
   ///   - targets: The package's optional target configuration.
   ///   - products: The package's optional product configuration.
   init(
     apps: [String: AppConfiguration]? = nil,
+    clis: [String: CLIConfiguration]? = nil,
     projects: [String: ProjectConfiguration]? = nil,
     builders: [String: BuilderConfiguration]? = nil,
     targets: [String: TargetConfiguration]? = nil,
@@ -76,6 +82,7 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
   ) {
     formatVersion = Self.currentFormatVersion
     self.apps = apps
+    self.clis = clis
     self.projects = projects
     self.builders = builders
     self.targets = targets
