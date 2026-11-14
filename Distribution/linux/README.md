@@ -31,6 +31,11 @@ SDK selector to skip the download.
 to download a Static Linux SDK if required.
 On Ubuntu: `sudo apt install dpkg rpm`.
 
+SwiftPM emits debug information for release builds, which makes the unstripped
+executable very large (roughly 258 MB). Native Linux builds therefore strip the
+staged executable with `strip --strip-all` (resulting in a roughly 86 MB executable);
+`strip` comes from binutils. Cross-compiled builds are not stripped.
+
 ## Cross-compiling on macOS
 
 The same script cross-compiles the Linux artifacts on macOS:

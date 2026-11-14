@@ -396,6 +396,28 @@ def _assert_statically_linked(binary: Path) -> None:
         )
 
 
+def _strip_linux_executable(binary: Path) -> None:
+    """Strip debug information from the staged executable.
+
+    Cross-compiled builds are left untouched.
+    """
+    if cross_compiling():
+        return
+
+    strip = support.require_command(
+        "strip", "Install binutils (for example `apt install binutils`)."
+    )
+    before = binary.stat().st_size
+    support.run([strip, "--strip-all", str(binary)])
+    after = binary.stat().st_size
+    logging.info(
+        "Stripped %s (%.1f MB -> %.1f MB)",
+        binary.name,
+        before / 1_000_000,
+        after / 1_000_000,
+    )
+
+
 def stage_linux_tree(
     binary: Path,
     output_dir: Path,
@@ -421,6 +443,7 @@ def stage_linux_tree(
 
     main_executable = binary_directory / "swift-bundler"
     support.copy_file(binary, main_executable, mode=0o755)
+    _strip_linux_executable(main_executable)
     _assert_statically_linked(main_executable)
 
     # `sbun` is the short alias for `swift-bundler`.
@@ -533,6 +556,10 @@ def print_plan(
             "open-source Swift toolchain"
         )
     logging.info("Would ensure the Static Linux SDK for Swift is installed")
+    if not cross_compiling():
+        logging.info(
+            "Would strip the staged executable (debug information is removed)"
+        )
     support.log_command(
         support.swift_build_arguments(
             configuration,
