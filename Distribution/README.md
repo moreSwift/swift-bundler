@@ -149,14 +149,14 @@ When given an empty environment, the workflow produces an unsigned installer.
 |--------|-------|
 | `MACOS_CERTIFICATES_P12` | base64 of a `.p12` containing both Developer ID identities and their private keys |
 | `MACOS_CERTIFICATES_PASSWORD` | the password of the `.p12` export |
-| `MACOS_ASC_KEY_P8` | base64 of an App Store Connect API key (`.p8`) for notarization |
+| `MACOS_ASC_KEY_P8` | base64 of an App Store Connect API key (`.p8`) for notarization — a **team** key with the **Developer** role |
 
 | Variable | Value |
 |----------|-------|
 | `MACOS_APP_IDENTITY` | `Developer ID Application: Name (TEAMID)` |
 | `MACOS_INSTALLER_IDENTITY` | `Developer ID Installer: Name (TEAMID)` |
 | `MACOS_NOTARY_PROFILE` | any profile name, e.g. `swift-bundler`; setting it enables notarization |
-| `MACOS_ASC_KEY_ID`, `MACOS_ASC_ISSUER_ID` | App Store Connect key ID and issuer ID (leave the issuer empty for individual keys) |
+| `MACOS_ASC_KEY_ID`, `MACOS_ASC_ISSUER_ID` | App Store Connect key ID and issuer ID (team keys require the issuer; individual keys must omit it) |
 
 The workflow imports the certificates into a temporary keychain, stores the
 notarization credentials under `MACOS_NOTARY_PROFILE`, and the build then signs,

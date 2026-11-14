@@ -37,3 +37,12 @@ sudo pkgutil --forget dev.moreswift.swift-bundler
 The zsh completions are installed to
 `/usr/local/share/zsh/site-functions`; add that directory to `fpath` if your
 shell does not already include it.
+
+## Generating signing secrets
+
+There are two methods to generate the `Developer ID Application` and `Developer ID Installer` certificates:
+
+1. Xcode
+2. Via the Apple developer portal (under `Certificates, Identifiers & Profiles`) with certificate signing requests generated using Keychain Access (https://developer.apple.com/help/account/certificates/create-a-certificate-signing-request)
+
+Export to `.p12` from Keychain Access by selecting both certs (**IN THE MY CERTIFICATES TAB**), right clicking them, and selecting export.
