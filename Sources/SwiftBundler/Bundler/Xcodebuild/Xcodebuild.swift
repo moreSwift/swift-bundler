@@ -120,6 +120,8 @@ enum Xcodebuild {
         context.projectDirectory.appendingPathComponent(
           ".build/\(archString)-apple-\(suffix)"
         ).path,
+        "ENABLE_CODE_COVERAGE=NO",
+        "CLANG_COVERAGE_MAPPING=NO",
       ]
       + destinationArguments
       + context.additionalArguments

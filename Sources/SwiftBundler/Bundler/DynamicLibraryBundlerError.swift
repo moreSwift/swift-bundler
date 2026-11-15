@@ -8,7 +8,8 @@ extension DynamicLibraryBundler {
   enum ErrorMessage: Throwable {
     case failedToEnumerateDynamicLibraries(directory: URL)
     case failedToUpdateLibraryInstallName(binary: URL, original: String, new: String)
-    case failedToUpdateAppRPath(binary: URL, original: String, new: String)
+    case failedToUpdateAppRPaths(binary: URL)
+    case failedToEnumerateRPaths(binary: URL)
     case failedToEnumerateDynamicDependencies(binary: URL)
     case failedToSignMovedLibrary
     case failedToLocateDynamicDependency(installName: String)
@@ -23,9 +24,12 @@ extension DynamicLibraryBundler {
             Failed to update dynamic library install name from \
             '\(original)' to '\(new)' in '\(binaryPath)'
             """
-        case .failedToUpdateAppRPath(let binary, let original, let new):
+        case .failedToUpdateAppRPaths(let binary):
           let binaryPath = binary.path(relativeTo: .currentDirectory)
-          return "Failed to update the '\(binaryPath)' rpath from '\(original)' to '\(new)'"
+          return "Failed to update the rpaths of '\(binaryPath)'"
+        case .failedToEnumerateRPaths(let binary):
+          let binaryPath = binary.path(relativeTo: .currentDirectory)
+          return "Failed to enumerate the rpaths of '\(binaryPath)'"
         case .failedToEnumerateDynamicDependencies(let binary):
           let binaryPath = binary.path(relativeTo: .currentDirectory)
           return """

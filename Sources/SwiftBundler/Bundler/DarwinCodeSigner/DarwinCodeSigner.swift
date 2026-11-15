@@ -60,19 +60,9 @@ enum DarwinCodeSigner {
   ) async throws(Error) {
     log.info("Code-signing app bundle")
 
-    let librariesDirectory = bundle.appendingPathComponent("Libraries")
-    if librariesDirectory.exists(withType: .directory) {
-      let contents = try Error.catch(withMessage: .failedToEnumerateDynamicLibraries) {
-        try FileManager.default.contentsOfDirectory(
-          at: librariesDirectory,
-          includingPropertiesForKeys: nil
-        )
-      }
-
-      for file in contents where file.pathExtension == "dylib" {
-        try await sign(file: file, identityId: identityId)
-      }
-    }
+    // Sign nested code first, as --deep only signs the main binary of iOS app bundles
+    let contentsDirectory = platform.os == .macOS ? bundle / "Contents" : bundle
+    try await signNestedCode(in: contentsDirectory, identityId: identityId)
 
     // Generate entitlements file if required by platform and not provided
     let entitlementsFile: URL?
@@ -98,8 +88,46 @@ enum DarwinCodeSigner {
     try await sign(
       file: bundle,
       identityId: identityId,
-      entitlements: entitlementsFile
+      entitlements: entitlementsFile,
+      deep: platform.os == .macOS
     )
+  }
+
+  /// Signs the dynamic libraries and frameworks within a bundle's contents directory.
+  /// - Parameters:
+  ///   - contentsDirectory: The contents directory of the bundle.
+  ///   - identityId: The id of the codesigning identity to use.
+  private static func signNestedCode(
+    in contentsDirectory: URL,
+    identityId: String
+  ) async throws(Error) {
+    let libraries = try contents(of: contentsDirectory / "Libraries")
+    let frameworks = try contents(of: contentsDirectory / "Frameworks")
+
+    for file in libraries + frameworks where file.pathExtension == "dylib" {
+      try await sign(file: file, identityId: identityId, deep: false)
+    }
+
+    for framework in frameworks where framework.pathExtension == "framework" {
+      let currentVersion = framework / "Versions" / "Current"
+      let frameworkContents = currentVersion.exists() ? currentVersion : framework
+      try await signNestedCode(in: frameworkContents, identityId: identityId)
+      try await sign(file: framework, identityId: identityId, deep: false)
+    }
+  }
+
+  /// Lists the contents of a directory, or nothing if it doesn't exist.
+  private static func contents(of directory: URL) throws(Error) -> [URL] {
+    guard directory.exists(withType: .directory) else {
+      return []
+    }
+
+    return try Error.catch(withMessage: .failedToEnumerateDynamicLibraries) {
+      try FileManager.default.contentsOfDirectory(
+        at: directory,
+        includingPropertiesForKeys: nil
+      )
+    }
   }
 
   /// Signs a binary or app bundle.
@@ -107,11 +135,13 @@ enum DarwinCodeSigner {
   ///   - bundle: The binary or app bundle to sign.
   ///   - identityId: The id of the codesigning identity to use.
   ///   - entitlements: The entitlements to give the file (only valid for app bundles).
+  ///   - deep: Whether to recursively sign nested code (only works for macOS app bundles).
   /// - Returns: A failure if the `codesign` command fails.
   static func sign(
     file: URL,
     identityId: String,
-    entitlements: URL? = nil
+    entitlements: URL? = nil,
+    deep: Bool = true
   ) async throws(Error) {
     let entitlementArguments: [String]
     if let entitlements = entitlements {
@@ -123,9 +153,10 @@ enum DarwinCodeSigner {
       entitlementArguments = []
     }
 
+    let deepArguments = deep ? ["--deep"] : []
     let arguments =
-      entitlementArguments + [
-        "--force", "--deep",
+      entitlementArguments + deepArguments + [
+        "--force",
         "--sign", identityId,
         file.path,
       ]
