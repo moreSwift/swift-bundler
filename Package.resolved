@@ -1,5 +1,5 @@
 {
-  "originHash" : "70df11674cb98ebcc6fbb0dd9fab2969c1e9dc1aed0445c4186900774e492f3d",
+  "originHash" : "198541ff6425bfdda8b4f16d6a1da4e22331e52601484d2644967f7c3875816b",
   "pins" : [
     {
       "identity" : "aexml",
@@ -78,8 +78,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/stackotter/libjpegturbo",
       "state" : {
-        "revision" : "40db46ff2b2e32609e1b1390f31836a7d25122c3",
-        "version" : "0.1.1"
+        "revision" : "a718dfb7b0ca18c9e8c36639712e9a56f9b5f0ae",
+        "version" : "0.1.3"
       }
     },
     {
