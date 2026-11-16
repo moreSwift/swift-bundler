@@ -84,6 +84,20 @@ protocol Mergeable {
   static func merge(_ base: Self, _ overlay: Self) -> Self
 }
 
+extension Dictionary: Mergeable where Key == String, Value: Mergeable {
+  static func merge(_ base: Self, _ overlay: Self) -> Self {
+    var merged = base
+    for (key, value) in overlay {
+      if let existing = merged[key] {
+        merged[key] = Value.merge(existing, value)
+      } else {
+        merged[key] = value
+      }
+    }
+    return merged
+  }
+}
+
 enum ConfigurationHelpers {
   static func merge<T: Mergeable>(_ current: inout T?, _ overlay: T?) {
     if let currentValue = current, let overlay {

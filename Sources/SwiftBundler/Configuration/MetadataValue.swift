@@ -94,3 +94,14 @@ enum MetadataValue: Codable, VariableEvaluatable, Hashable, Sendable {
     }
   }
 }
+
+extension MetadataValue: Mergeable {
+  static func merge(_ base: MetadataValue, _ overlay: MetadataValue) -> MetadataValue {
+    switch (base, overlay) {
+      case (.dictionary(let base), .dictionary(let overlay)):
+        return .dictionary([String: MetadataValue].merge(base, overlay))
+      default:
+        return overlay
+    }
+  }
+}
