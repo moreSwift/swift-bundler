@@ -48,6 +48,39 @@ architecture is rejected rather than silently producing a mislabelled package.
 Linux packages are also built natively, but can be cross-compiled on macOS
 (`--arch` defaults to `x86_64` there); see `linux/README.md`.
 
+## Installation metadata
+
+Distribution builds embed the same metadata format that bundled apps get from
+`MetadataInserter`, with an extra `installationMethod` entry describing how the
+copy was installed (`pkg`, `deb`, `rpm`, `msi` or `loose`). Builds that weren't
+produced by these scripts have no metadata and report `custom`:
+
+```sh
+sbun self info
+```
+
+```json
+{
+  "executable" : "/usr/bin/swift-bundler",
+  "installationMethod" : "deb",
+  "metadata" : {
+    "additionalMetadata" : { "installationMethod" : "deb" },
+    "appIdentifier" : "dev.moreswift.swift-bundler",
+    "appVersion" : "3.0.0"
+  },
+  "version" : "3.0.0"
+}
+```
+
+The scripts generate a metadata object for each artifact and link it into the
+executable, exactly like `MetadataInserter` does for bundled apps, so no binary
+is ever shared between formats. Each method gets its own object file, which
+changes the linker invocation and makes SwiftPM re-link without recompiling
+(except on macOS, where changing linker inputs invalidates the prebuilt
+dependency graph, so each artifact is a full build). On macOS the executable is
+signed after linking, and the `.pkg` payload and standalone CLI each get their
+own build.
+
 ## Prerequisites
 
 Common:

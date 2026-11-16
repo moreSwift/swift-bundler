@@ -28,7 +28,10 @@ def add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--skip-build",
         action="store_true",
-        help="Use an existing release build",
+        help=(
+            "Avoid recompiling; each artifact is still re-linked to stamp its "
+            "installation method"
+        ),
     )
     parser.add_argument(
         "--configuration",
@@ -137,13 +140,6 @@ def main() -> int:
             logging.info("Would build loose tarball in %s", output_dir)
         return 0
 
-    binary, _products_directory = staging.build_swift_bundler(
-        version,
-        arch,
-        output_dir,
-        configuration=arguments.configuration,
-        skip_build=arguments.skip_build,
-    )
     completion_binary = None
     if staging.cross_compiling():
         completion_binary = staging.build_host_completion_binary(
@@ -151,22 +147,32 @@ def main() -> int:
             configuration=arguments.configuration,
         )
 
-    stage = staging.stage_linux_tree(
-        binary,
-        output_dir,
-        version,
-        arch,
-        completion_binary=completion_binary,
-    )
+    def stage(installation_method: str) -> staging.Stage:
+        """Build and stage a binary that records how it will be installed."""
+        binary, _ = staging.build_swift_bundler(
+            version,
+            arch,
+            output_dir,
+            configuration=arguments.configuration,
+            skip_build=arguments.skip_build,
+            installation_method=installation_method,
+        )
+        return staging.stage_linux_tree(
+            binary,
+            output_dir,
+            version,
+            arch,
+            completion_binary=completion_binary,
+        )
 
     artifacts = []
     if arguments.target in ("loose", "all"):
-        _, archive = loose.build_loose(stage, output_dir)
+        _, archive = loose.build_loose(stage("loose"), output_dir)
         artifacts.append(archive)
     if arguments.target in ("deb", "all"):
         artifacts.append(
             deb.build_deb(
-                stage,
+                stage("deb"),
                 output_dir,
                 revision=arguments.deb_revision,
             )
@@ -174,7 +180,7 @@ def main() -> int:
     if arguments.target in ("rpm", "all"):
         artifacts.append(
             rpm.build_rpm(
-                stage,
+                stage("rpm"),
                 output_dir,
                 release=arguments.rpm_release,
             )

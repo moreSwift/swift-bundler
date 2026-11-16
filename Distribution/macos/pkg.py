@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from common import support
+from macos import signing
 
 BUNDLE_IDENTIFIER = "dev.moreswift.swift-bundler"
 
@@ -82,6 +83,7 @@ def _create_payload(universal: Path, output_dir: Path, version: str) -> Path:
 
     binary = payload / "usr" / "local" / "bin" / "swift-bundler"
     support.copy_file(universal, binary, mode=0o755)
+    signing.sign_binary(binary)
     os.symlink("swift-bundler", binary.parent / "sbun")
 
     docs = payload / "usr" / "local" / "share" / "doc" / "swift-bundler"

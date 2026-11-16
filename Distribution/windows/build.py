@@ -28,7 +28,10 @@ def add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--skip-build",
         action="store_true",
-        help="Use an existing release build",
+        help=(
+            "Avoid recompiling; each artifact is still re-linked to stamp its "
+            "installation method"
+        ),
     )
     parser.add_argument(
         "--configuration",
@@ -124,19 +127,19 @@ def main() -> int:
             logging.info("Would sign the executable and MSI with signtool")
         return 0
 
-    stage = staging.build_stage(
-        version,
-        arch,
-        output_dir,
-        configuration=arguments.configuration,
-        skip_build=arguments.skip_build,
-    )
-
-    if arguments.sign:
-        msi.sign_file(stage.main_executable)
-
     artifacts = []
     if arguments.target in ("zip", "all"):
+        stage = staging.build_stage(
+            version,
+            arch,
+            output_dir,
+            configuration=arguments.configuration,
+            skip_build=arguments.skip_build,
+            installation_method="loose",
+        )
+        if arguments.sign:
+            msi.sign_file(stage.main_executable)
+
         archive = output_dir / f"swift-bundler-{version}-windows-{arch}.zip"
         support.zip_directory(
             stage.root,
@@ -147,6 +150,17 @@ def main() -> int:
         artifacts.append(archive)
 
     if arguments.target in ("msi", "all"):
+        stage = staging.build_stage(
+            version,
+            arch,
+            output_dir,
+            configuration=arguments.configuration,
+            skip_build=arguments.skip_build,
+            installation_method="msi",
+        )
+        if arguments.sign:
+            msi.sign_file(stage.main_executable)
+
         installer = msi.build_msi(stage, output_dir)
         if arguments.sign:
             msi.sign_file(installer)
