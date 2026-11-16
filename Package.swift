@@ -95,6 +95,7 @@ let package = Package(
       name: "SwiftBundler",
       dependencies: [
         "SwiftBundlerBuilders",
+        "SwiftBundlerRuntime",
         "SwiftBundlerMacrosPlugin",
         "ErrorKit",
         "Rainbow",

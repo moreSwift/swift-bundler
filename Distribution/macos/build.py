@@ -14,9 +14,17 @@ DISTRIBUTION_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(DISTRIBUTION_ROOT))
 
 from common import support  # noqa: E402
-from macos import pkg  # noqa: E402
+from macos import pkg, signing  # noqa: E402
 
 ARCHITECTURES = ("arm64", "x86_64")
+MACOS_DEPLOYMENT_TARGET = "10.15"
+
+
+def metadata_compile_arguments(arch: str) -> list:
+    """Return the swiftc flags needed to compile metadata for `arch`."""
+    sdk = support.command_stdout(["xcrun", "--show-sdk-path"])
+    target = f"{arch}-apple-macosx{MACOS_DEPLOYMENT_TARGET}"
+    return ["-target", target, "-sdk", sdk]
 
 
 def build_architecture(
@@ -25,10 +33,9 @@ def build_architecture(
     configuration: str,
     *,
     skip_build: bool,
+    metadata_object: Path,
 ) -> Path:
     destination = work_directory / f"swift-bundler-{arch}"
-    if skip_build and destination.is_file():
-        return destination
 
     env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
     products_directory = support.swift_build(
@@ -36,8 +43,12 @@ def build_architecture(
         product="swift-bundler",
         arch=arch,
         prebuilts=True,
+        defines=["SWIFT_BUNDLER_METADATA"],
+        linker_inputs=[metadata_object],
         environment=env,
-        skip_build=skip_build,
+        # Stamping an installation method always needs a re-link, so --skip-build
+        # still re-links (but doesn't recompile).
+        skip_build=False,
     )
     binary = products_directory / "swift-bundler"
     support.require_file(binary, f"built {arch} swift-bundler executable")
@@ -46,34 +57,38 @@ def build_architecture(
     return destination
 
 
-def sign_binary(binary: Path) -> None:
-    identity = os.environ.get("SBUN_APP_IDENTITY")
-    arguments = ["codesign", "--force"]
-    if identity:
-        arguments += ["--options", "runtime", "--timestamp"]
-    arguments += ["--sign", identity or "-", str(binary)]
-    support.run(arguments)
-
-
 def build_universal(
     output_dir: Path,
     version: str,
     configuration: str,
     *,
     skip_build: bool,
+    installation_method: str,
 ) -> Path:
     work_directory = support.ensure_directory(output_dir / "work")
+    environment = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
+    metadata_objects = {
+        arch: support.compile_installation_metadata(
+            work_directory / f"metadata-{arch}",
+            installation_method,
+            version,
+            arguments=metadata_compile_arguments(arch),
+            environment=environment,
+        )
+        for arch in ARCHITECTURES
+    }
     binaries = [
         build_architecture(
             arch,
             work_directory,
             configuration,
             skip_build=skip_build,
+            metadata_object=metadata_objects[arch],
         )
         for arch in ARCHITECTURES
     ]
 
-    universal = output_dir / f"swift-bundler-{version}-macos-universal"
+    universal = work_directory / "swift-bundler-universal"
     support.remove_path(universal)
     support.run(
         [
@@ -90,11 +105,6 @@ def build_universal(
     support.run(["file", str(universal)])
     support.run(["otool", "-l", str(universal)], capture=True)
 
-    sign_binary(universal)
-
-    support.write_checksum(universal)
-
-    logging.info("Created universal binary %s", universal)
     return universal
 
 
@@ -114,7 +124,10 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--skip-build",
         action="store_true",
-        help="Reuse existing per-architecture binaries under <output>/macos/work",
+        help=(
+            "Avoid recompiling; each artifact is still re-linked to stamp its "
+            "installation method"
+        ),
     )
     parser.add_argument(
         "--configuration",
@@ -190,15 +203,32 @@ def main() -> int:
         print_plan(version, output_dir, arguments.configuration)
         return 0
 
-    universal = build_universal(
+    cli_universal = build_universal(
         output_dir,
         version,
         arguments.configuration,
         skip_build=arguments.skip_build,
+        installation_method="loose",
     )
-    installer = pkg.build_pkg(universal, output_dir, version)
+
+    cli_binary = output_dir / f"swift-bundler-{version}-macos-universal"
+    support.copy_file(cli_universal, cli_binary, mode=0o755)
+    signing.sign_binary(cli_binary)
+    # The checksum must be taken after signing, because signing rewrites the
+    # executable.
+    support.write_checksum(cli_binary)
+    logging.info("Created universal binary %s", cli_binary)
+
+    pkg_universal = build_universal(
+        output_dir,
+        version,
+        arguments.configuration,
+        skip_build=arguments.skip_build,
+        installation_method="pkg",
+    )
+    installer = pkg.build_pkg(pkg_universal, output_dir, version)
     logging.info("Artifacts:")
-    logging.info("  %s", universal)
+    logging.info("  %s", cli_binary)
     logging.info("  %s", installer)
     return 0
 

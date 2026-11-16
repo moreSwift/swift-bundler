@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import platform
@@ -9,7 +10,7 @@ import re
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 from common import support
 
@@ -296,17 +297,71 @@ def verify_cross_toolchain(selector: str, env: dict) -> None:
         )
 
 
+# The cross-compilation sanity check only needs to run once per SDK.
+_verified_static_sdks: Set[str] = set()
+
+
+def _static_sdk_compile_arguments(selector: str) -> List[str]:
+    """Return the swiftc flags needed to compile against an installed SDK."""
+    marker = f"swift-{swift_version()}-RELEASE_static-linux"
+    roots = [
+        Path.home() / ".swiftpm" / "swift-sdks",
+        Path.home() / "Library" / "org.swift.swiftpm" / "swift-sdks",
+    ]
+
+    for sdk_id in installed_static_sdk_ids():
+        if marker not in sdk_id:
+            continue
+        for root in roots:
+            bundle = root / f"{sdk_id}.artifactbundle"
+            for configuration in bundle.glob("*/swift-linux-musl/swift-sdk.json"):
+                data = json.loads(configuration.read_text(encoding="utf-8"))
+                target = data.get("targetTriples", {}).get(selector)
+                if target is None:
+                    continue
+                base = configuration.parent
+                return [
+                    "-sdk",
+                    str(base / target["sdkRootPath"]),
+                    "-target",
+                    selector,
+                    "-resource-dir",
+                    str(base / target["swiftResourcesPath"]),
+                ]
+
+    raise support.PackagingError(
+        f"Could not locate the installed Static Linux SDK for {selector} in "
+        + " or ".join(str(root) for root in roots)
+    )
+
+
 def build_swift_bundler(
     version: str,
     arch: str,
     output_dir: Path,
     configuration: str = "release",
     skip_build: bool = False,
+    installation_method: Optional[str] = None,
 ) -> Tuple[Path, Path]:
     selector = ensure_static_linux_sdk(output_dir, arch)
     env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
-    if cross_compiling() and not skip_build:
+    if cross_compiling() and selector not in _verified_static_sdks:
         verify_cross_toolchain(selector, env)
+        _verified_static_sdks.add(selector)
+
+    # The metadata object is linked into the executable, so each installation
+    # method needs its own (re-)link.
+    linker_inputs: List[Path] = []
+    if installation_method is not None:
+        linker_inputs.append(
+            support.compile_installation_metadata(
+                output_dir / "metadata",
+                installation_method,
+                version,
+                arguments=_static_sdk_compile_arguments(selector),
+                environment=env,
+            )
+        )
 
     if not skip_build:
         # Ensure checkouts exist before applying the Yams workaround. SwiftPM
@@ -320,8 +375,11 @@ def build_swift_bundler(
         product="swift-bundler",
         swift_sdk=selector,
         prebuilts=False,
+        defines=["SWIFT_BUNDLER_METADATA"],
+        linker_inputs=linker_inputs,
         environment=env,
-        skip_build=skip_build,
+        # Stamping a method requires a re-link even when the build is reused.
+        skip_build=skip_build and not linker_inputs,
     )
     binary = products_directory / "swift-bundler"
     support.require_file(binary, "built swift-bundler executable")

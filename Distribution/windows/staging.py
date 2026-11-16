@@ -70,14 +70,20 @@ class Stage:
 
 
 def build_swift_bundler(
-    configuration: str = "release", skip_build: bool = False
+    configuration: str = "release",
+    skip_build: bool = False,
+    *,
+    linker_inputs: Sequence[Path] = (),
 ) -> Tuple[Path, Path]:
     env = support.build_environment({"SBUN_NO_SCHEMA_GEN": "1"})
     products_directory = support.swift_build(
         configuration,
         product="swift-bundler",
+        defines=["SWIFT_BUNDLER_METADATA"],
+        linker_inputs=linker_inputs,
         environment=env,
-        skip_build=skip_build,
+        # Stamping an installation method always needs a re-link.
+        skip_build=skip_build and not linker_inputs,
     )
     binary = products_directory / "swift-bundler.exe"
     support.require_file(binary, "built swift-bundler executable")
@@ -220,9 +226,25 @@ def build_stage(
     *,
     configuration: str = "release",
     skip_build: bool = False,
+    installation_method: Optional[str] = None,
 ) -> Stage:
+    linker_inputs = []
+    if installation_method is not None:
+        linker_inputs.append(
+            support.compile_installation_metadata(
+                output_dir / "metadata",
+                installation_method,
+                version,
+                environment=support.build_environment(
+                    {"SBUN_NO_SCHEMA_GEN": "1"}
+                ),
+            )
+        )
+
     binary, products_directory = build_swift_bundler(
-        configuration=configuration, skip_build=skip_build
+        configuration=configuration,
+        skip_build=skip_build,
+        linker_inputs=linker_inputs,
     )
     runtime_paths = runtime_library_paths()
 
