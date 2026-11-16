@@ -238,10 +238,14 @@ let package = Package(
           package: "swift-async-algorithms",
           condition: .when(platforms: [.linux])
         ),
+        // This dependency is only used by the Linux implementation, but SwiftPM
+        // 6.4.1 appears to mistakenly remove the Mutex dependency from
+        // SwiftBundler when this dependency of FileSystemWatcher dependency is
+        // inactive, so we have to make this dependency unconditional. See issue
+        // #254.
         .product(
           name: "Mutex",
-          package: "swift-mutex",
-          condition: .when(platforms: [.linux])
+          package: "swift-mutex"
         ),
       ]
     ),
