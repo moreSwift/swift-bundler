@@ -4,7 +4,7 @@ import Version
 /// The configuration for an app made with Swift Bundler v2.
 struct AppConfigurationV2: Codable {
   /// The app's identifier (e.g. `com.example.ExampleApp`). Wasn't mandatory in v2, but can't be automatically migrated unless present.
-  var bundleIdentifier: String
+  var bundleIdentifier: String?
   /// The name of the executable product.
   var product: String
   /// The app's current version.
@@ -35,7 +35,9 @@ struct AppConfigurationV2: Codable {
   }
 
   /// Migrates this configuration to the latest version.
-  func migrate() async -> AppConfiguration {
+  /// - Parameter appName: The name of the app, used to generate a default
+  ///   identifier when the v2 config doesn't specify one.
+  func migrate(appName: String) async -> AppConfiguration {
     var plist: [String: PlistValue]? = extraPlistEntries?.mapValues { value -> PlistValue in
       return .string(value)
     }
@@ -47,9 +49,23 @@ struct AppConfigurationV2: Codable {
       }
     }
 
+    let identifier: String
+    if let bundleIdentifier, !bundleIdentifier.isEmpty {
+      identifier = bundleIdentifier
+    } else {
+      identifier = "com.example.\(appName)"
+      log.warning(
+        """
+        App '\(appName)' has no value for bundle_identifier property; defaulting to \
+        '\(identifier)'. It is recommended to update this identifier to use a domain \
+        that you control (see https://en.wikipedia.org/wiki/Reverse_domain_name_notation).
+        """
+      )
+    }
+
     let parsedVersion = Version.parseOrFallback(version)
     return AppConfiguration(
-      identifier: bundleIdentifier,
+      identifier: identifier,
       product: product,
       version: parsedVersion,
       category: category,
