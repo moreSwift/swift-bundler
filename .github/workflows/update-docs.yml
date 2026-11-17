@@ -20,18 +20,13 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Compile docs
+      # Our custom DocC renderer supports TOML syntax highlighting
+      - name: Check out custom DocC renderer
+        run: git clone https://github.com/stackotter/swift-docc-render-artifact ../swift-docc-render-artifact
+
+      - name: Render docs
         run: |
           set -eux
-
-          # Clone existing gh-pages branch to gh-pages subdirectory
-          git config user.email "stackotter@stackotter.dev"
-          git config user.name "stackotter"
-          git fetch
-          git worktree add --checkout gh-pages origin/gh-pages
-
-          # Clone custom DocC with TOML syntax highlighting support
-          git clone https://github.com/stackotter/swift-docc-render-artifact ../swift-docc-render-artifact
 
           # Render documentation
           export DOCC_JSON_PRETTYPRINT="YES"
@@ -44,39 +39,31 @@ jobs:
             --target swift-bundler \
             --disable-indexing \
             --transform-for-static-hosting \
-            --output-path gh-pages/docs
+            --output-path DocsBuild
 
-          cd gh-pages
-
-          # Inject our site at the index
-          rm docs/index.html
-          rm docs/favicon.ico
-          cp index.html docs
-          cp favicon.ico docs
-          cp CNAME docs
-          cp css/main.css docs/css
-          cp -R image docs
-
-          # Patch target name from swift_bundler to swift-bundler
-          mv docs/documentation/swift_bundler/index.html docs/documentation/swift-bundler
-          mv docs/data/documentation/swift_bundler.json docs/data/documentation/swift-bundler.json
-          # On macOS, replace `-i` with `-i '' -e`
-          LC_ALL=C find docs -type f -exec sed -i 's/swift_bundler/swift-bundler/g' {} \;
-          
-      - name: Update docs (if on main branch)
-        if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Apply modifications
         run: |
           set -eux
 
-          CURRENT_COMMIT_HASH=`git rev-parse --short HEAD`
-          cd gh-pages
+          cd DocsBuild
 
-          # Commit changes back to gh-pages branch if there any
-          git add docs
-          if [ -n "$(git status --porcelain)" ]; then
-              echo "Documentation changes found. Commiting the changes to the 'gh-pages' branch and pushing to origin."
-              git commit -m "Update GitHub Pages documentation site to '$CURRENT_COMMIT_HASH'."
-              git push origin HEAD:gh-pages
-          else
-            echo "No documentation changes found."
-          fi
+          # Inject a / redirect and a favicon
+          cp ../Pages/index.html .
+          cp ../Pages/favicon.ico .
+
+          # Patch target name from swift_bundler to swift-bundler
+          mv documentation/swift_bundler/index.html \
+            documentation/swift-bundler
+          rm -rf documentation/swift_bundler
+
+          mv data/documentation/swift_bundler.json \
+            data/documentation/swift-bundler.json
+
+          # On macOS, replace `-i` with `-i '' -e`
+          LC_ALL=C find . -type f -exec sed -i 's/swift_bundler/swift-bundler/g' {} \;
+          
+      - name: Upload GitHub Pages artifact
+        id: deployment
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: DocsBuild/
