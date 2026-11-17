@@ -86,7 +86,7 @@ enum DynamicLibraryBundler {
     do {
       otoolOutput = try await process.getOutput()
     } catch {
-      throw ErrorMessage.failedToEnumerateRPaths(binary: binary).becauseOf(error)
+      throw Error(.failedToEnumerateRPaths(binary: binary), cause: error)
     }
 
     // Each LC_RPATH command is followed by its size and then its path

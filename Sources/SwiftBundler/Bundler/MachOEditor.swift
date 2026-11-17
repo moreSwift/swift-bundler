@@ -227,6 +227,30 @@ enum MachOEditor {
     }
   }
 
+  /// Checks whether a file starts with the magic bytes of a regular or
+  /// universal Mach-O file. Only reads the first few bytes of the file.
+  static func isMachOFile(_ file: URL) -> Bool {
+    guard let handle = try? FileHandle(forReadingFrom: file) else {
+      return false
+    }
+    defer { try? handle.close() }
+
+    let magicByteCount = MemoryLayout<UInt32>.stride
+    guard let magicBytes = try? handle.read(upToCount: magicByteCount) else {
+      return false
+    }
+
+    var buffer = Buffer(bytes: Array(magicBytes))
+    let magicNumbers = [
+      MachOFile.Regular.magicNumber32BitBigEndian,
+      MachOFile.Regular.magicNumber64BitBigEndian,
+      MachOFile.Regular.magicNumber32BitLittleEndian,
+      MachOFile.Regular.magicNumber64BitLittleEndian,
+      MachOFile.Universal.magicNumber,
+    ]
+    return buffer.readUInt32().map(magicNumbers.contains) ?? false
+  }
+
   static func parseMachOFile(_ bytes: [UInt8]) throws(Error) -> MachOFile {
     var buffer = Buffer(bytes: bytes)
 

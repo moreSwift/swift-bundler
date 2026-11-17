@@ -275,6 +275,14 @@ enum SwiftPackageManager {
     #endif
   }
 
+  /// Reserves enough Mach-O header space for every install
+  /// name to be extended to MAX_PATH_LEN. This has the effect
+  /// of generally reserving enough space for us to add a few
+  /// more rpaths and rewrite existing install names.
+  private static let headerPaddingArguments = [
+    "-Xlinker", "-headerpad_max_install_names",
+  ]
+
   /// Creates the arguments for the Swift build command.
   /// - Parameters:
   ///   - product: The product to build.
@@ -342,6 +350,7 @@ enum SwiftPackageManager {
             "--target=\(targetTriple)",
             "-isysroot", sdkPath,
           ].flatMap { ["-Xcc", $0] }
+          + headerPaddingArguments
 
         if platform == .macCatalyst {
           platformArguments += [
@@ -380,6 +389,9 @@ enum SwiftPackageManager {
         platformArguments = buildContext.genericContext.configuration == .debug
           ? ["-Xswiftc", "-g"]
           : []
+        if platform == .macOS {
+          platformArguments += headerPaddingArguments
+        }
     }
 
     let architectureArguments: [String]
