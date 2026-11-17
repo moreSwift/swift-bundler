@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  update-docs:
+  assemble-docs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -67,3 +67,19 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: DocsBuild/
+
+  deploy-docs:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write # to deploy to Pages
+      id-token: write # to verify the deployment originates from an appropriate source
+    needs: assemble-docs
+
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
