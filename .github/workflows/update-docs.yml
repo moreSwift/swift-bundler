@@ -47,8 +47,9 @@ jobs:
 
           cd DocsBuild
 
-          # Inject a / redirect and a favicon
+          # Inject redirects to /documentation/swift-bundler, and a favicon
           cp ../Pages/index.html .
+          cp ../Pages/index.html documentation
           cp ../Pages/favicon.ico .
 
           # Patch target name from swift_bundler to swift-bundler
