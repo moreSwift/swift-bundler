@@ -329,22 +329,29 @@ enum GenericLinuxBundler: Bundler {
     }
   }
 
-  /// Copies the app's icon into the bundle if an icon was provided. Doesn't
-  /// perform any resizing for now, but may in the future.
+  /// Copies the app's icon into the bundle if an icon was provided. If no icon
+  /// was provided, writes a default icon. Doesn't perform any resizing for now,
+  /// but may in the future.
   private static func copyAppIconIfPresent(
     _ context: BundlerContext,
     _ structure: BundleStructure
   ) throws(Error) {
-    guard let path = context.appConfiguration.icon else {
-      return
-    }
-
-    let source = context.packageDirectory.appendingPathComponent(path)
     let destination = structure.icon1024x1024
-    do {
-      try FileManager.default.copyItem(at: source, to: destination)
-    } catch {
-      throw Error(.failedToCopyIcon(source: source, destination: destination), cause: error)
+
+    if let path = context.appConfiguration.icon {
+      let source = context.packageDirectory.appendingPathComponent(path)
+      do {
+        try FileManager.default.copyItem(at: source, to: destination)
+      } catch {
+        throw Error(.failedToCopyIcon(source: source, destination: destination), cause: error)
+      }
+    } else {
+      let iconData = Data(PackageResources.DefaultLinuxIcon_png)
+      do {
+        try iconData.write(to: destination)
+      } catch {
+        throw Error(.failedToCreateDefaultIcon(destination), cause: error)
+      }
     }
   }
 
