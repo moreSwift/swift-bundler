@@ -1077,7 +1077,7 @@ enum APKBundler: Bundler {
     appNameStringKey: String,
     mainActivityIdentifier: String,
     projectStructure: ProjectStructure,
-    permissions: [AndroidConfiguration.Permission.Flat]
+    permissions: [AppConfiguration.Android.Permission.Flat]
   ) throws(Error) -> Data {
     let iconName = projectStructure.icon.deletingPathExtension().lastPathComponent
     let manifest = AndroidManifest(
