@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
-# Installs Swift Bundler from the artifacts attached to a GitHub release.
+# Installs Swift Bundler from the artifacts attached to the latest GitHub release.
 #
-#   curl -fsSL https://raw.githubusercontent.com/moreSwift/swift-bundler/main/install.sh | bash
-#
-# macOS installs the universal .pkg, Linux installs the .deb or .rpm. Pass
-# --prefix to install without root: macOS uses the standalone universal binary
-# and Linux uses the loose tarball.
+# On macOS we install the .pkg. On Linux we install the .deb or .rpm. Pass
+# --prefix to install without root in a directory of your choosing. Rootless
+# installs use the .tar.gz on Linux and the standalone binary on macOS.
 set -eu
 
 REPOSITORY="${SWIFT_BUNDLER_REPOSITORY:-moreSwift/swift-bundler}"
@@ -106,8 +104,10 @@ http_get() {
 http_get_stdout() {
   if command -v curl >/dev/null 2>&1; then
     curl -fsSL --retry 3 "$1"
-  else
+  elif command -v wget >/dev/null 2>&1; then
     wget -q -O - "$1"
+  else
+    fail "curl or wget is required"
   fi
 }
 

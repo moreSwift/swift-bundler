@@ -9,7 +9,6 @@ import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import List, Optional
 
 from common import support
 from windows.staging import Stage
@@ -17,7 +16,6 @@ from windows.staging import Stage
 WIX_VERSION = "6.0.0"
 WIX_DOWNLOAD_URL = "https://www.nuget.org/api/v2/package/wix/6.0.0"
 UI_EXTENSION = f"WixToolset.UI.wixext/{WIX_VERSION}"
-DEFAULT_TIMESTAMP_URL = "http://timestamp.digicert.com"
 
 
 def _find_wix_in_extracted_package(root: Path) -> Path:
@@ -86,43 +84,6 @@ def ensure_ui_extension(wix: Path, windows_directory: Path) -> None:
             f"Failed to install WiX extension {UI_EXTENSION}:\n"
             f"{(result.stdout or '') + (result.stderr or '')}"
         )
-
-
-def sign_file(path: Path) -> None:
-    certificate = os.environ.get("SBUN_WINDOWS_CERT_PATH")
-    password = os.environ.get("SBUN_WINDOWS_CERT_PASSWORD")
-    if not certificate or not password:
-        raise support.PackagingError(
-            "Signing was requested but SBUN_WINDOWS_CERT_PATH and "
-            "SBUN_WINDOWS_CERT_PASSWORD are not both set."
-        )
-
-    signtool = shutil.which("signtool")
-    if signtool is None:
-        raise support.PackagingError(
-            "Required command not found: signtool. Install the Windows SDK."
-        )
-
-    timestamp = os.environ.get(
-        "SBUN_WINDOWS_TIMESTAMP_URL", DEFAULT_TIMESTAMP_URL
-    )
-    support.run(
-        [
-            signtool,
-            "sign",
-            "/fd",
-            "SHA256",
-            "/f",
-            certificate,
-            "/p",
-            password,
-            "/tr",
-            timestamp,
-            "/td",
-            "SHA256",
-            str(path),
-        ]
-    )
 
 
 def _verify_msi(msi: Path, output_dir: Path) -> None:

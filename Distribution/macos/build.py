@@ -46,8 +46,6 @@ def build_architecture(
         defines=["SWIFT_BUNDLER_METADATA"],
         linker_inputs=[metadata_object],
         environment=env,
-        # Stamping an installation method always needs a re-link, so --skip-build
-        # still re-links (but doesn't recompile).
         skip_build=False,
     )
     binary = products_directory / "swift-bundler"
