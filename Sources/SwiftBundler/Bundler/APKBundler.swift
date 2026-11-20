@@ -1,4 +1,5 @@
 import Foundation
+import ImageFormats
 import Version
 import Parsing
 
@@ -66,6 +67,44 @@ enum APKBundler: Bundler {
       appConfiguration: context.appConfiguration,
       effectiveConfigVersion: context.configuration.effectiveVersion
     )
+  }
+
+  /// The Gradle assemble task for `configuration` and the APK that task writes
+  /// under `projectRoot`.
+  ///
+  /// Release builds produced by the generated project are unsigned.
+  /// `build.gradle.kts` does not configure signing, so Android Gradle Plugin
+  /// writes `<appName>-release-unsigned.apk`. Debug builds are signed with the
+  /// debug keystore and written as `<appName>-debug.apk`. `appName` is copied
+  /// into the file name verbatim; it is not inspected for a build variant.
+  static func gradleTaskAndAPK(
+    for configuration: BuildConfiguration,
+    appName: String,
+    projectRoot: URL
+  ) -> (task: String, apk: URL) {
+    switch configuration {
+      case .debug:
+        return (
+          task: "assembleDebug",
+          apk: projectRoot / "build/outputs/apk/debug/\(appName)-debug.apk"
+        )
+      case .release:
+        return (
+          task: "assembleRelease",
+          apk: projectRoot / "build/outputs/apk/release/\(appName)-release-unsigned.apk"
+        )
+    }
+  }
+
+  /// Converts icon image data to PNG for use as `res/mipmap/icon.png`. AAPT
+  /// rejects non-PNG data in a `.png` resource for release builds. PNG input
+  /// is returned unchanged.
+  static func pngIconData(from data: Data) throws -> Data {
+    let bytes = Array(data)
+    if Image<RGBA>.detectFormat(of: bytes) == .png {
+      return data
+    }
+    return Data(try Image<RGBA>.load(from: bytes).encodeToPNG())
   }
 
   static func bundle(
@@ -268,13 +307,14 @@ enum APKBundler: Bundler {
     if let iconPath = context.appConfiguration.icon {
       let icon = context.packageDirectory / iconPath
       do {
-        try FileManager.default.copyItem(at: icon, to: project.icon)
+        let iconData = try pngIconData(from: Data(contentsOf: icon))
+        try iconData.write(to: project.icon)
       } catch {
         throw Error(.failedToCopyIcon(source: icon, destination: project.icon), cause: error)
       }
     } else {
-      let iconData = Data(PackageResources.DefaultAndroidIcon_webp)
       try Error.catch(withMessage: .failedToCreateDefaultIcon(project.icon)) {
+        let iconData = try pngIconData(from: Data(PackageResources.DefaultAndroidIcon_webp))
         try iconData.write(to: project.icon)
       }
     }
@@ -375,9 +415,14 @@ enum APKBundler: Bundler {
       targetPlatform: context.platform
     )
 
-    // Run Gradle build
-    let task = "assembleDebug"
-    var gradleArguments = [task]
+    // Run Gradle build. Task and source APK come from the same configuration so
+    // a release build cannot copy a debug artifact (or the reverse).
+    let gradlePackaging = gradleTaskAndAPK(
+      for: context.buildConfiguration,
+      appName: context.appName,
+      projectRoot: project.root
+    )
+    var gradleArguments = [gradlePackaging.task]
     if log.logLevel <= .debug {
       gradleArguments.append("--debug")
     }
@@ -390,7 +435,7 @@ enum APKBundler: Bundler {
     let inputPipe = Pipe()
     process.standardInput = inputPipe
 
-    log.info("Running gradle \(task) task")
+    log.info("Running gradle \(gradlePackaging.task) task")
     try await Error.catch {
       // If we don't close the writing end of stdin, then gradlew hangs for reasons
       // unknown to me. It seems related to gradle having interactive output, but
@@ -402,10 +447,9 @@ enum APKBundler: Bundler {
       try await process.runAndWait()
     }
 
-    // Copy APK to output location
-    let apk = project.root / "build/outputs/apk/debug/\(context.appName)-debug.apk"
-    try Error.catch(withMessage: .failedToCopyAPK(apk, outputAPK)) {
-      try FileManager.default.copyItem(at: apk, to: outputAPK)
+    // Copy APK to output location. A missing file reports this source and destination.
+    try Error.catch(withMessage: .failedToCopyAPK(gradlePackaging.apk, outputAPK)) {
+      try FileManager.default.copyItem(at: gradlePackaging.apk, to: outputAPK)
     }
 
     return BundlerOutputStructure(
