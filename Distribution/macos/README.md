@@ -38,7 +38,7 @@ The zsh completions are installed to
 `/usr/local/share/zsh/site-functions`; add that directory to `fpath` if your
 shell does not already include it.
 
-## Generating signing secrets
+## Generating signing secrets for CI
 
 There are two methods to generate the `Developer ID Application` and `Developer ID Installer` certificates:
 
@@ -46,3 +46,7 @@ There are two methods to generate the `Developer ID Application` and `Developer 
 2. Via the Apple developer portal (under `Certificates, Identifiers & Profiles`) with certificate signing requests generated using Keychain Access (https://developer.apple.com/help/account/certificates/create-a-certificate-signing-request)
 
 Export to `.p12` from Keychain Access by selecting both certs (**IN THE MY CERTIFICATES TAB**), right clicking them, and selecting export.
+
+Create the required p8 by creating a new App Store Connect API key in the ASC portal. Remember to note down the key ID and issuer ID.
+
+See `Distribution/README.md`'s "Signing > In GitHub Actions" section for information on how to use these signing secrets to set up the distribution workflow for macOS signing and notarization.

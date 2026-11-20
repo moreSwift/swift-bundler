@@ -9,7 +9,10 @@ from common import support
 
 
 def sign_binary(binary: Path) -> None:
-    """Sign a Mach-O executable, ad-hoc when no identity is configured."""
+    """Sign a Mach-O executable. Uses ad-hoc signing when no identity is
+    configured in the SBUN_APP_IDENTITY environment variable.
+    """
+
     identity = os.environ.get("SBUN_APP_IDENTITY")
     arguments = ["codesign", "--force"]
     if identity:

@@ -378,7 +378,6 @@ def build_swift_bundler(
         defines=["SWIFT_BUNDLER_METADATA"],
         linker_inputs=linker_inputs,
         environment=env,
-        # Stamping a method requires a re-link even when the build is reused.
         skip_build=skip_build and not linker_inputs,
     )
     binary = products_directory / "swift-bundler"

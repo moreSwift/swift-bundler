@@ -7,6 +7,8 @@ import argparse
 import logging
 import platform
 import sys
+import os
+import shutil
 from pathlib import Path
 
 DISTRIBUTION_ROOT = Path(__file__).resolve().parent.parent
@@ -14,6 +16,44 @@ sys.path.insert(0, str(DISTRIBUTION_ROOT))
 
 from common import support  # noqa: E402
 from windows import msi, staging  # noqa: E402
+
+
+DEFAULT_TIMESTAMP_URL = "http://timestamp.digicert.com"
+
+
+def sign_file(path: Path) -> None:
+    certificate = os.environ.get("SBUN_WINDOWS_CERT_PATH")
+    password = os.environ.get("SBUN_WINDOWS_CERT_PASSWORD")
+    if not certificate or not password:
+        raise support.PackagingError(
+            "Signing was requested but SBUN_WINDOWS_CERT_PATH and "
+            "SBUN_WINDOWS_CERT_PASSWORD are not both set."
+        )
+
+    signtool = shutil.which("signtool")
+    if signtool is None:
+        raise support.PackagingError(
+            "Required command not found: signtool. Install the Windows SDK."
+        )
+
+    timestamp = os.environ.get("SBUN_WINDOWS_TIMESTAMP_URL", DEFAULT_TIMESTAMP_URL)
+    support.run(
+        [
+            signtool,
+            "sign",
+            "/fd",
+            "SHA256",
+            "/f",
+            certificate,
+            "/p",
+            password,
+            "/tr",
+            timestamp,
+            "/td",
+            "SHA256",
+            str(path),
+        ]
+    )
 
 
 def add_common_options(parser: argparse.ArgumentParser) -> None:
@@ -138,7 +178,7 @@ def main() -> int:
             installation_method="loose",
         )
         if arguments.sign:
-            msi.sign_file(stage.main_executable)
+            sign_file(stage.main_executable)
 
         archive = output_dir / f"swift-bundler-{version}-windows-{arch}.zip"
         support.zip_directory(
@@ -159,11 +199,11 @@ def main() -> int:
             installation_method="msi",
         )
         if arguments.sign:
-            msi.sign_file(stage.main_executable)
+            sign_file(stage.main_executable)
 
         installer = msi.build_msi(stage, output_dir)
         if arguments.sign:
-            msi.sign_file(installer)
+            sign_file(installer)
         artifacts.append(installer)
 
     if artifacts:
