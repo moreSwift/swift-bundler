@@ -71,19 +71,254 @@ def swift_version() -> str:
     return match.group(1)
 
 
-def installed_static_sdk_ids() -> List[str]:
+def swift_sdk_list_lines() -> List[str]:
+    """Return the lines `swift sdk list` writes to stdout.
+
+    SwiftPM lists one id per line, but it also writes warnings and the
+    "No Swift SDKs are currently installed." notice to stdout, and writes
+    nothing to stderr. Every non-empty line is kept as-is so nothing SwiftPM
+    reports is silently dropped.
+    """
     result = support.run(
         ["swift", "sdk", "list"],
         capture=True,
         check=False,
         env=support.toolchain_environment(),
     )
-    output = ((result.stdout or "") + (result.stderr or "")).strip()
     return [
         line.strip()
-        for line in output.splitlines()
-        if "static-linux" in line and line.strip()
+        for line in (result.stdout or "").splitlines()
+        if line.strip()
     ]
+
+
+def swift_sdks_root_candidates() -> List[Path]:
+    """Return the directories SwiftPM may store Swift SDKs in.
+
+    SwiftPM uses ``$XDG_CONFIG_HOME/swiftpm/swift-sdks`` when ``XDG_CONFIG_HOME``
+    is set (GitHub's runners set it), and otherwise
+    ``<library directory>/org.swift.swiftpm/swift-sdks`` when Foundation reports
+    a library directory, falling back to ``~/.swiftpm/swift-sdks``. Foundation's
+    answer differs between platforms and builds, and the locations may be
+    connected by symlinks, so every plausible location is considered.
+    """
+    home = Path.home()
+    candidates: List[Path] = []
+
+    config_home = os.environ.get("XDG_CONFIG_HOME", "").strip()
+    if config_home:
+        config_path = Path(config_home).expanduser()
+        candidates += [
+            config_path / "swiftpm" / "swift-sdks",
+            config_path / "org.swift.swiftpm" / "swift-sdks",
+        ]
+
+    candidates += [
+        home / ".swiftpm" / "swift-sdks",
+        home / ".config" / "swiftpm" / "swift-sdks",
+        home / "Library" / "org.swift.swiftpm" / "swift-sdks",
+    ]
+
+    data_home = os.environ.get("XDG_DATA_HOME", "").strip()
+    if data_home:
+        data_path = Path(data_home).expanduser()
+        candidates += [
+            data_path / "org.swift.swiftpm" / "swift-sdks",
+            data_path / "swiftpm" / "swift-sdks",
+        ]
+
+    candidates += [
+        home / ".local" / "share" / "org.swift.swiftpm" / "swift-sdks",
+        home / ".local" / "share" / "swiftpm" / "swift-sdks",
+    ]
+
+    unique: List[Path] = []
+    seen: Set[str] = set()
+    for candidate in candidates:
+        key = os.path.normpath(str(candidate))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(candidate)
+    return unique
+
+
+@dataclass
+class StaticSDKSearch:
+    """What a search for an installed Static Linux SDK found and looked at.
+
+    The directories that were inspected are recorded so that a failure can be
+    reported without searching the file system again.
+    """
+
+    selector: str
+    # Lines printed by `swift sdk list` (ids, warnings, or its empty notice).
+    reported: List[str]
+    # Each searched directory and the `.artifactbundle` names it contains
+    # (`None` when the directory doesn't exist).
+    directories: List[Tuple[Path, Optional[List[str]]]]
+    bundles: List[Path]
+    arguments: Optional[List[str]] = None
+
+    def error_message(self) -> str:
+        """Describe why no usable SDK was found."""
+        messages = ", ".join(self.reported) if self.reported else "nothing"
+        lines = [
+            f"Could not locate the installed Static Linux SDK for {self.selector}.",
+            f"`swift sdk list` reported: {messages}",
+            "Searched these Swift SDK directories:",
+        ]
+        for directory, bundles in self.directories:
+            if bundles is None:
+                detail = "directory does not exist"
+            elif bundles:
+                detail = ", ".join(bundles)
+            else:
+                detail = "no .artifactbundle bundles"
+            lines.append(f"  {directory}: {detail}")
+
+        if self.bundles:
+            names = ", ".join(bundle.name for bundle in self.bundles)
+            lines.append(
+                f"None of the bundles for this Swift version ({names}) "
+                f"provides {self.selector}."
+            )
+
+        lines.append(
+            "Reinstall the SDK with `swift sdk install` if its bundle is "
+            "missing or incomplete."
+        )
+        return "\n".join(lines)
+
+
+def _bundle_artifact_ids(bundle: Path) -> List[str]:
+    """Return the artifact ids declared by an `.artifactbundle`'s info.json."""
+    try:
+        document = json.loads((bundle / "info.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    artifacts = document.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return []
+    return [str(artifact_id) for artifact_id in artifacts]
+
+
+def _is_static_sdk_bundle(bundle: Path, marker: str) -> bool:
+    """Return whether a bundle holds the SDK for the given Swift version."""
+    if marker in bundle.name:
+        return True
+    return any(marker in artifact_id for artifact_id in _bundle_artifact_ids(bundle))
+
+
+def _bundles_in(directory: Path) -> List[str]:
+    """Return the names of the `.artifactbundle` directories in ``directory``."""
+    try:
+        candidates = sorted(directory.glob("*.artifactbundle"))
+    except OSError:
+        return []
+
+    names: List[str] = []
+    for candidate in candidates:
+        try:
+            if candidate.is_dir():
+                names.append(candidate.name)
+        except OSError:
+            continue
+    return names
+
+
+def _bundle_configurations(bundle: Path) -> List[Path]:
+    """Return the `swift-sdk.json` files declared by an `.artifactbundle`."""
+    try:
+        document = json.loads((bundle / "info.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        document = {}
+
+    configurations: List[Path] = []
+    artifacts = document.get("artifacts")
+    if isinstance(artifacts, dict):
+        for artifact in artifacts.values():
+            if not isinstance(artifact, dict):
+                continue
+            for variant in artifact.get("variants") or []:
+                if not isinstance(variant, dict):
+                    continue
+                path = variant.get("path")
+                if not isinstance(path, str) or not path:
+                    continue
+                configuration = bundle / path
+                if configuration.suffix != ".json":
+                    configuration = configuration / "swift-sdk.json"
+                configurations.append(configuration)
+
+    if configurations:
+        return configurations
+
+    # Fall back to the layout Swift SDK bundles have historically used.
+    return sorted(bundle.glob("*/swift-linux-musl/swift-sdk.json")) + sorted(
+        bundle.glob("*/swift-sdk.json")
+    )
+
+
+def _bundle_compile_arguments(bundle: Path, selector: str) -> Optional[List[str]]:
+    """Return the swiftc flags for an SDK bundle, if it supports ``selector``."""
+    for configuration in _bundle_configurations(bundle):
+        try:
+            document = json.loads(configuration.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        target = document.get("targetTriples", {}).get(selector)
+        if target is None:
+            continue
+        try:
+            sdk_root = target["sdkRootPath"]
+            swift_resources = target["swiftResourcesPath"]
+        except KeyError:
+            continue
+        base = configuration.parent
+        return [
+            "-sdk",
+            str(base / sdk_root),
+            "-target",
+            selector,
+            "-resource-dir",
+            str(base / swift_resources),
+        ]
+    return None
+
+
+def search_static_sdk(selector: str, marker: str) -> StaticSDKSearch:
+    """Look for an installed bundle that provides ``selector``.
+
+    Only the directories SwiftPM is known to use are inspected. The returned
+    record describes what was searched so callers can report a useful error
+    without inspecting the file system again.
+    """
+    search = StaticSDKSearch(
+        selector=selector,
+        reported=swift_sdk_list_lines(),
+        directories=[],
+        bundles=[],
+    )
+
+    for root in swift_sdks_root_candidates():
+        if not root.is_dir():
+            search.directories.append((root, None))
+            continue
+
+        names = _bundles_in(root)
+        search.directories.append((root, names))
+        for name in names:
+            bundle = root / name
+            if not _is_static_sdk_bundle(bundle, marker):
+                continue
+            search.bundles.append(bundle)
+            arguments = _bundle_compile_arguments(bundle, selector)
+            if arguments is not None:
+                search.arguments = arguments
+                return search
+
+    return search
 
 
 def ensure_static_linux_sdk(output_dir: Path, arch: str) -> str:
@@ -96,9 +331,18 @@ def ensure_static_linux_sdk(output_dir: Path, arch: str) -> str:
     selector = static_sdk_selector(arch)
     version = swift_version()
     marker = f"swift-{version}-RELEASE_static-linux"
-    if any(marker in sdk_id for sdk_id in installed_static_sdk_ids()):
+
+    search = search_static_sdk(selector, marker)
+    if search.arguments is not None:
         logging.info("Using installed Static Linux SDK for Swift %s", version)
         return selector
+
+    if any(marker in line for line in search.reported):
+        # SwiftPM knows about the SDK but we couldn't find it on disk. We have
+        # to find it on disk in order to be able to reliably select it when
+        # multiple Static Linux SDKs are installed. Reinstalling wouldn't help,
+        # so report what was searched.
+        raise support.PackagingError(search.error_message())
 
     cache_directory = support.ensure_directory(output_dir / "sdk")
     artifact: Optional[Path] = None
@@ -136,11 +380,9 @@ def ensure_static_linux_sdk(output_dir: Path, arch: str) -> str:
         env=support.toolchain_environment(),
     )
 
-    if not any(marker in sdk_id for sdk_id in installed_static_sdk_ids()):
-        raise support.PackagingError(
-            f"Static Linux SDK for Swift {version} was installed but is not "
-            "visible to `swift sdk list`."
-        )
+    search = search_static_sdk(selector, marker)
+    if search.arguments is None:
+        raise support.PackagingError(search.error_message())
     return selector
 
 
@@ -304,35 +546,10 @@ _verified_static_sdks: Set[str] = set()
 def _static_sdk_compile_arguments(selector: str) -> List[str]:
     """Return the swiftc flags needed to compile against an installed SDK."""
     marker = f"swift-{swift_version()}-RELEASE_static-linux"
-    roots = [
-        Path.home() / ".swiftpm" / "swift-sdks",
-        Path.home() / "Library" / "org.swift.swiftpm" / "swift-sdks",
-    ]
-
-    for sdk_id in installed_static_sdk_ids():
-        if marker not in sdk_id:
-            continue
-        for root in roots:
-            bundle = root / f"{sdk_id}.artifactbundle"
-            for configuration in bundle.glob("*/swift-linux-musl/swift-sdk.json"):
-                data = json.loads(configuration.read_text(encoding="utf-8"))
-                target = data.get("targetTriples", {}).get(selector)
-                if target is None:
-                    continue
-                base = configuration.parent
-                return [
-                    "-sdk",
-                    str(base / target["sdkRootPath"]),
-                    "-target",
-                    selector,
-                    "-resource-dir",
-                    str(base / target["swiftResourcesPath"]),
-                ]
-
-    raise support.PackagingError(
-        f"Could not locate the installed Static Linux SDK for {selector} in "
-        + " or ".join(str(root) for root in roots)
-    )
+    search = search_static_sdk(selector, marker)
+    if search.arguments is not None:
+        return search.arguments
+    raise support.PackagingError(search.error_message())
 
 
 def build_swift_bundler(
