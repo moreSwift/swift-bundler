@@ -254,7 +254,7 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
     if mode == .writeChanges(backup: true) {
       let backupFile = location.appendingPathExtension("orig")
       try Error.catch(withMessage: .failedToCreateConfigurationBackup) {
-        try contents.write(to: location)
+        try contents.write(to: backupFile)
       }
 
       log.info(

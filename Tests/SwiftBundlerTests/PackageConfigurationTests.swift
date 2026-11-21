@@ -143,6 +143,40 @@ struct PackageConfigurationTests {
     #expect(configuration.overlays?.first?.newLinuxValue == true)
   }
 
+  @Test func testV2ConfigurationMigrationCreatesBackup() async throws {
+    let directory = FileManager.default.temporaryDirectory / UUID().uuidString
+    try FileManager.default.createDirectory(at: directory)
+    defer {
+      try? FileManager.default.removeItem(at: directory)
+    }
+
+    let original = """
+      [apps.HelloWorld]
+      product = "HelloWorld"
+      version = "1.0.0"
+      bundle_identifier = "com.example.HelloWorld"
+      """
+
+    let configurationFile = directory / "Bundler.toml"
+    try original.write(to: configurationFile, atomically: true, encoding: .utf8)
+
+    _ = try await PackageConfiguration.load(
+      fromDirectory: directory,
+      migrateConfiguration: true
+    )
+
+    let backupFile = directory / "Bundler.toml.orig"
+    let backupExists = FileManager.default.fileExists(atPath: backupFile.path)
+
+    try #require(
+      backupExists,
+      "Migration should create a backup of the original config"
+    )
+
+    let backupContents = try String(contentsOf: backupFile)
+    #expect(backupContents == original)
+  }
+
   /// Ensure that we can correctly load a Swift Bundler 1.x configuration file.
   @Test func testSwiftBundlerV1ConfigurationLoading() async throws {
     try await withFixture("Configuration/V1") { fixture in
