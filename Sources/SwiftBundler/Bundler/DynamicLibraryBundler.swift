@@ -31,34 +31,76 @@ enum DynamicLibraryBundler {
   ) async throws(Error) {
     log.info("Copying dynamic libraries")
 
-    // Update the app's rpath
-    if universal || isXcodeBuild {
-      let original = "@executable_path/../lib"
-      let new = "@executable_path"
-      let process = Process.create(
-        "/usr/bin/install_name_tool",
-        arguments: ["-rpath", original, new, appExecutable.path]
-      )
-
-      do {
-        try await process.runAndWait()
-      } catch {
-        let message = ErrorMessage.failedToUpdateAppRPath(
-          binary: appExecutable,
-          original: original,
-          new: new
-        )
-        throw Error(message, cause: error)
-      }
-    }
-
-    return try await copyDynamicDependencies(
+    try await copyDynamicDependencies(
       dependedOnBy: appExecutable,
       toLibraryDirectory: libraryDirectory,
       orFrameworkDirectory: frameworkDirectory,
       productsDirectory: productsDirectory,
       includeSystemWideDependencies: makeStandAlone
     )
+
+    // Update the app's rpaths
+    var arguments: [String] = []
+    if universal || isXcodeBuild {
+      arguments += ["-delete_rpath", "@executable_path/../lib"]
+    }
+
+    let existingRPaths = try await rpaths(of: appExecutable)
+    let executableDirectory = appExecutable.deletingLastPathComponent()
+    for directory in [frameworkDirectory, libraryDirectory] {
+      let contents = try? FileManager.default.contentsOfDirectory(atPath: directory.path)
+      guard contents?.isEmpty == false else {
+        continue
+      }
+
+      let relativePath = directory.path(relativeTo: executableDirectory)
+        .split(separator: "/")
+        .filter { $0 != "." }
+        .joined(separator: "/")
+      let rpath = "@executable_path/\(relativePath)"
+      if !existingRPaths.contains(rpath) {
+        arguments += ["-add_rpath", rpath]
+      }
+    }
+
+    guard !arguments.isEmpty else {
+      return
+    }
+
+    let process = Process.create(
+      "/usr/bin/install_name_tool",
+      arguments: arguments + [appExecutable.path]
+    )
+
+    do {
+      try await process.runAndWait()
+    } catch {
+      throw Error(.failedToUpdateAppRPaths(binary: appExecutable), cause: error)
+    }
+  }
+
+  /// Gets the rpaths of a binary.
+  private static func rpaths(of binary: URL) async throws(Error) -> [String] {
+    let otoolOutput: String
+    let process = Process.create("/usr/bin/otool", arguments: ["-l", binary.path])
+    do {
+      otoolOutput = try await process.getOutput()
+    } catch {
+      throw Error(.failedToEnumerateRPaths(binary: binary), cause: error)
+    }
+
+    // Each LC_RPATH command is followed by its size and then its path
+    let lines = otoolOutput.split(separator: "\n").map { line in
+      line.trimmingCharacters(in: .whitespaces)
+    }
+    return lines.indices.compactMap { index in
+      guard lines[index] == "cmd LC_RPATH", index + 2 < lines.count else {
+        return nil
+      }
+      return lines[index + 2].dropFirst("path ".count)
+        .components(separatedBy: " (offset")
+        .first
+    }
   }
 
   /// Copies all dynamic libraries depended on by `binary`, an executable or
@@ -266,19 +308,17 @@ enum DynamicLibraryBundler {
       outputDependency = outputDependency.appendingPathExtension("dylib")
     }
 
-    // Update the install name of the dylib
-    let outputDylib = isFramework
-      ? outputDependency.appendingPathComponent(dylibLocation.path(relativeTo: framework))
-      : outputDependency
-    let newRelativePath = outputDylib.path(
-      relativeTo: binary.deletingLastPathComponent()
-    )
-    let newInstallName = "@rpath/\(newRelativePath)"
-    try await updateLibraryInstallName(
-      in: binary,
-      original: installName,
-      new: newInstallName
-    )
+    // Update the install name of the dylib to be relative to the app's rpaths
+    let pathInFramework = dylibLocation.pathComponents
+      .dropFirst(framework.pathComponents.count)
+      .joined(separator: "/")
+    let outputDylib = isFramework ? outputDependency / pathInFramework : outputDependency
+    let newInstallName = isFramework
+      ? "@rpath/\(outputDependency.lastPathComponent)/\(pathInFramework)"
+      : "@rpath/\(outputDependency.lastPathComponent)"
+    if newInstallName != installName {
+      try await updateLibraryInstallName(in: binary, original: installName, new: newInstallName)
+    }
 
     // Avoid copying libraries twice
     guard !outputDependency.exists() else {
