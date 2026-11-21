@@ -236,8 +236,15 @@ enum MachOEditor {
     defer { try? handle.close() }
 
     let magicByteCount = MemoryLayout<UInt32>.stride
-    guard let magicBytes = try? handle.read(upToCount: magicByteCount) else {
-      return false
+    let magicBytes: Data
+    if #available(macOS 10.15.4, *) {
+      guard let bytes = try? handle.read(upToCount: magicByteCount) else {
+        return false
+      }
+      magicBytes = bytes
+    } else {
+      // older macos only has the read that raises instead of throwing.
+      magicBytes = handle.readData(ofLength: magicByteCount)
     }
 
     var buffer = Buffer(bytes: Array(magicBytes))
