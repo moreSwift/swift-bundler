@@ -200,6 +200,20 @@ struct PackageConfigurationTests {
     #expect(app.metadata["Overridden"] == .string("overlay"))
   }
 
+  @Test func testV2MigrationDefaultsMissingBundleIdentifier() async throws {
+    let contents = """
+      [apps.HelloWorld]
+      product = "HelloWorld"
+      version = "1.0.0"
+      """
+
+    let configuration = try await Self.parseTOMLConfiguration(contents)
+
+    #expect(
+      configuration.apps?["HelloWorld"]?.identifier == "com.example.HelloWorld"
+    )
+  }
+
   @Test func testV2ConfigurationMigrationCreatesBackup() async throws {
     let directory = FileManager.default.temporaryDirectory / UUID().uuidString
     try FileManager.default.createDirectory(at: directory)
