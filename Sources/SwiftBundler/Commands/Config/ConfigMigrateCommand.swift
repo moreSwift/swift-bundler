@@ -23,11 +23,19 @@ struct ConfigMigrateCommand: ErrorHandledCommand {
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
-    _ = try await RichError<SwiftBundlerError>.catch {
-      try await PackageConfiguration.load(
+    do {
+      _ = try await PackageConfiguration.load(
         fromDirectory: packageDirectory ?? URL(fileURLWithPath: "."),
         migrateConfiguration: true
       )
+    } catch let error as PackageConfiguration.Error {
+      if case .configurationIsAlreadyUpToDate = error.message {
+        log.info("Already up to date")
+        return
+      }
+      throw RichError(cause: error)
+    } catch {
+      throw RichError(cause: error)
     }
 
     log.info("Successfully migrated configuration to the latest format.")

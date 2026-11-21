@@ -177,6 +177,38 @@ struct PackageConfigurationTests {
     #expect(backupContents == original)
   }
 
+  @Test func testConfigMigrateSucceedsWhenAlreadyUpToDate() async throws {
+    let directory = FileManager.default.temporaryDirectory
+      .appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(
+      at: directory,
+      withIntermediateDirectories: true
+    )
+    defer {
+      try? FileManager.default.removeItem(at: directory)
+    }
+
+    let contents = """
+      format_version = 2
+
+      [apps.HelloWorld]
+      product = "HelloWorld"
+      identifier = "com.example.HelloWorld"
+      version = "1.0.0"
+      """
+
+    let configurationFile = directory / "Bundler.toml"
+    try contents.write(to: configurationFile, atomically: true, encoding: .utf8)
+
+    let command = try ConfigMigrateCommand.parse([
+      "--directory", directory.path,
+    ])
+    try await command.wrappedRun()
+
+    let contentsAfterMigration = try String(contentsOf: configurationFile)
+    #expect(contentsAfterMigration == contents)
+  }
+
   /// Ensure that we can correctly load a Swift Bundler 1.x configuration file.
   @Test func testSwiftBundlerV1ConfigurationLoading() async throws {
     try await withFixture("Configuration/V1") { fixture in
