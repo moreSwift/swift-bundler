@@ -330,3 +330,14 @@ enum PlistValue: Codable, Hashable, VariableEvaluatable, Sendable {
     }
   }
 }
+
+extension PlistValue: Mergeable {
+  static func merge(_ base: PlistValue, _ overlay: PlistValue) -> PlistValue {
+    switch (base, overlay) {
+      case (.dictionary(let base), .dictionary(let overlay)):
+        return .dictionary([String: PlistValue].merge(base, overlay))
+      default:
+        return overlay
+    }
+  }
+}

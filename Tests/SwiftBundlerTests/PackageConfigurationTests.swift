@@ -143,6 +143,63 @@ struct PackageConfigurationTests {
     #expect(configuration.overlays?.first?.newLinuxValue == true)
   }
 
+  @Test func testPlistAndMetadataOverlayMerging() async throws {
+    let contents = """
+      format_version = 2
+
+      [apps.HelloWorld]
+      product = "HelloWorld"
+      identifier = "com.example.HelloWorld"
+      version = "1.0.0"
+
+      [apps.HelloWorld.plist]
+      BaseOnly = "base"
+      Overridden = "base"
+      Nested = { BaseOnly = "base", Overridden = "base" }
+
+      [apps.HelloWorld.metadata]
+      BaseOnly = "base"
+      Overridden = "base"
+
+      [[apps.HelloWorld.overlays]]
+      condition = "platform(linux)"
+      plist = {
+        OverlayOnly = "overlay",
+        Overridden = "overlay",
+        Nested = { OverlayOnly = "overlay", Overridden = "overlay" }
+      }
+      metadata = { OverlayOnly = "overlay", Overridden = "overlay" }
+      """
+
+    let context = ConfigurationFlattener.Context(
+      platform: .linux,
+      bundler: .linuxGeneric,
+      architectures: [.host]
+    )
+
+    let configuration = try await Self.flattenTOMLConfiguration(
+      contents,
+      with: context
+    )
+
+    let app = try #require(configuration.apps["HelloWorld"])
+
+    #expect(app.plist["BaseOnly"] == .string("base"))
+    #expect(app.plist["OverlayOnly"] == .string("overlay"))
+    #expect(app.plist["Overridden"] == .string("overlay"))
+    #expect(
+      app.plist["Nested"] == .dictionary([
+        "BaseOnly": .string("base"),
+        "OverlayOnly": .string("overlay"),
+        "Overridden": .string("overlay"),
+      ])
+    )
+
+    #expect(app.metadata["BaseOnly"] == .string("base"))
+    #expect(app.metadata["OverlayOnly"] == .string("overlay"))
+    #expect(app.metadata["Overridden"] == .string("overlay"))
+  }
+
   @Test func testV2ConfigurationMigrationCreatesBackup() async throws {
     let directory = FileManager.default.temporaryDirectory / UUID().uuidString
     try FileManager.default.createDirectory(at: directory)
