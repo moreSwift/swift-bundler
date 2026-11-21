@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import TOMLKit
 import Version
 
 @testable import SwiftBundler
@@ -41,7 +42,106 @@ struct PackageConfigurationTests {
     )
   }
 
+  static func decodeOverlayGatingTestConfiguration(
+    _ contents: String,
+    effectiveConfigVersion: Version
+  ) throws -> OverlayGatingTestConfiguration {
+    try PackageConfiguration.$effectiveConfigVersion.withValue(effectiveConfigVersion) {
+      #expect(PackageConfiguration.effectiveConfigVersion == effectiveConfigVersion)
+      return try TOMLDecoder().decode(
+        OverlayGatingTestConfiguration.self,
+        from: contents
+      )
+    }
+  }
+
   // MARK: - Tests
+
+  @Test func testIntroducedPropertyInOverlayIsRejectedForOlderConfigVersion() throws {
+    let contents = """
+      value = "base"
+
+      [[overlays]]
+      condition = "true"
+      new_value = "overlay"
+      """
+
+    do {
+      _ = try Self.decodeOverlayGatingTestConfiguration(
+        contents,
+        effectiveConfigVersion: Version(3, 0, 0)
+      )
+      Issue.record(
+        "Expected an @Introduced property set via an overlay to be rejected for a 3.0.0 config"
+      )
+    } catch let error as PackageConfiguration.Error {
+      guard case .propertyNotSupportedByConfigVersion = error.message else {
+        Issue.record("Unexpected error: \(error)")
+        return
+      }
+    }
+  }
+
+  @Test func testAvailableIntroducedPropertyInOverlayIsRejectedForOlderConfigVersion() throws {
+    let contents = """
+      [[overlays]]
+      condition = "platform(linux)"
+      new_linux_value = true
+      """
+
+    do {
+      _ = try Self.decodeOverlayGatingTestConfiguration(
+        contents,
+        effectiveConfigVersion: Version(3, 0, 0)
+      )
+      Issue.record(
+        """
+        Expected an @Available + @Introduced property set via an overlay to be \
+        rejected for a 3.0.0 config
+        """
+      )
+    } catch let error as PackageConfiguration.Error {
+      guard case .propertyNotSupportedByConfigVersion = error.message else {
+        Issue.record("Unexpected error: \(error)")
+        return
+      }
+    }
+  }
+
+  @Test func testIntroducedPropertyInOverlayIsAcceptedForNewConfigVersion() throws {
+    let contents = """
+      value = "base"
+
+      [[overlays]]
+      condition = "true"
+      new_value = "overlay"
+      """
+
+    let configuration = try Self.decodeOverlayGatingTestConfiguration(
+      contents,
+      effectiveConfigVersion: Version(3, 1, 0)
+    )
+
+    #expect(configuration.value == "base")
+    #expect(configuration.newValue == nil)
+    #expect(configuration.overlays?.first?.newValue == "overlay")
+  }
+
+  @Test func testAvailableIntroducedPropertyInOverlayIsAcceptedForNewConfigVersion() throws {
+    let contents = """
+      [[overlays]]
+      condition = "platform(linux)"
+      new_linux_value = true
+      """
+
+    let configuration = try Self.decodeOverlayGatingTestConfiguration(
+      contents,
+      effectiveConfigVersion: Version(3, 1, 0)
+    )
+
+    #expect(configuration.newLinuxValue == false)
+    #expect(configuration.overlays?.first?.newLinuxValue == true)
+  }
 
   /// Ensure that we can correctly load a Swift Bundler 1.x configuration file.
   @Test func testSwiftBundlerV1ConfigurationLoading() async throws {

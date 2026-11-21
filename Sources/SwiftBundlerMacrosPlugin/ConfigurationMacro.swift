@@ -540,6 +540,25 @@ extension ConfigurationMacro {
 
             """
           )
+
+          if let minimumConfigVersion = property.minimumConfigVersion {
+            StmtSyntax(
+              """
+              if let version = effectiveConfigVersion,
+                version < \(raw: minimumConfigVersion.asSwiftExpression),
+                self.\(raw: property.identifier) != nil
+              {
+                throw PackageConfiguration.Error(
+                  .propertyNotSupportedByConfigVersion(
+                    version,
+                    \(raw: minimumConfigVersion.asSwiftExpression),
+                    CodingPath(container.codingPath + [CodingKeys.\(raw: property.identifier)])
+                  )
+                )
+              }
+              """
+            )
+          }
         }
       }
 
