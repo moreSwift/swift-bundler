@@ -16,6 +16,14 @@ struct ConfigMigrateCommand: ErrorHandledCommand {
   )
   var packageDirectory: URL?
 
+  /// Overrides the default configuration file location.
+  @Option(
+    name: [.customLong("config-file")],
+    help: "Overrides the default configuration file location",
+    transform: URL.init(fileURLWithPath:)
+  )
+  var configurationFile: URL?
+
   @Flag(
     name: .shortAndLong,
     help: "Print verbose error messages."
@@ -26,6 +34,7 @@ struct ConfigMigrateCommand: ErrorHandledCommand {
     do {
       _ = try await PackageConfiguration.load(
         fromDirectory: packageDirectory ?? URL(fileURLWithPath: "."),
+        customFile: configurationFile,
         migrateConfiguration: true
       )
     } catch let error as PackageConfiguration.Error {
