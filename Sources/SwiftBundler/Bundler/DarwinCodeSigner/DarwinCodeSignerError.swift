@@ -12,7 +12,7 @@ extension DarwinCodeSigner {
     case failedToWriteEntitlements
     case failedToLoadProvisioningProfile(URL)
     case provisioningProfileMissingTeamIdentifier
-    case failedToEnumerateDynamicLibraries
+    case failedToEnumerateNestedCode(directory: URL)
     case failedToLocateSigningCertificate(CodeSigningIdentity)
     case failedToParseSigningCertificate(pem: String)
     case signingCertificateMissingTeamIdentifier(CodeSigningIdentity)
@@ -34,8 +34,8 @@ extension DarwinCodeSigner {
           return "Failed to load '\(file.path)'"
         case .provisioningProfileMissingTeamIdentifier:
           return "The supplied provisioning profile is missing the 'TeamIdentifier' entry"
-        case .failedToEnumerateDynamicLibraries:
-          return "Failed to enumerate dynamic libraries"
+        case .failedToEnumerateNestedCode(let directory):
+          return "Failed to enumerate the nested code in '\(directory.relativePath)'"
         case .failedToLocateSigningCertificate(let identity):
           return "Failed to locate signing certificate for identity \(identity)"
         case .failedToParseSigningCertificate(let identity):
