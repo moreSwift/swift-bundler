@@ -36,14 +36,16 @@ public struct SwiftBundler: AsyncParsableCommand {
       CreateCommand.self,
       ConvertCommand.self,
       ConfigCommand.self,
-      MigrateCommand.self,
+      GenerateXcodeSupportCommand.self,
       DevicesCommand.self,
       SimulatorsCommand.self,
       TemplatesCommand.self,
-      GenerateXcodeSupportCommand.self,
-      ListIdentitiesCommand.self,
+      IdentitiesCommand.self,
       SelfCommand.self,
       DebugCommand.self,
+      // Deprecated commands
+      MigrateCommand.self,
+      ListIdentitiesCommand.self,
     ]
   )
 

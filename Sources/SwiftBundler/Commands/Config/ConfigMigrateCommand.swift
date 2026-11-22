@@ -37,13 +37,11 @@ struct ConfigMigrateCommand: ErrorHandledCommand {
         customFile: configurationFile,
         migrateConfiguration: true
       )
-    } catch let error as PackageConfiguration.Error {
+    } catch let error {
       if case .configurationIsAlreadyUpToDate = error.message {
         log.info("Already up to date")
         return
       }
-      throw RichError(cause: error)
-    } catch {
       throw RichError(cause: error)
     }
 

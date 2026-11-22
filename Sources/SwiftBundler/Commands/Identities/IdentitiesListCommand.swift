@@ -1,10 +1,10 @@
 import ArgumentParser
 import Foundation
 
-/// The command for listing codesigning identities.
-struct ListIdentitiesCommand: ErrorHandledCommand {
+/// The command for viewing and managing signing identities.
+struct IdentitiesListCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
-    commandName: "list-identities",
+    commandName: "list",
     abstract: "List available codesigning identities."
   )
 
