@@ -344,7 +344,7 @@ struct BundleCommand: ErrorHandledCommand {
         log.warning(
           """
           Found multiple code signing identities, using \(match); list all available \
-          identities using 'swift-bundler list-identities' and provide the '--identity' \
+          identities using 'swift-bundler identities list' and provide the '--identity' \
           option to select a particular identity
           """
         )
@@ -543,11 +543,11 @@ struct BundleCommand: ErrorHandledCommand {
                 """
 
                 Section("List available simulators") {
-                  ExampleCommand("swift bundler simulators list")
+                  ExampleCommand("swift-bundler simulators list")
                 }
 
                 Section("Boot a simulator", trailingNewline: false) {
-                  ExampleCommand("swift bundler simulators boot <id-or-name>")
+                  ExampleCommand("swift-bundler simulators boot <id-or-name>")
                 }
               }.description
             throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
@@ -570,7 +570,7 @@ struct BundleCommand: ErrorHandledCommand {
               """
 
               Section("List available devices", trailingNewline: false) {
-                ExampleCommand("swift bundler devices list")
+                ExampleCommand("swift-bundler devices list")
               }
             }.description
           throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))

@@ -49,7 +49,7 @@ struct TemplatesListCommand: ErrorHandledCommand {
         }
       }
       Section("Using a template") {
-        ExampleCommand("swift bundler create [app-name] --template [template]" + repositoryOption)
+        ExampleCommand("swift-bundler create [app-name] --template [template]" + repositoryOption)
       }
     }.show()
   }

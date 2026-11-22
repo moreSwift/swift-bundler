@@ -18,7 +18,7 @@ struct ListIdentitiesCommand: AsyncParsableCommand {
   func validate() throws {
     log.warning(
       """
-      'swift bundler list-identities' has been deprecated; please use 'swift bundler \
+      'swift-bundler list-identities' has been deprecated; please use 'swift-bundler \
       identities list' instead
       """
     )
