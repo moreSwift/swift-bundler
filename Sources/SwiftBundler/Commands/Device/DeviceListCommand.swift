@@ -66,24 +66,22 @@ struct DeviceListCommand: ErrorHandledCommand {
     }
 
     Output {
-      Section("Devices") {
-        if devices.isEmpty {
-          "None found".italic
-        } else {
-          KeyedList {
-            for device in devices {
-              // Devices with ids are exactly the non-host devices. All of the
-              // devices enumerated by the above method will be non-host devices.
-              if let id = device.id {
-                KeyedList.Entry(id, device.describe(includingId: false))
-              } else {
-                log.warning(
-                  """
-                  Invariant failure: Encountered physical connected device \
-                  '\(device.description)' without id (is it a host device?)
-                  """
-                )
-              }
+      if devices.isEmpty {
+        "None found".italic
+      } else {
+        KeyedList {
+          for device in devices {
+            // Devices with ids are exactly the non-host devices. All of the
+            // devices enumerated by the above method will be non-host devices.
+            if let id = device.id {
+              KeyedList.Entry(id, device.describe(includingId: false))
+            } else {
+              log.warning(
+                """
+                Invariant failure: Encountered physical connected device \
+                '\(device.description)' without id (is it a host device?)
+                """
+              )
             }
           }
         }

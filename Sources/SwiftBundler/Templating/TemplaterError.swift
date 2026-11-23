@@ -9,7 +9,6 @@ extension Templater {
   enum ErrorMessage: Throwable {
     case packageDirectoryAlreadyExists(URL)
     case cannotCreatePackageFromBaseTemplate
-    case noSuchTemplate(String)
     case failedToCreateOutputDirectory(URL)
     case failedToDecodeTemplateManifest(template: String, manifest: URL)
     case failedToReadTemplateManifest(template: String, manifest: URL)
@@ -31,8 +30,6 @@ extension Templater {
           return "A directory already exists at '\(directory.relativePath)'"
         case .cannotCreatePackageFromBaseTemplate:
           return "Cannot create a package from the 'Base' template"
-        case let .noSuchTemplate(template):
-          return "The '\(template)' template does not exist"
         case .failedToCreateOutputDirectory(let directory):
           return "Failed to create package directory at '\(directory.relativePath)'"
         case .failedToDecodeTemplateManifest(let template, _):

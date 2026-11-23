@@ -9,9 +9,10 @@ struct TemplateCommand: AsyncParsableCommand {
     subcommands: [
       TemplateListCommand.self,
       TemplateInfoCommand.self,
-      TemplateUpdateCommand.self,
+      TemplateRepoCommand.self,
       // Deprecated commands
       DeprecatedTemplateListCommand.self,
+      DeprecatedTemplateUpdateCommand.self,
     ]
   )
 }

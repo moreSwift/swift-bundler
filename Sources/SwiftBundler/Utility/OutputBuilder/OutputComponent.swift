@@ -11,6 +11,6 @@ extension OutputComponent {
 
   /// Prints the component to standard output.
   func show() {
-    print(body)
+    print(body.trimmingCharacters(in: .newlines))
   }
 }

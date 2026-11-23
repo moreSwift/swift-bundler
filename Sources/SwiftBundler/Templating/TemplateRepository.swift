@@ -1,12 +1,24 @@
 import Foundation
 
 /// A template repository.
-struct TemplateRepository {
+struct TemplateRepository: Codable {
+  /// The template repository's name. This is set when adding a repository.
+  var name: Name
   /// The repository's source: either a remote git repository URL or a local
   /// directory.
   var source: URL
   /// The template repository's local checkout on-disk.
   var checkout: URL
+  /// The kind of template repository.
+  var kind: Kind
+
+  /// A kind of template repository.
+  enum Kind: String, Codable {
+    /// A remote template repository stored with git.
+    case remoteGit
+    /// A local template repository represented as a path.
+    case local
+  }
 
   /// Enumerates the repository's templates.
   /// - Returns: The available templates.
@@ -37,10 +49,15 @@ struct TemplateRepository {
         }
 
         // Load the template manifest file
-        let manifestFile = directory.appendingPathComponent("Template.toml")
+        let manifestFile = directory / "Template.toml"
         let manifest = try TemplateManifest.load(from: manifestFile, template: templateName)
 
-        let template = Template(name: templateName, manifest: manifest)
+        let template = Template(
+          name: templateName,
+          location: directory,
+          repository: self.name,
+          manifest: manifest
+        )
         templates.append(template)
       }
 

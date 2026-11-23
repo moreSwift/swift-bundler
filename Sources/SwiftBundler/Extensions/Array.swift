@@ -122,7 +122,7 @@ extension Array<String> {
       requiresPluralVerb = false
     } else {
       base = """
-        \(self[0..<(count - 1)].joined(separator: ", ")) and \(self[count - 1])
+        \(self[0..<(count - 1)].joined(separator: ", ")), and \(self[count - 1])
         """
       requiresPluralVerb = true
     }

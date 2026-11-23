@@ -73,13 +73,11 @@ struct CreateCommand: ErrorHandledCommand {
   )
   var templateName: String?
 
-  /// A directory to search for the template in.
   @Option(
-    name: .long,
-    help: "A directory to search for the template in.",
-    transform: URL.init(fileURLWithPath:)
+    name: [.customShort("r"), .customLong("repo")],
+    help: "The repository containing the template."
   )
-  var templateRepository: URL?
+  var templateRepository: TemplateRepository.Name?
 
   /// An alternative Swift toolchain to use.
   @Option(
@@ -155,27 +153,40 @@ struct CreateCommand: ErrorHandledCommand {
     }
 
     let shouldAutoUpdate = !disableAutoUpdating && Env.autoUpdateTemplates
-    let templateRepository: TemplateRepository = try await RichError<SwiftBundlerError>.catch {
-      try await TemplateRepositoryManager.resolveTemplateRepository(
-        url: self.templateRepository,
-        autoUpdate: shouldAutoUpdate
-      )
-    }
 
-    var template: Template?
+    let arguments = TemplateArguments(
+      packageName: appName,
+      configuration: configuration,
+      indentationStyle: indentation,
+      addVSCodeOverlay: addVSCodeOverlay
+    )
+
+    var templateUsed: Template?
     let elapsed = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
-      template = try await RichError<SwiftBundlerError>.catch {
-        try await Templater.createPackage(
-          in: packageDirectory,
-          from: templateName,
-          in: templateRepository,
-          packageName: appName,
-          configuration: configuration,
-          forceCreation: force,
-          indentationStyle: indentation,
-          addVSCodeOverlay: addVSCodeOverlay,
-          swiftToolchain: toolchain
-        )
+      if let templateName {
+        try await RichError<SwiftBundlerError>.catch {
+          let template = try await TemplateRepositoryManager.resolveTemplate(
+            name: templateName,
+            repository: templateRepository,
+            autoUpdate: shouldAutoUpdate
+          )
+          try await Templater.createProject(
+            in: packageDirectory,
+            from: template,
+            arguments: arguments,
+            forceCreation: force,
+            swiftToolchain: toolchain
+          )
+          templateUsed = template
+        }
+      } else {
+        try await RichError<SwiftBundlerError>.catch {
+          try await Templater.createSkeletonProject(
+            in: packageDirectory,
+            arguments: arguments,
+            swiftToolchain: toolchain
+          )
+        }
       }
 
       if let iconFile = iconFile {
@@ -195,7 +206,7 @@ struct CreateCommand: ErrorHandledCommand {
       "Done in \(elapsed.secondsString). Package located at '\(packageDirectory.relativePath)'"
     )
 
-    Self.printNextSteps(packageDirectory: packageDirectory, template: template)
+    Self.printNextSteps(packageDirectory: packageDirectory, template: templateUsed)
   }
 
   /// Prints a helpful message telling the user what to try next. Also notifies them of any required system dependencies.

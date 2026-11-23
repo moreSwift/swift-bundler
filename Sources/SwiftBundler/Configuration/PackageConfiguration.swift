@@ -362,9 +362,7 @@ extension PackageConfiguration.Flat {
       guard let selected = apps[name] else {
         throw PackageConfiguration.Error(
           .noSuchApp(name),
-          hint: Output {
-            "Run `swift-bundler config app ls` to list available apps"
-          }.description
+          hint: "Run `swift-bundler config app ls` to list available apps"
         )
       }
       return (name: name, app: selected)

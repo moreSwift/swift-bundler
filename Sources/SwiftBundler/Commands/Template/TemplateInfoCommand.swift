@@ -15,13 +15,17 @@ struct TemplateInfoCommand: ErrorHandledCommand {
   )
   var template: String
 
-  /// The directory to search for templates in.
   @Option(
-    name: .long,
-    help: "An alternate directory to search for the template in.",
-    transform: URL.init(fileURLWithPath:)
+    name: [.customShort("r"), .customLong("repo")],
+    help: "The repository containing the template."
   )
-  var templateRepository: URL?
+  var templateRepository: TemplateRepository.Name?
+
+  @Flag(
+    name: .customLong("no-auto-update"),
+    help: "Disables template auto updating."
+  )
+  var disableAutoUpdating = false
 
   @Flag(
     name: .shortAndLong,
@@ -30,16 +34,17 @@ struct TemplateInfoCommand: ErrorHandledCommand {
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
+    let shouldAutoUpdate = !disableAutoUpdating && Env.autoUpdateTemplates
     let template = try await RichError<SwiftBundlerError>.catch {
-      try await Templater.template(named: self.template, in: templateRepository)
+      try await TemplateRepositoryManager.resolveTemplate(
+        name: self.template,
+        repository: templateRepository,
+        autoUpdate: shouldAutoUpdate
+      )
     }
 
-    var exampleCommand =
+    let exampleCommand =
       "swift-bundler create [app-name] --template \(template.name.quotedIfNecessary)"
-    if let templateRepository = templateRepository {
-      exampleCommand +=
-        " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"
-    }
 
     Output {
       Section("Template info") {

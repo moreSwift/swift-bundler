@@ -4,89 +4,67 @@ import Version
 
 /// A utility for creating packages from package templates.
 enum Templater {
-  /// Creates a package from the specified template from the specified template repository.
+  /// Create a basic project that just prints hello world when run.
+  /// - Parameters:
+  ///   - outputDirectory: The directory to create the project in.
+  ///   - arguments: The arguments to the template.
+  ///   - swiftToolchain: An alternative Swift toolchain to use.
+  static func createSkeletonProject(
+    in outputDirectory: URL,
+    arguments: TemplateArguments,
+    swiftToolchain: URL?
+  ) async throws(Error) {
+    do {
+      try await Error.catch(withMessage: .failedToCreateBareMinimumPackage) {
+        try await SwiftPackageManager.createPackage(
+          in: outputDirectory,
+          name: arguments.packageName,
+          toolchain: swiftToolchain
+        )
+      }
+
+      log.info("Updating indentation to '\(arguments.indentationStyle.defaultValueDescription)'")
+      try updateIndentationStyle(in: outputDirectory, from: .spaces(4), to: arguments.indentationStyle)
+
+      try createPackageConfigurationFile(
+        in: outputDirectory,
+        packageName: arguments.packageName,
+        configuration: arguments.configuration
+      )
+    } catch {
+      attemptCleanup(outputDirectory)
+      throw error
+    }
+  }
+
+  /// Creates a package from the specified template.
   /// - Parameters:
   ///   - outputDirectory: The directory to create the package in.
   ///   - template: The template to use to create the package.
-  ///   - templateRepository: The repository to get the template from.
-  ///   - packageName: The name of the package.
-  ///   - configuration: The package's configuration.
+  ///   - arguments: The arguments to the template.
   ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
-  ///   - indentationStyle: The indentation style to use.
-  ///   - addVSCodeOverlay: If `true`, the VSCode overlay (containing `launch.json` and `.vscode/tasks.json`),
   ///     will be added to the package (enabling ergonomic debugging with VSCode).
   ///   - swiftToolchain: An alternative Swift toolchain to use.
-  /// - Returns: The template that the package was created from.
-  static func createPackage(
+  static func createProject(
     in outputDirectory: URL,
-    from template: String?,
-    in templateRepository: TemplateRepository,
-    packageName: String,
-    configuration: AppConfiguration,
+    from template: Template,
+    arguments: TemplateArguments,
     forceCreation: Bool,
-    indentationStyle: IndentationStyle,
-    addVSCodeOverlay: Bool,
     swiftToolchain: URL?
-  ) async throws(Error) -> Template? {
+  ) async throws(Error) {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
       throw Error(.packageDirectoryAlreadyExists(outputDirectory))
     }
 
-    // If no template is specified, create the most basic package that just
-    // prints 'Hello, World!'
-    guard let template = template else {
-      log.info("Creating package")
-
-      do {
-        do {
-          try await SwiftPackageManager.createPackage(
-            in: outputDirectory,
-            name: packageName,
-            toolchain: swiftToolchain
-          )
-        } catch {
-          throw Error(.failedToCreateBareMinimumPackage, cause: error)
-        }
-
-        log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
-        try updateIndentationStyle(in: outputDirectory, from: .spaces(4), to: indentationStyle)
-
-        try createPackageConfigurationFile(
-          in: outputDirectory,
-          packageName: packageName,
-          configuration: configuration
-        )
-      } catch {
-        attemptCleanup(outputDirectory)
-        // TODO: Figure out why Swift doesn't infer this thrown type. Perhaps we
-        //   need full typed throws?
-        // swiftlint:disable:next force_cast
-        throw error as! Error
-      }
-
-      return nil
-    }
-
-    // The `Base` template should not be used to create packages directly
-    guard template != "Base" else {
-      throw Error(.cannotCreatePackageFromBaseTemplate)
-    }
-
-    log.info("Creating package from the '\(template)' template")
-
-    // Check that the template exists
-    let templateDirectory = templateRepository.checkout / template
-    guard templateDirectory.exists(withType: .directory) else {
-      throw Error(.noSuchTemplate(template))
-    }
-
-    // Load the template manifest
-    let manifestFile = templateDirectory.appendingPathComponent("Template.toml")
-    let manifest = try TemplateManifest.load(from: manifestFile, template: template)
+    log.info("Creating package from the '\(template.name)' template")
 
     if !forceCreation {
       // Verify that this machine's Swift version is supported
-      try await verifyTemplateIsSupported(template, manifest, swiftToolchain: swiftToolchain)
+      try await verifyTemplateIsSupported(
+        template.name,
+        template.manifest,
+        swiftToolchain: swiftToolchain
+      )
     }
 
     // Create the output directory
@@ -94,6 +72,12 @@ enum Templater {
       try FileManager.default.createDirectory(at: outputDirectory)
     } catch {
       throw Error(.failedToCreateOutputDirectory(outputDirectory), cause: error)
+    }
+
+    let templateRepository = try await Error.catch {
+      try await TemplateRepositoryManager.resolveTemplateRepository(
+        name: template.repository
+      )
     }
 
     // Apply the base template first if it exists
@@ -106,9 +90,9 @@ enum Templater {
         try applyTemplate(
           baseTemplate,
           to: outputDirectory,
-          packageName: packageName,
-          identifier: configuration.identifier,
-          indentationStyle: indentationStyle
+          packageName: arguments.packageName,
+          identifier: arguments.configuration.identifier,
+          indentationStyle: arguments.indentationStyle
         )
       } catch {
         attemptCleanup(outputDirectory)
@@ -116,7 +100,7 @@ enum Templater {
       }
     }
 
-    if addVSCodeOverlay {
+    if arguments.addVSCodeOverlay {
       let vsCodeOverlay = templateRepository.checkout / "VSCode"
       guard vsCodeOverlay.exists(withType: .directory) else {
         throw Error(.missingVSCodeOverlay)
@@ -126,9 +110,9 @@ enum Templater {
         try applyTemplate(
           vsCodeOverlay,
           to: outputDirectory,
-          packageName: packageName,
-          identifier: configuration.identifier,
-          indentationStyle: indentationStyle
+          packageName: arguments.packageName,
+          identifier: arguments.configuration.identifier,
+          indentationStyle: arguments.indentationStyle
         )
       } catch {
         attemptCleanup(outputDirectory)
@@ -139,11 +123,11 @@ enum Templater {
     // Apply the template
     do {
       try applyTemplate(
-        templateDirectory,
+        template.location,
         to: outputDirectory,
-        packageName: packageName,
-        identifier: configuration.identifier,
-        indentationStyle: indentationStyle
+        packageName: arguments.packageName,
+        identifier: arguments.configuration.identifier,
+        indentationStyle: arguments.indentationStyle
       )
     } catch {
       // Cleanup output directory
@@ -153,11 +137,9 @@ enum Templater {
 
     try createPackageConfigurationFile(
       in: outputDirectory,
-      packageName: packageName,
-      configuration: configuration
+      packageName: arguments.packageName,
+      configuration: arguments.configuration
     )
-
-    return Template(name: template, manifest: manifest)
   }
 
   static func createPackageConfigurationFile(
@@ -176,32 +158,6 @@ enum Templater {
     try Error.catch {
       try PackageConfiguration.writeConfiguration(configuration, to: file)
     }
-  }
-
-  /// Gets the template with the given name in the given template repository. If
-  /// no template repository is specified, the default template repository is
-  /// used. If the default template repository hasn't been downloaded, it gets
-  /// downloaded.
-  static func template(
-    named name: String,
-    in templateRepository: URL?
-  ) async throws(Error) -> Template {
-    let templates = try await Error.catch {
-      let templateRepository = try await TemplateRepositoryManager
-        .resolveTemplateRepository(url: templateRepository)
-      return try templateRepository.enumerateTemplates()
-    }
-
-    let matchingTemplates = templates.filter { $0.name == name }
-    guard let template = matchingTemplates.first else {
-      throw RichError(.noSuchTemplate(name))
-    }
-
-    if matchingTemplates.count > 1 {
-      log.warning("Multiple templates have name '\(name)'. Using first.")
-    }
-
-    return template
   }
 
   /// Verifies that the given template supports this machine's Swift version.
