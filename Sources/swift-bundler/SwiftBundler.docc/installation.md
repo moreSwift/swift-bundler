@@ -35,7 +35,7 @@ SBUN_NO_SCHEMA_GEN=1 swift build -c release
 cp .build/release/swift-bundler /path/to/bin/
 
 # Verify installation
-swift bundler --version
+swift-bundler --version
 ```
 
 > Note: Continue to <doc:installation#Runtime-dependencies> to install required runtime dependencies.
@@ -52,7 +52,7 @@ chmod +x ./swift-bundler
 sudo mv ./swift-bundler /usr/local/bin/
 
 # Verify installation
-swift bundler --version
+swift-bundler --version
 ```
 
 ## Runtime dependencies

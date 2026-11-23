@@ -128,7 +128,7 @@ struct SimulatorListCommand: ErrorHandledCommand {
       }
       
       Section("Booting a simulator") {
-        ExampleCommand("swift-bundler simulators boot [id-or-name]")
+        ExampleCommand("swift-bundler simulator boot [id-or-name]")
       }
     }.show()
   }

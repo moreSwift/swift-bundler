@@ -24,7 +24,7 @@ extension DeviceManager {
             """
 
             Section("List available devices", trailingNewline: false) {
-              ExampleCommand("swift-bundler devices list")
+              ExampleCommand("swift-bundler device ls")
             }
           }.description
         case .deviceNotFound(let specifier, .some(let platform)):
@@ -57,7 +57,7 @@ extension DeviceManager {
             ""
 
             Section("List available devices", trailingNewline: false) {
-              ExampleCommand("swift-bundler devices list")
+              ExampleCommand("swift-bundler device ls")
             }
           }.description
       }

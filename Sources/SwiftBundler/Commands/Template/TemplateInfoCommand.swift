@@ -35,7 +35,7 @@ struct TemplateInfoCommand: ErrorHandledCommand {
     }
 
     var exampleCommand =
-      "swift bundler create [app-name] --template \(template.name.quotedIfNecessary)"
+      "swift-bundler create [app-name] --template \(template.name.quotedIfNecessary)"
     if let templateRepository = templateRepository {
       exampleCommand +=
         " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"

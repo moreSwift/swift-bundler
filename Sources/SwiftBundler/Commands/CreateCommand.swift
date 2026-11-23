@@ -258,7 +258,7 @@ struct CreateCommand: ErrorHandledCommand {
         "warning".yellow.bold
           + ": You have created a project without a template and it will not have a UI framework set up out of the box. Did you mean to use a template?"
         ""
-        ExampleCommand("swift-bundler templates list")
+        ExampleCommand("swift-bundler template ls")
         ExampleCommand("swift-bundler create [app-name] --template [template]")
         ""
       }.show()

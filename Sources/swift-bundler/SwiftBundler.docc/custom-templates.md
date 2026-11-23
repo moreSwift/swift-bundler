@@ -26,8 +26,8 @@ You can also create a `Base` directory within the template repository. Whenever 
 
 See [the swift-bundler-templates repository](https://github.com/moreSwift/swift-bundler-templates) for some example templates.
 
-## Using a custom template
+## Using a custom template repository
 
 ```sh
-swift bundler create MyApp --identifier com.example.MyApp --template MyTemplate --template-repository /path/to/TemplateRepository
+swift-bundler create MyApp --identifier com.example.MyApp --template MyTemplate --template-repository /path/to/TemplateRepository
 ```
