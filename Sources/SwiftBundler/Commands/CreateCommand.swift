@@ -154,47 +154,28 @@ struct CreateCommand: ErrorHandledCommand {
       )
     }
 
-    let shouldAutoUpdate = !disableAutoUpdating
-      && ProcessInfo.processInfo.environment["SBUN_AUTO_UPDATE_TEMPLATES"] != "0"
-    if shouldAutoUpdate {
-      log.info(
-        "Auto-updating templates (--no-auto-update or SBUN_AUTO_UPDATE_TEMPLATES=0 to disable)"
+    let shouldAutoUpdate = !disableAutoUpdating && Env.autoUpdateTemplates
+    let templateRepository: TemplateRepository = try await RichError<SwiftBundlerError>.catch {
+      try await TemplateRepositoryManager.resolveTemplateRepository(
+        url: self.templateRepository,
+        autoUpdate: shouldAutoUpdate
       )
-      try await RichError<SwiftBundlerError>.catch {
-        try await Templater.updateTemplates()
-      }
     }
 
     var template: Template?
     let elapsed = try await Stopwatch.time { () async throws(RichError<SwiftBundlerError>) in
-      // Create package from template
-      if let templateRepository = templateRepository, let templateName = templateName {
-        template = try await RichError<SwiftBundlerError>.catch {
-          try await Templater.createPackage(
-            in: packageDirectory,
-            from: templateName,
-            in: templateRepository,
-            packageName: appName,
-            configuration: configuration,
-            forceCreation: force,
-            indentationStyle: indentation,
-            addVSCodeOverlay: addVSCodeOverlay,
-            swiftToolchain: toolchain
-          )
-        }
-      } else {
-        template = try await RichError<SwiftBundlerError>.catch {
-          try await Templater.createPackage(
-            in: packageDirectory,
-            from: templateName,
-            packageName: appName,
-            configuration: configuration,
-            forceCreation: force,
-            indentationStyle: indentation,
-            addVSCodeOverlay: addVSCodeOverlay,
-            swiftToolchain: toolchain
-          )
-        }
+      template = try await RichError<SwiftBundlerError>.catch {
+        try await Templater.createPackage(
+          in: packageDirectory,
+          from: templateName,
+          in: templateRepository,
+          packageName: appName,
+          configuration: configuration,
+          forceCreation: force,
+          indentationStyle: indentation,
+          addVSCodeOverlay: addVSCodeOverlay,
+          swiftToolchain: toolchain
+        )
       }
 
       if let iconFile = iconFile {

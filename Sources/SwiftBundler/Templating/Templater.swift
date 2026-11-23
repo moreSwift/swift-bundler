@@ -4,30 +4,23 @@ import Version
 
 /// A utility for creating packages from package templates.
 enum Templater {
-  /// The repository of default templates.
-  static let defaultTemplateRepository = "https://github.com/moreSwift/swift-bundler-templates"
-
-  /// Creates a package using an optionally specified template from the default
-  /// template repository.
-  ///
-  /// Downloads the default template repository if it hasn't already been downloaded.
+  /// Creates a package from the specified template from the specified template repository.
   /// - Parameters:
   ///   - outputDirectory: The directory to create the package in.
   ///   - template: The template to use to create the package.
+  ///   - templateRepository: The repository to get the template from.
   ///   - packageName: The name of the package.
-  ///   - configuration: The app's configuration.
-  ///   - forceCreation: If `true`, the package will be created even if the
-  ///     selected template doesn't support the user's system and Swift version.
+  ///   - configuration: The package's configuration.
+  ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
   ///   - indentationStyle: The indentation style to use.
-  ///   - addVSCodeOverlay: If `true`, the VSCode overlay (containing
-  ///     `launch.json` and `.vscode/tasks.json`), will be added to the package
-  ///     (enabling ergonomic debugging with VSCode).
+  ///   - addVSCodeOverlay: If `true`, the VSCode overlay (containing `launch.json` and `.vscode/tasks.json`),
+  ///     will be added to the package (enabling ergonomic debugging with VSCode).
   ///   - swiftToolchain: An alternative Swift toolchain to use.
-  /// - Returns: The template that the package was created from (or nil if none
-  ///   were used), or a failure if package creation failed.
+  /// - Returns: The template that the package was created from.
   static func createPackage(
     in outputDirectory: URL,
     from template: String?,
+    in templateRepository: TemplateRepository,
     packageName: String,
     configuration: AppConfiguration,
     forceCreation: Bool,
@@ -36,7 +29,7 @@ enum Templater {
     swiftToolchain: URL?
   ) async throws(Error) -> Template? {
     if FileManager.default.fileExists(atPath: outputDirectory.path) {
-      throw RichError(.packageDirectoryAlreadyExists(outputDirectory))
+      throw Error(.packageDirectoryAlreadyExists(outputDirectory))
     }
 
     // If no template is specified, create the most basic package that just
@@ -74,50 +67,6 @@ enum Templater {
       return nil
     }
 
-    // If a template was specified: Get the default templates directory (and download if not present), and then create the package
-    let templatesDirectory = try await getDefaultTemplatesDirectory(downloadIfNecessary: true)
-
-    return try await createPackage(
-      in: outputDirectory,
-      from: template,
-      in: templatesDirectory,
-      packageName: packageName,
-      configuration: configuration,
-      forceCreation: forceCreation,
-      indentationStyle: indentationStyle,
-      addVSCodeOverlay: addVSCodeOverlay,
-      swiftToolchain: swiftToolchain
-    )
-  }
-
-  /// Creates a package from the specified template from the specified template repository.
-  /// - Parameters:
-  ///   - outputDirectory: The directory to create the package in.
-  ///   - template: The template to use to create the package.
-  ///   - templatesDirectory: The directory containing the template to use.
-  ///   - packageName: The name of the package.
-  ///   - configuration: The package's configuration.
-  ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
-  ///   - indentationStyle: The indentation style to use.
-  ///   - addVSCodeOverlay: If `true`, the VSCode overlay (containing `launch.json` and `.vscode/tasks.json`),
-  ///     will be added to the package (enabling ergonomic debugging with VSCode).
-  ///   - swiftToolchain: An alternative Swift toolchain to use.
-  /// - Returns: The template that the package was created from, or a failure if package creation failed.
-  static func createPackage(
-    in outputDirectory: URL,
-    from template: String,
-    in templatesDirectory: URL,
-    packageName: String,
-    configuration: AppConfiguration,
-    forceCreation: Bool,
-    indentationStyle: IndentationStyle,
-    addVSCodeOverlay: Bool,
-    swiftToolchain: URL?
-  ) async throws(Error) -> Template {
-    if FileManager.default.fileExists(atPath: outputDirectory.path) {
-      throw Error(.packageDirectoryAlreadyExists(outputDirectory))
-    }
-
     // The `Base` template should not be used to create packages directly
     guard template != "Base" else {
       throw Error(.cannotCreatePackageFromBaseTemplate)
@@ -126,7 +75,7 @@ enum Templater {
     log.info("Creating package from the '\(template)' template")
 
     // Check that the template exists
-    let templateDirectory = templatesDirectory.appendingPathComponent(template)
+    let templateDirectory = templateRepository.checkout / template
     guard templateDirectory.exists(withType: .directory) else {
       throw Error(.noSuchTemplate(template))
     }
@@ -148,7 +97,7 @@ enum Templater {
     }
 
     // Apply the base template first if it exists
-    let baseTemplate = templatesDirectory.appendingPathComponent("Base")
+    let baseTemplate = templateRepository.checkout / "Base"
     if baseTemplate.exists(withType: .directory) {
       // Set the indentation style to tab for now to avoid updating the tab
       // style twice because the final `applyTemplate` call will update all
@@ -168,7 +117,7 @@ enum Templater {
     }
 
     if addVSCodeOverlay {
-      let vsCodeOverlay = templatesDirectory.appendingPathComponent("VSCode")
+      let vsCodeOverlay = templateRepository.checkout / "VSCode"
       guard vsCodeOverlay.exists(withType: .directory) else {
         throw Error(.missingVSCodeOverlay)
       }
@@ -238,12 +187,9 @@ enum Templater {
     in templateRepository: URL?
   ) async throws(Error) -> Template {
     let templates = try await Error.catch {
-      let templateRepository = if let templateRepository {
-        templateRepository
-      } else {
-        try await Templater.getDefaultTemplatesDirectory(downloadIfNecessary: true)
-      }
-      return try Templater.enumerateTemplates(in: templateRepository)
+      let templateRepository = try await TemplateRepositoryManager
+        .resolveTemplateRepository(url: templateRepository)
+      return try templateRepository.enumerateTemplates()
     }
 
     let matchingTemplates = templates.filter { $0.name == name }
@@ -281,135 +227,6 @@ enum Templater {
         minimumSupportedVersion: manifest.minimumSwiftVersion
       )
       throw Error(message)
-    }
-  }
-
-  /// Gets the default templates directory.
-  /// - Parameter downloadIfNecessary: If `true` the default templates
-  ///   repository is downloaded if the templates directory doesn't exist.
-  /// - Returns: The default templates directory, or a failure if the templates
-  ///   directory doesn't exist and couldn't be downloaded.
-  static func getDefaultTemplatesDirectory(
-    downloadIfNecessary: Bool
-  ) async throws(Error) -> URL {
-    // Get the templates directory
-    let templatesDirectory = try Error.catch {
-      try System.getApplicationSupportDirectory() / "templates"
-    }
-
-    // Download the templates if they don't exist
-    if !templatesDirectory.exists(withType: .directory) {
-      try await downloadDefaultTemplates(into: templatesDirectory)
-    }
-
-    return templatesDirectory
-  }
-
-  /// Updates the default templates to the latest version from GitHub.
-  /// - Returns: A failure if updating fails.
-  static func updateTemplates() async throws(Error) {
-    let templatesDirectory = try await getDefaultTemplatesDirectory(downloadIfNecessary: false)
-
-    guard templatesDirectory.exists(withType: .directory) else {
-      try await downloadDefaultTemplates(into: templatesDirectory)
-      return
-    }
-
-    do {
-      try await Process.create(
-        "git",
-        arguments: [
-          "fetch"
-        ],
-        directory: templatesDirectory
-      ).runAndWait()
-
-      try await Process.create(
-        "git",
-        arguments: [
-          "checkout", "v\(SwiftBundler.version.major)",
-        ],
-        directory: templatesDirectory
-      ).runAndWait()
-
-      try await Process.create(
-        "git",
-        arguments: ["pull"],
-        directory: templatesDirectory
-      ).runAndWait()
-    } catch {
-      throw Error(.failedToPullLatestTemplates, cause: error)
-    }
-  }
-
-  /// Gets the list of available templates from a templates directory.
-  /// - Parameter templatesDirectory: The directory to search for templates in.
-  /// - Returns: The available templates.
-  static func enumerateTemplates(in templatesDirectory: URL) throws(Error) -> [Template] {
-    do {
-      let contents = try FileManager.default.contentsOfDirectory(
-        at: templatesDirectory,
-        includingPropertiesForKeys: nil,
-        options: []
-      )
-      var templates: [Template] = []
-
-      // Enumerate templates
-      for directory in contents {
-        guard directory.exists(withType: .directory) else {
-          continue
-        }
-
-        let templateName = directory.lastPathComponent
-
-        // Skip `Base` template, `VSCode` template, and `.git` directory
-        guard
-          templateName != "Base" && templateName != "VSCode" && !templateName.starts(with: ".")
-        else {
-          continue
-        }
-
-        // Load the template manifest file
-        let manifestFile = directory.appendingPathComponent("Template.toml")
-        let manifest = try TemplateManifest.load(from: manifestFile, template: templateName)
-
-        let template = Template(name: templateName, manifest: manifest)
-        templates.append(template)
-      }
-
-      return templates
-    } catch {
-      throw Error(.failedToEnumerateTemplates, cause: error)
-    }
-  }
-
-  /// Downloads the default template repository.
-  /// - Parameter directory: The directory to clone the template repository in.
-  /// - Returns: A failure if cloning the repository fails.
-  static func downloadDefaultTemplates(into directory: URL) async throws(Error) {
-    log.info("Downloading default templates (\(defaultTemplateRepository))")
-
-    // Remove the directory if it already exists
-    if directory.exists() {
-      try Error.catch {
-        try FileManager.default.removeItem(at: directory)
-      }
-    }
-
-    // Clone the templates repository
-    let process = Process.create(
-      "git",
-      arguments: [
-        "clone", "-b", "v\(SwiftBundler.version.major)",
-        "\(defaultTemplateRepository)",
-        directory.path,
-      ]
-    )
-
-    do {
-      try await process.runAndWait()
-    } catch {
-      throw Error(.failedToCloneTemplateRepository, cause: error)
     }
   }
 

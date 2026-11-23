@@ -156,8 +156,19 @@ extension Array where Element: Hashable {
 extension Array {
   /// Return the array with all duplicates removed, where duplicates are
   /// determined using the given key path.
-  public func uniqued<Key: Hashable>(by key: KeyPath<Element, Key>) -> [Element] {
+  func uniqued<Key: Hashable>(by key: KeyPath<Element, Key>) -> [Element] {
     var seen = Set<Key>()
     return filter { seen.insert($0[keyPath: key]).inserted }
+  }
+}
+
+extension Array<UInt8> {
+  /// Converts an array of bytes to a hexadecimal string.
+  func hex() -> String {
+    var output = ""
+    for element in self {
+      output += String(format: "%02x", element)
+    }
+    return output
   }
 }

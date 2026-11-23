@@ -6,6 +6,9 @@ extension Git {
 
   enum ErrorMessage: Throwable {
     case failedToCloneRepository(_ remote: URL, destination: URL)
+    case failedToFetch(_ repository: URL)
+    case failedToPull(_ repository: URL)
+    case failedToCheckOutRevision(_ repository: URL, _ revision: String)
     case failedToGetRemoteURL(_ repository: URL, remote: String)
     case failedToGetCommitHash(_ repository: URL, _ revision: String)
     case failedToCountRevisions(_ repository: URL, _ revision: String)
@@ -16,6 +19,18 @@ extension Git {
         case .failedToCloneRepository(let remote, let destination):
           let destinationPath = destination.path(relativeTo: .currentDirectory)
           return "Failed to clone repository '\(remote)' to '\(destinationPath)'"
+        case .failedToFetch(let repository):
+          let repositoryPath = repository.path(relativeTo: .currentDirectory)
+          return "Failed to fetch repository checked out at '\(repositoryPath)'"
+        case .failedToPull(let repository):
+          let repositoryPath = repository.path(relativeTo: .currentDirectory)
+          return "Failed to pull repository checked out at '\(repositoryPath)'"
+        case .failedToCheckOutRevision(let repository, let revision):
+          let repositoryPath = repository.path(relativeTo: .currentDirectory)
+          return """
+            Failed to check out revision '\(revision)' in repository at \
+            '\(repositoryPath)'
+            """
         case .failedToGetRemoteURL(let repository, let remote):
           let repositoryPath = repository.path(relativeTo: .currentDirectory)
           return """

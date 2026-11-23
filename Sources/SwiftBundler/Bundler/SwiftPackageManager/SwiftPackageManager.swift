@@ -638,7 +638,7 @@ enum SwiftPackageManager {
         in: .userDomainMask
       ).map { $0 / "org.swift.swiftpm" }
     #elseif os(Linux)
-      if let xdgConfigHome = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"] {
+      if let xdgConfigHome = Env.get("XDG_CONFIG_HOME") {
         directories += [
           URL(fileURLWithPath: xdgConfigHome) / "swiftpm"
         ]

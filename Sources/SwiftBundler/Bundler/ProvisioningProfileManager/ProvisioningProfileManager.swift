@@ -292,7 +292,7 @@ enum ProvisioningProfileManager {
         throw Error(.failedToGenerateDummyXcodeproj(message: nil), cause: error)
       }
 
-      guard let userName = ProcessInfo.processInfo.environment["LOGNAME"] else {
+      guard let userName = Env.get("LOGNAME") else {
         let message = "Missing username (read from LOGNAME environment variable)"
         throw Error(.failedToGenerateDummyXcodeproj(message: message))
       }

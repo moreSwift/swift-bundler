@@ -17,19 +17,23 @@ struct TemplateListCommand: ErrorHandledCommand {
   var templateRepository: URL?
 
   @Flag(
+    name: .customLong("no-auto-update"),
+    help: "Disables template auto updating."
+  )
+  var disableAutoUpdating = false
+
+  @Flag(
     name: .shortAndLong,
     help: "Print verbose error messages."
   )
   public var verbose = false
 
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
-    let templates: [Template] = try await RichError<SwiftBundlerError>.catch {
-      let templateRepository = if let templateRepository {
-        templateRepository
-      } else {
-        try await Templater.getDefaultTemplatesDirectory(downloadIfNecessary: true)
-      }
-      return try Templater.enumerateTemplates(in: templateRepository)
+    let shouldAutoUpdate = !disableAutoUpdating && Env.autoUpdateTemplates
+    let templates = try await RichError<SwiftBundlerError>.catch {
+      let templateRepository = try await TemplateRepositoryManager
+        .resolveTemplateRepository(url: templateRepository, autoUpdate: shouldAutoUpdate)
+      return try templateRepository.enumerateTemplates()
     }
 
     let repositoryOption: String

@@ -106,8 +106,7 @@ enum SwiftToolchainManager {
     }
 
     // Respect custom Swiftly toolchain installation directory
-    if let customSwiftlyToolchainsDirectory =
-          ProcessInfo.processInfo.environment["SWIFTLY_TOOLCHAINS_DIR"] {
+    if let customSwiftlyToolchainsDirectory = Env.get("SWIFTLY_TOOLCHAINS_DIR") {
       let toolchainsDirectory = URL(fileURLWithPath: customSwiftlyToolchainsDirectory)
       searchDirectories.append(toolchainsDirectory)
     }

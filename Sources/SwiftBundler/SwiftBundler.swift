@@ -13,13 +13,7 @@ public struct SwiftBundler: AsyncParsableCommand {
   /// it is. Overriding Swift Bundler's effective version is generally only done
   /// to test configuration field deprecations and similar conditional behavior.
   public static var version: Version {
-    if let effectiveVersion = ProcessInfo.processInfo.environment["_SBUN_EFFECTIVE_VERSION"],
-      let parsedVersion = Version(tolerant: effectiveVersion)
-    {
-      parsedVersion
-    } else {
-      _version
-    }
+    Env.effectiveVersion ?? _version
   }
 
   public static let identifier = "dev.moreswift.swift-bundler"

@@ -597,7 +597,7 @@ enum GenericWindowsBundler: Bundler {
     }
 
     // Parse the PATH environment variable.
-    let pathVar = ProcessInfo.processInfo.environment["Path"] ?? ""
+    let pathVar = Env.get("Path") ?? ""
     let pathDirectories = pathVar.split(separator: ";").map { path in
       URL(fileURLWithPath: String(path))
     }

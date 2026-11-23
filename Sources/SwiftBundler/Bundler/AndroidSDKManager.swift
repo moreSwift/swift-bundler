@@ -11,7 +11,7 @@ enum AndroidSDKManager {
   /// and otherwise searches standard platform-specific locations for the SDK.
   static func locateAndroidSDK() throws(Error) -> URL {
     let environmentVariable = "ANDROID_HOME"
-    if let androidHome = ProcessInfo.processInfo.environment[environmentVariable] {
+    if let androidHome = Env.get(environmentVariable) {
       let androidHome = URL(fileURLWithPath: androidHome)
       guard androidHome.exists(withType: .directory) else {
         throw Error(.androidHomeDoesNotExist(

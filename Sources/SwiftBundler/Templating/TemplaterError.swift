@@ -8,7 +8,6 @@ extension Templater {
   /// An error message related to ``Templater``.
   enum ErrorMessage: Throwable {
     case packageDirectoryAlreadyExists(URL)
-    case failedToCloneTemplateRepository
     case cannotCreatePackageFromBaseTemplate
     case noSuchTemplate(String)
     case failedToCreateOutputDirectory(URL)
@@ -22,8 +21,6 @@ extension Templater {
     case failedToGetRelativePath(file: URL, base: URL)
     case failedToWriteToOutputFile(file: URL)
     case failedToCreateBareMinimumPackage
-    case failedToEnumerateTemplates
-    case failedToPullLatestTemplates
     case failedToEnumerateOutputFiles
     case failedToUpdateIndentationStyle(directory: URL)
     case missingVSCodeOverlay
@@ -32,11 +29,6 @@ extension Templater {
       switch self {
         case .packageDirectoryAlreadyExists(let directory):
           return "A directory already exists at '\(directory.relativePath)'"
-        case .failedToCloneTemplateRepository:
-          return """
-            Failed to clone the default template repository from \
-            '\(Templater.defaultTemplateRepository)'
-            """
         case .cannotCreatePackageFromBaseTemplate:
           return "Cannot create a package from the 'Base' template"
         case let .noSuchTemplate(template):
@@ -72,13 +64,6 @@ extension Templater {
           return "Failed to write to the output file at '\(file.relativePath)'"
         case .failedToCreateBareMinimumPackage:
           return "Failed to create package"
-        case .failedToEnumerateTemplates:
-          return "Failed to enumerate templates"
-        case .failedToPullLatestTemplates:
-          return """
-            Failed to pull the latest templates from \
-            '\(Templater.defaultTemplateRepository)'
-            """
         case .failedToEnumerateOutputFiles:
           return "Failed to enumerate the files in the output directory"
         case .failedToUpdateIndentationStyle(let directory):
@@ -90,7 +75,7 @@ extension Templater {
             ""
             Section("Troubleshooting") {
               "Your templates may be outdated"
-              ExampleCommand("swift-bundler template update")
+              ExampleCommand("swift-bundler templates update")
             }
           }.description
       }

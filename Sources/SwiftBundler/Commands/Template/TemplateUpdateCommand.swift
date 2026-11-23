@@ -17,7 +17,7 @@ struct TemplateUpdateCommand: ErrorHandledCommand {
   func wrappedRun() async throws(RichError<SwiftBundlerError>) {
     let elapsed = try await RichError<SwiftBundlerError>.catch {
       try await Stopwatch.time {
-        try await Templater.updateTemplates()
+        _ = try await TemplateRepositoryManager.resolveTemplateRepository(url: nil)
       }
     }
 
