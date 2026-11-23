@@ -2,13 +2,14 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for inspecting and modifying Swift Bundler app configuration.
-struct ConfigAppsCommand: AsyncParsableCommand {
+struct ConfigAppCommand: AsyncParsableCommand {
   static var configuration = CommandConfiguration(
-    commandName: "apps",
+    commandName: "app",
     abstract: "View and manage app configuration.",
     subcommands: [
-      ConfigAppsListCommand.self,
-    ],
-    defaultSubcommand: ConfigAppsListCommand.self
+      ConfigAppListCommand.self,
+      // Deprecated commands
+      DeprecatedConfigAppListCommand.self,
+    ]
   )
 }

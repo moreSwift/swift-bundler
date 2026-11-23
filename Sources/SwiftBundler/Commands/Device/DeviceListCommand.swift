@@ -2,9 +2,9 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for listing available devices.
-struct DevicesListCommand: ErrorHandledCommand {
+struct DeviceListCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
-    commandName: "list",
+    commandName: "ls",
     abstract: "List available iOS, tvOS, visionOS and Android devices."
   )
 

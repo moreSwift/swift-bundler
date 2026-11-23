@@ -2,13 +2,14 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for managing and listing available devices.
-struct DevicesCommand: AsyncParsableCommand {
+struct DeviceCommand: AsyncParsableCommand {
   static var configuration = CommandConfiguration(
-    commandName: "devices",
+    commandName: "device",
     abstract: "Manage and list available devices.",
     subcommands: [
-      DevicesListCommand.self
-    ],
-    defaultSubcommand: DevicesListCommand.self
+      DeviceListCommand.self,
+      // Deprecated aliases
+      DeprecatedDeviceListCommand.self
+    ]
   )
 }

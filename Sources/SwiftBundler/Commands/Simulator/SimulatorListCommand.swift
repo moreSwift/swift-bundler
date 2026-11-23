@@ -2,9 +2,9 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for listing available simulators.
-struct SimulatorsListCommand: ErrorHandledCommand {
+struct SimulatorListCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
-    commandName: "list",
+    commandName: "ls",
     abstract: "List available iOS, tvOS, visionOS, and Android simulators."
   )
 

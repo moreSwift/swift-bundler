@@ -2,9 +2,9 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for listing available templates.
-struct TemplatesListCommand: ErrorHandledCommand {
+struct TemplateListCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
-    commandName: "list",
+    commandName: "ls",
     abstract: "List available templates."
   )
 

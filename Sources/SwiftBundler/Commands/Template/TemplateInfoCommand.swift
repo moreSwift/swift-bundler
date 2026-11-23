@@ -3,7 +3,7 @@ import Foundation
 import Rainbow
 
 /// The subcommand for getting info about a template.
-struct TemplatesInfoCommand: ErrorHandledCommand {
+struct TemplateInfoCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "info",
     abstract: "Get info about a template."

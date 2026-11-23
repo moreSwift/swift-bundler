@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for updating the default templates repository.
-struct TemplatesUpdateCommand: ErrorHandledCommand {
+struct TemplateUpdateCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "update",
     abstract: "Update the default templates to the latest version."

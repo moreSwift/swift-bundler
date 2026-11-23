@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for booting simulators.
-struct SimulatorsBootCommand: ErrorHandledCommand {
+struct SimulatorBootCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "boot",
     abstract: "Boot an iOS, tvOS, visionOS, or Android simulator."

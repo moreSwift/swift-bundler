@@ -2,13 +2,12 @@ import ArgumentParser
 import Foundation
 
 /// The command for managing and listing signing identities.
-struct IdentitiesCommand: AsyncParsableCommand {
+struct IdentityCommand: AsyncParsableCommand {
   static var configuration = CommandConfiguration(
-    commandName: "identities",
+    commandName: "identity",
     abstract: "Manage and list available signing identities.",
     subcommands: [
-      IdentitiesListCommand.self,
-    ],
-    defaultSubcommand: IdentitiesListCommand.self
+      IdentityListCommand.self,
+    ]
   )
 }
