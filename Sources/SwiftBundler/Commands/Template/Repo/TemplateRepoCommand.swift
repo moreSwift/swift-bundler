@@ -9,6 +9,8 @@ struct TemplateRepoCommand: AsyncParsableCommand {
     subcommands: [
       TemplateRepoListCommand.self,
       TemplateRepoUpdateCommand.self,
+      TemplateRepoAddCommand.self,
+      TemplateRepoRemoveCommand.self,
     ]
   )
 }

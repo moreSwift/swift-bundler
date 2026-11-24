@@ -16,6 +16,7 @@ extension TemplateRepositoryManager {
       String,
       [(repo: TemplateRepository.Name, template: Template)]
     )
+    case repositoryNameNotUnique(TemplateRepository.Name)
 
     var userFriendlyMessage: String {
       switch self {
@@ -41,6 +42,8 @@ extension TemplateRepositoryManager {
           return """
             Multiple templates are called '\(name)': \(candidateString)
             """
+        case .repositoryNameNotUnique(let name):
+          return "A template repository already exists with name '\(name)'"
       }
     }
   }

@@ -12,6 +12,12 @@ struct TemplateRepository: Codable {
   /// The kind of template repository.
   var kind: Kind
 
+  /// Whether the repository is remote or not. For now this just means that
+  /// the ``kind`` is ``Kind/remoteGit``.
+  var isRemote: Bool {
+    kind == .remoteGit
+  }
+
   /// A kind of template repository.
   enum Kind: String, Codable {
     /// A remote template repository stored with git.

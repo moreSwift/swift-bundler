@@ -38,7 +38,9 @@ struct TemplateRepoUpdateCommand: ErrorHandledCommand {
       try await Stopwatch.time {
         if let repository {
           let repo = try await TemplateRepositoryManager.resolveTemplateRepository(
-            name: repository
+            name: repository,
+            autoUpdate: true,
+            showAutoUpdateHint: false
           )
           if repo.kind == .local {
             log.warning("'\(repository)' is a local repository; nothing to do")
@@ -46,6 +48,15 @@ struct TemplateRepoUpdateCommand: ErrorHandledCommand {
         } else {
           let repositories = try await TemplateRepositoryManager.enumerateRepositories()
           for repository in repositories {
+            if let reason = TemplateRepositoryManager.repositoryLacksUpdateSupport(repository) {
+              switch reason {
+                case .isLocal:
+                  log.info("'\(repository.name)' is a local repository; nothing to do")
+              }
+              continue
+            }
+
+            log.info("Updating '\(repository.name)'")
             try await TemplateRepositoryManager.updateRepository(repository)
           }
         }

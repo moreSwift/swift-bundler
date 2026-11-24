@@ -25,10 +25,13 @@ enum TemplateRepositoryManager {
   /// - Parameters:
   ///   - url: The template repository to resolve.
   ///   - autoUpdate: Whether to auto update the repository if it's already checked out.
+  ///   - showAutoUpdateHint: If `true`, shows a hint about how to disable auto-updates
+  ///     when a repository gets auto-updated. Defaults to true.
   /// - Returns: A template repository.
   static func resolveTemplateRepository(
     name: TemplateRepository.Name,
-    autoUpdate: Bool = true
+    autoUpdate: Bool = true,
+    showAutoUpdateHint: Bool = true
   ) async throws(Error) -> TemplateRepository {
     let index = try await loadIndex()
     guard
@@ -42,9 +45,119 @@ enum TemplateRepositoryManager {
       )
     }
 
-    try await ensureCheckout(of: repository, autoUpdate: autoUpdate)
+    try await ensureCheckout(
+      of: repository,
+      autoUpdate: autoUpdate,
+      showAutoUpdateHint: showAutoUpdateHint
+    )
 
     return repository
+  }
+
+  /// The reason that a repository doesn't support updates.
+  enum ReasonRepositoryLacksUpdateSupport {
+    case isLocal
+  }
+
+  /// Checks whether a repository lacks support for updates.
+  static func repositoryLacksUpdateSupport(
+    _ repository: TemplateRepository
+  ) -> ReasonRepositoryLacksUpdateSupport? {
+    switch repository.kind {
+      case .remoteGit:
+        return nil
+      case .local:
+        return .isLocal
+    }
+  }
+
+  /// Add a new template repository to the index, and create a checkout if necessary.
+  /// - Parameters:
+  ///   - name: The name for the repository.
+  ///   - source: The repository's source. A remote git URL for
+  ///     ``TemplateRepository/Kind/remoteGit``, and a local file URL for
+  ///     ``TemplateRepository/Kind/local``.
+  ///   - kind: The kind of template repository (e.g. remote git or local).
+  static func addTemplateRepository(
+    name: TemplateRepository.Name,
+    source: URL,
+    kind: TemplateRepository.Kind
+  ) async throws(Error) {
+    var index = try await loadIndex()
+    guard !index.repositories.lazy.map(\.name).contains(name) else {
+      throw Error(
+        .repositoryNameNotUnique(name),
+        hint: "Run `swift-bundler template repo ls` to list existing template repositories"
+      )
+    }
+
+    let repository = TemplateRepository(
+      name: name,
+      source: source,
+      checkout: kind == .remoteGit
+        ? try checkoutDirectory(for: name)
+        : source,
+      kind: kind
+    )
+    if kind == .remoteGit {
+      try await ensureCheckout(
+        of: repository,
+        autoUpdate: false,
+        showAutoUpdateHint: false
+      )
+    }
+
+    index.repositories.append(repository)
+    try saveIndex(index)
+  }
+
+  /// Removes a template repository from the index, and deletes its checkout if safe.
+  /// - Parameters:
+  ///   - name: The name of the repository to remove.
+  static func removeTemplateRepository(
+    name: TemplateRepository.Name
+  ) async throws(Error) {
+    var index = try await loadIndex()
+    let matches = index.repositories.filter { repository in
+      repository.name == name
+    }
+
+    guard matches.count > 0 else {
+      throw Error(
+        .noSuchRepository(name),
+        hint: "Run `swift-bundler template repo ls` to list existing template repositories"
+      )
+    }
+
+    if matches.count > 1 {
+      log.warning(
+        "Found multiple repositories with the same name; the index may have been corrupted"
+      )
+    }
+
+    let templateRepositoryDirectory = try getTemplateRepositoriesDirectory()
+    for match in matches {
+      // Only delete checkouts of remote template repositories, and only those
+      // that are in our managed templates directory (in case someone has
+      // tampered with the template repository index to point at their own
+      // managed checkout)
+      guard
+        match.isRemote,
+        match.checkout.isContained(in: templateRepositoryDirectory)
+      else {
+        continue
+      }
+
+      try Error.catch {
+        try FileManager.default.removeItem(at: match.checkout)
+      }
+    }
+
+    index.repositories.removeAll { repository in
+      repository.name == name
+    }
+
+    try saveIndex(index)
   }
 
   /// Resolves a template from its name. If a repository is specified then only
@@ -105,7 +218,7 @@ enum TemplateRepositoryManager {
   /// repository if no checkout is present.
   /// - Parameter repository: The repository to update.
   static func updateRepository(_ repository: TemplateRepository) async throws(Error) {
-    try await ensureCheckout(of: repository, autoUpdate: true)
+    try await ensureCheckout(of: repository, autoUpdate: true, showAutoUpdateHint: false)
   }
 
   /// Ensures that a checkout of `repository` exists at its designated checkout
@@ -113,9 +226,12 @@ enum TemplateRepositoryManager {
   /// - Parameters:
   ///   - repository: The repository.
   ///   - autoUpdate: If `true`, existing checkouts will get updated.
+  ///   - showAutoUpdateHint: If `true`, shows a hint about how to disable auto-updates
+  ///     when a repository gets auto-updated. Defaults to true.
   static func ensureCheckout(
     of repository: TemplateRepository,
-    autoUpdate: Bool
+    autoUpdate: Bool,
+    showAutoUpdateHint: Bool = true
   ) async throws(Error) {
     if repository.kind == .remoteGit {
       let alreadyExisted = repository.checkout.exists(withType: .directory)
@@ -126,7 +242,7 @@ enum TemplateRepositoryManager {
       }
 
       if autoUpdate || !alreadyExisted {
-        if alreadyExisted {
+        if alreadyExisted && showAutoUpdateHint {
           log.info(
             """
             Updating '\(repository.name)'; use SBUN_AUTO_UPDATE_TEMPLATES=0 \
@@ -155,15 +271,15 @@ enum TemplateRepositoryManager {
   }
 
   /// Gets the directory to check out a particular remote repository to.
-  private static func checkoutDirectory(for repository: URL) async throws(Error) -> URL {
-    let parent = try await getTemplateRepositoriesDirectory()
-    let uniqueValue = repository.absoluteString
-    let digest = SHA256.hash(data: Data(uniqueValue.utf8)).hex()
-    return parent / digest
+  private static func checkoutDirectory(
+    for repositoryName: TemplateRepository.Name
+  ) throws(Error) -> URL {
+    let parent = try getTemplateRepositoriesDirectory()
+    return parent / repositoryName.name
   }
 
   /// Gets the directory that Swift Bundler checks out template repositories to.
-  private static func getTemplateRepositoriesDirectory() async throws(Error) -> URL {
+  private static func getTemplateRepositoriesDirectory() throws(Error) -> URL {
     try Error.catch {
       try System.getApplicationSupportDirectory()
     } / "template-repositories"
@@ -232,14 +348,15 @@ enum TemplateRepositoryManager {
   private static func createDefaultTemplateRepositoryIndex()
     async throws(Error) -> TemplateRepositoryIndex
   {
+    let name = TemplateRepository.Name.default
     let source = defaultTemplateRepositoryURL
     let index = TemplateRepositoryIndex(
       schema: TemplateRepositoryIndex.currentSchema,
       repositories: [
         TemplateRepository(
-          name: TemplateRepository.Name.default,
+          name: name,
           source: source,
-          checkout: try await checkoutDirectory(for: source),
+          checkout: try checkoutDirectory(for: name),
           kind: .remoteGit
         )
       ]
