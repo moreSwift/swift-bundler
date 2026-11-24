@@ -3,7 +3,7 @@ import Foundation
 import Rainbow
 
 /// The subcommand for getting info about a template.
-struct TemplatesInfoCommand: ErrorHandledCommand {
+struct TemplateInfoCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "info",
     abstract: "Get info about a template."
@@ -35,7 +35,7 @@ struct TemplatesInfoCommand: ErrorHandledCommand {
     }
 
     var exampleCommand =
-      "swift bundler create [app-name] --template \(template.name.quotedIfNecessary)"
+      "swift-bundler create [app-name] --template \(template.name.quotedIfNecessary)"
     if let templateRepository = templateRepository {
       exampleCommand +=
         " --template-repository \(templateRepository.relativePath.quotedIfNecessary)"

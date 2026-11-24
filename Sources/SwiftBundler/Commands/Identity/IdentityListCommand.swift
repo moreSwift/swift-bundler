@@ -2,9 +2,9 @@ import ArgumentParser
 import Foundation
 
 /// The command for viewing and managing signing identities.
-struct IdentitiesListCommand: ErrorHandledCommand {
+struct IdentityListCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
-    commandName: "list",
+    commandName: "ls",
     abstract: "List available codesigning identities."
   )
 

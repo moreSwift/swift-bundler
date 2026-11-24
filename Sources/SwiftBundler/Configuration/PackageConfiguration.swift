@@ -363,7 +363,7 @@ extension PackageConfiguration.Flat {
         throw PackageConfiguration.Error(
           .noSuchApp(name),
           hint: Output {
-            "Run `swift bundler config apps` to list available apps"
+            "Run `swift-bundler config app ls` to list available apps"
           }.description
         )
       }

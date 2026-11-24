@@ -2,9 +2,9 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for listing apps in the current Swift Bundler project.
-struct ConfigAppsListCommand: ErrorHandledCommand {
+struct ConfigAppListCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
-    commandName: "list",
+    commandName: "ls",
     abstract: "List apps in the current Swift Bundler project."
   )
 

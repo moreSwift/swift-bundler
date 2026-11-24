@@ -501,7 +501,7 @@ struct BundleCommand: ErrorHandledCommand {
         let platformCondition = platform.map { " with platform '\($0)'" } ?? ""
         let reason = """
           No simulator found matching '\(simulatorSpecifier)'\(platformCondition). Use \
-          'swift bundler simulators list' to list available simulators.
+          'swift-bundler simulator ls' to list available simulators.
           """
         throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
       }
@@ -543,11 +543,11 @@ struct BundleCommand: ErrorHandledCommand {
                 """
 
                 Section("List available simulators") {
-                  ExampleCommand("swift-bundler simulators list")
+                  ExampleCommand("swift-bundler simulator ls")
                 }
 
                 Section("Boot a simulator", trailingNewline: false) {
-                  ExampleCommand("swift-bundler simulators boot <id-or-name>")
+                  ExampleCommand("swift-bundler simulator boot <id-or-name>")
                 }
               }.description
             throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
@@ -570,7 +570,7 @@ struct BundleCommand: ErrorHandledCommand {
               """
 
               Section("List available devices", trailingNewline: false) {
-                ExampleCommand("swift-bundler devices list")
+                ExampleCommand("swift-bundler device ls")
               }
             }.description
           throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))

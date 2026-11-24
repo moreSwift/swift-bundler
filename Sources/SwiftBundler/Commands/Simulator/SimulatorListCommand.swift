@@ -2,9 +2,9 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for listing available simulators.
-struct SimulatorsListCommand: ErrorHandledCommand {
+struct SimulatorListCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
-    commandName: "list",
+    commandName: "ls",
     abstract: "List available iOS, tvOS, visionOS, and Android simulators."
   )
 
@@ -128,7 +128,7 @@ struct SimulatorsListCommand: ErrorHandledCommand {
       }
       
       Section("Booting a simulator") {
-        ExampleCommand("swift-bundler simulators boot [id-or-name]")
+        ExampleCommand("swift-bundler simulator boot [id-or-name]")
       }
     }.show()
   }

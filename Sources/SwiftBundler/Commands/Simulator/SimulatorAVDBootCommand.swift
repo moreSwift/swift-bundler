@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for booting Android Virtual Devices.
-struct SimulatorsAVDBootCommand: ErrorHandledCommand {
+struct SimulatorAVDBootCommand: ErrorHandledCommand {
   static var configuration = CommandConfiguration(
     commandName: "boot",
     abstract: "Boot an Android Virtual Device."

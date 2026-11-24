@@ -2,15 +2,16 @@ import ArgumentParser
 import Foundation
 
 /// The subcommand for managing and listing available package templates.
-struct TemplatesCommand: AsyncParsableCommand {
+struct TemplateCommand: AsyncParsableCommand {
   static var configuration = CommandConfiguration(
-    commandName: "templates",
+    commandName: "template",
     abstract: "Manage and list available package templates.",
     subcommands: [
-      TemplatesListCommand.self,
-      TemplatesInfoCommand.self,
-      TemplatesUpdateCommand.self,
-    ],
-    defaultSubcommand: TemplatesListCommand.self
+      TemplateListCommand.self,
+      TemplateInfoCommand.self,
+      TemplateUpdateCommand.self,
+      // Deprecated commands
+      DeprecatedTemplateListCommand.self,
+    ]
   )
 }
