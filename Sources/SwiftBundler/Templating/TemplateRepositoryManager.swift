@@ -164,7 +164,7 @@ enum TemplateRepositoryManager {
   /// templates within that repository are considered. Otherwise all repositories
   /// are checked.
   static func resolveTemplate(
-    name: String,
+    name: Template.Name,
     repository: TemplateRepository.Name?,
     autoUpdate: Bool = true
   ) async throws(Error) -> Template {
@@ -185,7 +185,7 @@ enum TemplateRepositoryManager {
 
     let candidates = try repositories.flatMap { (repository) throws(Error) in
       try repository.enumerateTemplates()
-        .map { (repo: repository.name, template: $0) }
+        .map { (repo: repository.name, template: $0.value) }
     }
 
     let matchingTemplates = candidates.filter { candidate in
@@ -200,7 +200,12 @@ enum TemplateRepositoryManager {
 
     if matchingTemplates.count > 1 {
       throw RichError(
-        .ambiguousTemplateName(name, matchingTemplates),
+        .ambiguousTemplateName(
+          name,
+          matchingTemplates.sorted {
+            $0.template.repository.name.name < $1.template.repository.name.name
+          }
+        ),
         hint: "Use `--repo [repo_name]` to disambiguate"
       )
     }

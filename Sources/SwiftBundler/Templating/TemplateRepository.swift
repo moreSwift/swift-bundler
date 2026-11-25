@@ -29,50 +29,40 @@ struct TemplateRepository: Codable {
   /// Enumerates the repository's templates.
   /// - Returns: The available templates.
   func enumerateTemplates()
-    throws(TemplateRepositoryManager.Error) -> [Template]
+    throws(TemplateRepositoryManager.Error) -> [Template.Name: Template]
   {
     do {
-      let contents = try FileManager.default.contentsOfDirectory(
-        at: checkout,
-        includingPropertiesForKeys: nil,
-        options: []
-      )
-      var templates: [Template] = []
+      let file = checkout / "BundlerTemplates.toml"
+      let configuration = try TemplateRepositoryConfiguration.load(from: file)
 
-      // Enumerate templates
-      for directory in contents {
-        guard directory.exists(withType: .directory) else {
-          continue
-        }
-
-        let templateName = directory.lastPathComponent
-
-        // Skip `Base` template, `VSCode` template, and `.git` directory
-        guard
-          templateName != "Base" && templateName != "VSCode" && !templateName.starts(with: ".")
-        else {
-          continue
-        }
-
-        // Load the template manifest file
-        let manifestFile = directory / "Template.toml"
-        let manifest = try TemplateManifest.load(from: manifestFile, template: templateName)
-
-        let template = Template(
-          name: templateName,
-          location: directory,
-          repository: self.name,
-          manifest: manifest
+      return configuration.templates.mapValues { (name, configuration) in
+        Template(
+          name: name,
+          location: checkout / configuration.path,
+          repository: self,
+          configuration: configuration
         )
-        templates.append(template)
       }
-
-      return templates
     } catch {
       throw TemplateRepositoryManager.Error(
         .failedToEnumerateTemplates,
         cause: error
       )
     }
+  }
+
+  /// Resolves a template by name.
+  /// - Parameter name: The template's name.
+  /// - Returns: The template.
+  func resolveTemplate(_ name: Template.Name)
+    throws(TemplateRepositoryManager.Error) -> Template
+  {
+    let templates = try enumerateTemplates()
+    guard let template = templates[name] else {
+      throw TemplateRepositoryManager.Error(
+        .noSuchTemplate(name)
+      )
+    }
+    return template
   }
 }

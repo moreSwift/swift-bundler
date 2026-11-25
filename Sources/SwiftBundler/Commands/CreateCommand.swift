@@ -71,7 +71,7 @@ struct CreateCommand: ErrorHandledCommand {
     name: [.customShort("t"), .customLong("template")],
     help: "Template to create the app from."
   )
-  var templateName: String?
+  var templateName: Template.Name?
 
   @Option(
     name: [.customShort("r"), .customLong("repo")],
@@ -215,7 +215,9 @@ struct CreateCommand: ErrorHandledCommand {
   ///   - template: The template that the package was created from.
   static func printNextSteps(packageDirectory: URL, template: Template?) {
     Output {
-      if let template = template, let dependencies = template.manifest.systemDependencies {
+      if let template = template,
+          let dependencies = template.configuration.systemDependencies
+      {
         ""
         Section("System dependencies") {
           "The '\(template.name)' template requires the following system dependencies to be installed:"

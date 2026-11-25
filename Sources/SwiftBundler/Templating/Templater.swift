@@ -42,6 +42,7 @@ enum Templater {
   ///   - outputDirectory: The directory to create the package in.
   ///   - template: The template to use to create the package.
   ///   - arguments: The arguments to the template.
+  ///   - overlays: The optional template overlays to enable.
   ///   - forceCreation: If `true`, the package will be created even if the selected template doesn't support the user's system and Swift version.
   ///     will be added to the package (enabling ergonomic debugging with VSCode).
   ///   - swiftToolchain: An alternative Swift toolchain to use.
@@ -49,10 +50,15 @@ enum Templater {
     in outputDirectory: URL,
     from template: Template,
     arguments: TemplateArguments,
+    overlays: [TemplateConfiguration.OptionalOverlay.Name],
     forceCreation: Bool,
     swiftToolchain: URL?
   ) async throws(Error) {
-    if FileManager.default.fileExists(atPath: outputDirectory.path) {
+    guard template.isPublic else {
+      throw Error(.templateNotPublic(template))
+    }
+
+    guard !FileManager.default.fileExists(atPath: outputDirectory.path) else {
       throw Error(.packageDirectoryAlreadyExists(outputDirectory))
     }
 
@@ -62,7 +68,7 @@ enum Templater {
       // Verify that this machine's Swift version is supported
       try await verifyTemplateIsSupported(
         template.name,
-        template.manifest,
+        template.configuration,
         swiftToolchain: swiftToolchain
       )
     }
@@ -74,34 +80,28 @@ enum Templater {
       throw Error(.failedToCreateOutputDirectory(outputDirectory), cause: error)
     }
 
-    let templateRepository = try await Error.catch {
-      try await TemplateRepositoryManager.resolveTemplateRepository(
-        name: template.repository
+    // Apply the template
+    do {
+      try applyTemplate(
+        template,
+        to: outputDirectory,
+        packageName: arguments.packageName,
+        identifier: arguments.configuration.identifier,
+        indentationStyle: arguments.indentationStyle
       )
+    } catch {
+      // Cleanup output directory
+      attemptCleanup(outputDirectory)
+      throw error
     }
 
-    // Apply the base template first if it exists
-    let baseTemplate = templateRepository.checkout / "Base"
-    if baseTemplate.exists(withType: .directory) {
-      // Set the indentation style to tab for now to avoid updating the tab
-      // style twice because the final `applyTemplate` call will update all
-      // files in the output directory
-      do {
-        try applyTemplate(
-          baseTemplate,
-          to: outputDirectory,
-          packageName: arguments.packageName,
-          identifier: arguments.configuration.identifier,
-          indentationStyle: arguments.indentationStyle
-        )
-      } catch {
-        attemptCleanup(outputDirectory)
-        throw error
+    for overlayName in overlays {
+      guard let overlay = template.configuration.optionalOverlays[overlayName] else {
+        throw Error(.noSuchOverlay(overlayName))
       }
     }
-
     if arguments.addVSCodeOverlay {
-      let vsCodeOverlay = templateRepository.checkout / "VSCode"
+      let vsCodeOverlay = template.repository.checkout / "VSCode"
       guard vsCodeOverlay.exists(withType: .directory) else {
         throw Error(.missingVSCodeOverlay)
       }
@@ -118,21 +118,6 @@ enum Templater {
         attemptCleanup(outputDirectory)
         throw error
       }
-    }
-
-    // Apply the template
-    do {
-      try applyTemplate(
-        template.location,
-        to: outputDirectory,
-        packageName: arguments.packageName,
-        identifier: arguments.configuration.identifier,
-        indentationStyle: arguments.indentationStyle
-      )
-    } catch {
-      // Cleanup output directory
-      attemptCleanup(outputDirectory)
-      throw error
     }
 
     try createPackageConfigurationFile(
@@ -163,12 +148,12 @@ enum Templater {
   /// Verifies that the given template supports this machine's Swift version.
   /// - Parameters:
   ///   - name: The name of the template being checked.
-  ///   - manifest: The manifest of the template to check.
+  ///   - configuration: The configuration of the template to check.
   ///   - swiftToolchain: An alternative Swift toolchain to use.
   /// - Returns: An error if this machine's Swift version is not supported by the template.
   static func verifyTemplateIsSupported(
-    _ name: String,
-    _ manifest: TemplateManifest,
+    _ name: Template.Name,
+    _ configuration: TemplateConfiguration.Flat,
     swiftToolchain: URL?
   ) async throws(Error) {
     // Verify that the installed Swift version is supported
@@ -176,11 +161,13 @@ enum Templater {
       try await SwiftPackageManager.getSwiftVersion(toolchain: swiftToolchain)
     }
 
-    if version < manifest.minimumSwiftVersion {
+    if let minimumSwiftVersion = configuration.minimumSwiftVersion,
+        version < minimumSwiftVersion
+    {
       let message = ErrorMessage.templateDoesNotSupportInstalledSwiftVersion(
         template: name,
         version: version,
-        minimumSupportedVersion: manifest.minimumSwiftVersion
+        minimumSupportedVersion: minimumSwiftVersion
       )
       throw Error(message)
     }
@@ -188,28 +175,42 @@ enum Templater {
 
   /// Applies a template to a directory (processes and copies the template's files).
   /// - Parameters:
-  ///   - templateDirectory: The template's directory.
+  ///   - template: The template.
   ///   - outputDirectory: The directory to copy the resulting files to.
   ///   - packageName: The name of the package.
   ///   - identifier: The package's identifier (e.g. 'com.example.ExampleApp').
   ///   - indentationStyle: The style of indentation to use.
   /// - Returns: A failure if template application fails.
   static func applyTemplate(
-    _ templateDirectory: URL,
+    _ template: Template,
     to outputDirectory: URL,
     packageName: String,
     identifier: String,
     indentationStyle: IndentationStyle
   ) throws(Error) {
-    log.info("Applying '\(templateDirectory.lastPathComponent)' template")
+    if let base = template.configuration.base {
+      let baseTemplate = try Error.catch {
+        try template.repository.resolveTemplate(base)
+      }
+
+      try applyTemplate(
+        baseTemplate,
+        to: outputDirectory,
+        packageName: packageName,
+        identifier: identifier,
+        indentationStyle: indentationStyle
+      )
+    }
+
+    log.info("Applying '\(template.name)' template")
 
     guard
       let enumerator = FileManager.default.enumerator(
-        at: templateDirectory, includingPropertiesForKeys: nil
+        at: template.location,
+        includingPropertiesForKeys: nil
       )
     else {
-      let template = templateDirectory.lastPathComponent
-      throw Error(.failedToEnumerateTemplateContents(template: template))
+      throw Error(.failedToEnumerateTemplateContents(template: template.name))
     }
 
     // Enumerate the template's files
@@ -224,15 +225,11 @@ enum Templater {
     for file in files {
       try processAndCopyFile(
         file,
-        from: templateDirectory,
+        from: template.location,
         to: outputDirectory,
         packageName: packageName,
         identifier: identifier
       )
-    }
-
-    if templateDirectory.lastPathComponent != "Base" {
-      log.info("Updating indentation to '\(indentationStyle.defaultValueDescription)'")
     }
 
     try updateIndentationStyle(in: outputDirectory, from: .tabs, to: indentationStyle)

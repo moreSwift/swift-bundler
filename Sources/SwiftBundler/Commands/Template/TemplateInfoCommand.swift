@@ -13,7 +13,7 @@ struct TemplateInfoCommand: ErrorHandledCommand {
   @Argument(
     help: "The template to get info about."
   )
-  var template: String
+  var template: Template.Name
 
   @Option(
     name: [.customShort("r"), .customLong("repo")],
@@ -44,20 +44,24 @@ struct TemplateInfoCommand: ErrorHandledCommand {
     }
 
     let exampleCommand =
-      "swift-bundler create [app-name] --template \(template.name.quotedIfNecessary)"
+      "swift-bundler create [app-name] --template \(template.name.name.quotedIfNecessary)"
 
     Output {
       Section("Template info") {
         KeyedList {
-          KeyedList.Entry("Name", template.name)
-          KeyedList.Entry("Description", template.manifest.description)
+          KeyedList.Entry("Name", template.name.name)
+          KeyedList.Entry("Description", template.configuration.description)
           KeyedList.Entry(
             "Minimum Swift version",
-            template.manifest.minimumSwiftVersion.description
+            template.configuration.minimumSwiftVersion?.description ?? "not specified"
           )
           KeyedList.Entry("Platforms") {
-            InlineList(template.manifest.platforms)
+            InlineList(template.configuration.platforms ?? ["all"])
           }
+          KeyedList.Entry(
+            "Visibility",
+            (template.configuration.visibility ?? .public).rawValue
+          )
         }
       }
       Section("Using this template") {

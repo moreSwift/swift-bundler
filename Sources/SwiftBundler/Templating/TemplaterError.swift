@@ -13,9 +13,11 @@ extension Templater {
     case failedToDecodeTemplateManifest(template: String, manifest: URL)
     case failedToReadTemplateManifest(template: String, manifest: URL)
     case templateDoesNotSupportInstalledSwiftVersion(
-      template: String, version: Version, minimumSupportedVersion: Version
+      template: Template.Name,
+      version: Version,
+      minimumSupportedVersion: Version
     )
-    case failedToEnumerateTemplateContents(template: String)
+    case failedToEnumerateTemplateContents(template: Template.Name)
     case failedToReadFile(template: String, file: URL)
     case failedToGetRelativePath(file: URL, base: URL)
     case failedToWriteToOutputFile(file: URL)
@@ -23,6 +25,7 @@ extension Templater {
     case failedToEnumerateOutputFiles
     case failedToUpdateIndentationStyle(directory: URL)
     case missingVSCodeOverlay
+    case templateNotPublic(Template)
 
     var userFriendlyMessage: String {
       switch self {
@@ -44,13 +47,15 @@ extension Templater {
         case .failedToReadTemplateManifest(let template, _):
           return "Failed to read the contents of the manifest for the '\(template)' template"
         case .templateDoesNotSupportInstalledSwiftVersion(
-          let template, let version, let minimumSupportedVersion
+          let template,
+          let version,
+          let minimumSupportedVersion
         ):
-          let tip = "Provide the '-f' flag to create the package anyway"
-          let version = version.description
-          let minimumVersion = minimumSupportedVersion.description
-          return
-            "The '\(template)' template supports a minimum Swift version of \(minimumVersion) but \(version) is installed. \(tip)"
+          return """
+            The '\(template)' template supports a minimum Swift version of \
+            \(minimumSupportedVersion) but \(version) is installed. Provide \
+            the '-f' flag to create the package anyway
+            """
         case .failedToEnumerateTemplateContents(let template):
           return "Failed to enumerate the contents of the '\(template)' template"
         case .failedToReadFile(let template, let file):
@@ -75,6 +80,11 @@ extension Templater {
               ExampleCommand("swift-bundler templates update")
             }
           }.description
+        case .templateNotPublic(let template):
+          return """
+            '\(template.name)' is an internal template and cannot be used to \
+            create projects directly
+            """
       }
     }
   }

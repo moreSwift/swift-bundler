@@ -2,21 +2,30 @@ import ArgumentParser
 import Foundation
 
 extension TemplateRepository {
-  /// A template repository name.
-  struct Name: Codable, Hashable, Sendable, CustomStringConvertible, ExpressibleByArgument {
+  /// A template repository name. Only alphanumeric ASCII characters, hyphens,
+  /// and underscores are allowed. Leading hyphens are disallowed.
+  ///
+  /// This implementation is also used for template names under the hood.
+  struct Name: Codable, Hashable, Sendable, CustomStringConvertible,
+    ExpressibleByArgument, TriviallyFlattenable
+  {
     /// The name of the default template repository.
     static let `default` = Self(assumingValid: "default")
 
     /// The set of characters allowed in template repository names.
     static let validNameCharacters = CharacterSet(
-      charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+      charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
     )
 
     /// Validates a candidate template repository name.
     static func validateName(_ name: String) -> Bool {
-      name.unicodeScalars.allSatisfy { character in
-        validNameCharacters.contains(character)
-      }
+      return (
+        name.unicodeScalars.allSatisfy { character in
+          validNameCharacters.contains(character)
+        }
+        && !name.hasPrefix("-")
+        && !name.isEmpty
+      )
     }
 
     /// The underlying validated name.

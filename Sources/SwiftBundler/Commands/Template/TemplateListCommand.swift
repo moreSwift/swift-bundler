@@ -21,6 +21,15 @@ struct TemplateListCommand: ErrorHandledCommand {
   var disableAutoUpdating = false
 
   @Flag(
+    help: """
+      Shows internal templates as well as public templates. Internal \
+      templates cannot be used to create projects, only as the base \
+      of other templates.
+      """
+  )
+  public var showInteral = false
+
+  @Flag(
     name: .shortAndLong,
     help: "Print verbose error messages."
   )
@@ -52,14 +61,20 @@ struct TemplateListCommand: ErrorHandledCommand {
 
     Output {
       for (repository, templates) in templatesByRepository {
+        let visibleTemplates = templates.values.sorted {
+          $0.name.name < $1.name.name
+        }.filter { template in
+          showInteral || template.isPublic
+        }
         Section("\(repository.name)") {
           KeyedList {
-            for template in templates {
-              KeyedList.Entry(template.name, template.manifest.description)
+            for template in visibleTemplates {
+              KeyedList.Entry(template.name.name, template.configuration.description)
             }
           }
         }
       }
+
       Section("Hint: Using a template") {
         ExampleCommand("swift-bundler create [app-name] --template [template]")
       }
