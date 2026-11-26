@@ -53,6 +53,11 @@ let package = Package(
     // greater than 4.7.1. It's done it in CI before.
     .package(url: "https://github.com/tadija/AEXML", "4.6.1"..<"4.7.2"),
     .package(url: "https://github.com/yonaskolb/XcodeGen", from: "2.42.0"),
+    // XcodeGen depends on JSONUtilities. JSONUtilities introduced a breaking
+    // change in 4.3.0 when they bumped their macOS deployment target to 10.15.
+    // We have to depend on JSONUtilities ourselves just to avoid SwiftPM
+    // occasionally resolving a version greater than 4.2.0.
+    .package(url: "https://github.com/yonaskolb/JSONUtilities", "4.0.0"..<"4.3.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax", "601.0.0"..<"604.0.0"),
     .package(url: "https://github.com/swhitty/FlyingFox", from: "0.22.0"),
     .package(url: "https://github.com/jpsim/Yams", from: "5.1.2"),
@@ -145,6 +150,9 @@ let package = Package(
         // Depended on transitively by XcodeProj, we just depend on it ourselves
         // to silence a warning related to our AEXML dependency version workaround
         "AEXML",
+        // Depended on transitively by XcodeProj, we just depend on it ourselves
+        // to silence a warning related to our JSONUtilities dependency version workaround
+        "JSONUtilities",
 
         // Hot reloading related dependencies
         .product(
