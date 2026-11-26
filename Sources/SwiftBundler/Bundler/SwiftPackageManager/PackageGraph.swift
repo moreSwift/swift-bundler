@@ -317,7 +317,9 @@ extension SwiftPackageManager {
       }
     
       let enabledTraits = enabledTraits[packageReference] ?? []
-      return try target.dependencies.flatMap { (dependency: TargetDependency) throws(Error) -> [TargetReference] in
+      return try target.dependencies.flatMap { (dependency: TargetDependency) throws(Error) -> [
+        TargetReference
+      ] in
         switch dependency {
           case .target(let name, let condition):
             guard condition?.isSatisfied(

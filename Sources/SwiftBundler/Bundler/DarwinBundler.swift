@@ -114,7 +114,10 @@ enum DarwinBundler: Bundler {
     )
 
     // Embed provisioning profile if necessary
-    if let provisioningProfile = try await Self.provisioningProfile(for: context) {
+    if let provisioningProfile = try await Self.provisioningProfile(
+      for: context,
+      platformVersion: additionalContext.platformVersion
+    ) {
       try Self.embedProvisioningProfile(provisioningProfile, in: appBundle)
     }
 
@@ -265,7 +268,8 @@ enum DarwinBundler: Bundler {
   /// Returns `nil` if the context doesn't require a profile, and throws an
   /// error if a provisioning profile is required but couldn't be located.
   private static func provisioningProfile(
-    for context: BundlerContext
+    for context: BundlerContext,
+    platformVersion: String
   ) async throws(Error) -> URL? {
     // If the user provided a provisioning profile, use it
     if let profile = context.darwinCodeSigningContext?.manualProvisioningProfile {
@@ -293,6 +297,7 @@ enum DarwinBundler: Bundler {
           bundleIdentifier: context.appConfiguration.identifier,
           deviceId: device.id,
           deviceOS: device.platform.os,
+          platformVersion: platformVersion,
           identity: codeSigningContext.identity
         )
     } catch {

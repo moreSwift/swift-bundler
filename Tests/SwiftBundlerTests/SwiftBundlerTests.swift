@@ -108,7 +108,10 @@ struct SwiftBundlerTests {
           xmlns: nil,
           security: WindowsApplicationManifest.TrustInfo.Security(
             requestedPrivileges: [
-              .requestedExecutionLevel(level: Attribute(.some("requireAdministrator")), uiAccess: Attribute(.some(false)))
+              .requestedExecutionLevel(
+                level: Attribute(.some("requireAdministrator")),
+                uiAccess: Attribute(.some(false))
+              )
             ]
           )
         )
