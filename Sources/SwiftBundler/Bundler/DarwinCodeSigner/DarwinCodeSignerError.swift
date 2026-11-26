@@ -48,7 +48,7 @@ extension DarwinCodeSigner {
         case .identityShortNameNotMatched(let shortName):
           return """
             Identity short name '\(shortName)' didn't match any known identities. \
-            Run 'swift bundler identities list' to list available identities.
+            Run '\(SwiftBundler.name) identity ls' to list available identities.
             """
         case .invalidId(let id):
           return "Invalid code signing id '\(id)', expected hexadecimal string."

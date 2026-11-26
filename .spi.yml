@@ -1,4 +1,4 @@
 version: 1
 builder:
   configs:
-  - documentation_targets: [SwiftBundler]
+  - documentation_targets: [swift-bundler]

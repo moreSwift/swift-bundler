@@ -45,7 +45,7 @@ On Linux you'll want to supply either `--bundler linuxAppImage` or
 targeted at development and not distribution.
 
 ```sh
-# Build the app. The result will be in `.build/bundler`
+# Build the app. The result will be in `.build/bundler/apps/<YourApp>`
 sbun bundle -c release
 ```
 

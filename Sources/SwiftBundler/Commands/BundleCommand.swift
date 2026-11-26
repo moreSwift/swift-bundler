@@ -344,7 +344,7 @@ struct BundleCommand: ErrorHandledCommand {
         log.warning(
           """
           Found multiple code signing identities, using \(match); list all available \
-          identities using '\(SwiftBundler.name) identities list' and provide the '--identity' \
+          identities using '\(SwiftBundler.name) identity ls' and provide the '--identity' \
           option to select a particular identity
           """
         )

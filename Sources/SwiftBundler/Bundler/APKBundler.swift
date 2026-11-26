@@ -1318,7 +1318,7 @@ extension APKBundler {
       let packageConfiguration = try packageGraph.configuration(ofPackage: target.package)
       if let effectiveConfigVersion = packageConfiguration?.effectiveVersion {
         containsPreIntroductionConfiguration = containsPreIntroductionConfiguration
-          || effectiveConfigVersion <= propertyIntroduction
+          || effectiveConfigVersion < propertyIntroduction
       }
 
       let configuration = try packageGraph.configuration(ofTarget: target)
