@@ -403,7 +403,20 @@ struct BundleCommand: ErrorHandledCommand {
           try await DarwinCodeSigner.enumerateIdentities()
         }
 
-        guard let firstIdentity = identities.first else {
+        // The provisioning profiles that Swift Bundler generates are development
+        // profiles. To play it safe, prefer development signing identities
+        // when the user doesn't provide an identity. Otherwise the case where
+        // the user leaves signing up to Swift Bundler breaks if the 'security'
+        // CLI happens to list a distribution identity first.
+        let preferredIdentity =
+          platform.requiresProvisioningProfiles
+          ? identities.first(where: { identity in
+            identity.name.contains("Apple Development")
+              || identity.name.contains("iPhone Developer")
+          })
+          : nil
+
+        guard let selectedIdentity = preferredIdentity ?? identities.first else {
           let reason = """
             No codesigning identities found. Please sign into Xcode and try again.
             """
@@ -411,11 +424,25 @@ struct BundleCommand: ErrorHandledCommand {
         }
 
         if identities.count > 1 {
-          log.warning("Multiple codesigning identities found; using '\(firstIdentity)'")
+          log.warning("Multiple codesigning identities found; using '\(selectedIdentity)'")
           log.debug("Other identities: \(identities)")
         }
 
-        identity = firstIdentity
+        if provisioningProfile == nil
+          && !selectedIdentity.name.contains("Apple Development")
+          && !selectedIdentity.name.contains("iPhone Developer")
+        {
+          log.warning(
+            """
+            Swift Bundler's generated provisioning profiles are development \
+            profiles, but Swift Bundler couldn't find an Apple Develpment or \
+            iPhone Developer signing identity to sign the app with. App may \
+            fail to verify during installation
+            """
+          )
+        }
+
+        identity = selectedIdentity
       }
 
       return BundlerContext.DarwinCodeSigningContext(
