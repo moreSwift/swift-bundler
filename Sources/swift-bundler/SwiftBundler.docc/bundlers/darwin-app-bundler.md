@@ -13,29 +13,29 @@ In all of the following examples you can omit `--bundler darwinApp` because it i
 ### Create an app bundle
 
 ```sh
-swift-bundler bundle --bundler darwinApp
+sbun bundle --bundler darwinApp
 ```
 
 ### Run on your Mac
 
 ```sh
-swift-bundler run --bundler darwinApp
+sbun run --bundler darwinApp
 ```
 
 ### Run on your Mac using Mac Catalyst
 
 ```sh
-swift-bundler run --platform macCatalyst
+sbun run --platform macCatalyst
 ```
 
 ### Run on an iOS/tvOS/visionOS device
 
 ```sh
-swift-bundler run --device "Your Device"
+sbun run --device "Your Device"
 ```
 
 ### Run on an iOS/tvOS/visionOS simulator
 
 ```sh
-swift-bundler run --simulator "Your Simulator"
+sbun run --simulator "Your Simulator"
 ```

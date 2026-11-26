@@ -7,7 +7,7 @@ A bundler that produces Linux RPM installers.
 The RPM bundler is one of the bundlers that we recommend when distributing Linux applications.
 
 The output of the RPM bundler is not directly runnable, so it is incompatible
-with the `swift-bundler run` command.
+with the `sbun run` command.
 
 ## Dependencies
 
@@ -31,13 +31,13 @@ The RPM bundler relies on the `rpmbuild` command, and the `patchelf` command.
 ### Create an RPM installer
 
 ```sh
-swift-bundler bundle --bundler linuxRPM
+sbun bundle --bundler linuxRPM
 ```
 
 ### Create an optimized RPM installer
 
 ```sh
-swift-bundler bundle --bundler linuxRPM -c release --strip
+sbun bundle --bundler linuxRPM -c release --strip
 ```
 
 ## Testing installers on non-RPM distros

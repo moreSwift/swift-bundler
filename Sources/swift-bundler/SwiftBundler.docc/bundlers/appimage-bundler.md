@@ -41,11 +41,11 @@ chmod +x /usr/local/bin/appimagetool
 ## Create an AppImage
 
 ```sh
-swift-bundler bundle --bundler linuxAppImage
+sbun bundle --bundler linuxAppImage
 ```
 
 ## Create and run an AppImage
 
 ```sh
-swift-bundler run --bundler linuxAppImage
+sbun run --bundler linuxAppImage
 ```

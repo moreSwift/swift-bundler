@@ -60,6 +60,9 @@ public struct SwiftBundler: AsyncParsableCommand {
   /// Swift Bundler's GitHub URL for creating new issues. Used in diagnostics.
   public static let newIssueURL = gitURL / "issues/new"
 
+  /// The name Swift Bundler's command for the current invocation.
+  public static let name = ProcessInfo.processInfo.processName
+
   public func validate() throws {
     // Work around to allow SwiftBundler to be called twice in a single process.
     // Ideally this static cache variable wouldn't be needed, but I can't solve

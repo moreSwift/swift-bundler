@@ -54,7 +54,7 @@ extension Xcodebuild {
             Failed to locate suitable destination simulator with os \
             '\(os.name)' and architecture '\(architecture.rawValue)'. \
             xcodebuild requires that Swift Bundler provides a destination simulator \
-            for single-architecture simulator builds. Run 'swift-bundler simulator \
+            for single-architecture simulator builds. Run '\(SwiftBundler.name) simulator \
             ls' to see available devices.
             """
         case .xcodebuildCannotTargetAndroid:

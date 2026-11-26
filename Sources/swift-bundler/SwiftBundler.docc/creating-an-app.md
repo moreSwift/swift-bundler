@@ -8,7 +8,7 @@ Use the following command to create a new app from the SwiftUI template.
 
 ```sh
 # Create a new app from the SwiftUI template
-swift-bundler create HelloWorld --template SwiftUI
+sbun create HelloWorld --template SwiftUI
 cd HelloWorld
 ```
 
@@ -19,7 +19,7 @@ To learn more about package templates, see <doc:package-templates>.
 Use the `run` command to build and run the app.
 
 ```sh
-swift-bundler run
+sbun run
 ```
 
 Use `--platform`/`-p` to specify a target platform. On macOS this includes
@@ -28,7 +28,7 @@ all Apple platforms (other than watchOS), but on Linux you're limited to Linux.
 ```sh
 # Run the app on an iOS simulator. If you don't specify a simulator then Swift
 # Bundler will attempt to use the first compatible booted simulator it finds.
-swift-bundler run --platform iOSSimulator --simulator "iPhone 16"
+sbun run --platform iOSSimulator --simulator "iPhone 16"
 ```
 
 ## Distributing the app
@@ -46,7 +46,7 @@ targeted at development and not distribution.
 
 ```sh
 # Build the app. The result will be in `.build/bundler`
-swift-bundler bundle -c release
+sbun bundle -c release
 ```
 
 Add `--universal` when targeting macOS if you desire a universal build (i.e. a
@@ -60,7 +60,7 @@ directory.
 
 ```sh
 # Creates the files necessary to get xcode to run the package as an app
-swift-bundler generate-xcode-support
+sbun generate-xcode-support
 ```
 
 To open the package in Xcode, just run `open Package.swift`, or use Finder to

@@ -29,5 +29,5 @@ See [the swift-bundler-templates repository](https://github.com/moreSwift/swift-
 ## Using a custom template repository
 
 ```sh
-swift-bundler create MyApp --identifier com.example.MyApp --template MyTemplate --template-repository /path/to/TemplateRepository
+sbun create MyApp --template MyTemplate --template-repository /path/to/TemplateRepository
 ```
