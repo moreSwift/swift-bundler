@@ -23,6 +23,7 @@ enum ProvisioningProfileManager {
     bundleIdentifier: String,
     deviceId: String,
     deviceOS: NonMacAppleOS,
+    platformVersion: String,
     identity: CodeSigningIdentity
   ) async throws(Error) -> URL {
     #if SUPPORT_XCODEPROJ
@@ -46,7 +47,8 @@ enum ProvisioningProfileManager {
         bundleIdentifier: bundleIdentifier,
         teamId: teamIdentifier,
         deviceId: deviceId,
-        deviceOS: deviceOS
+        deviceOS: deviceOS,
+        platformVersion: platformVersion
       )
     #else
       throw Error(.hostPlatformNotSupported)
@@ -154,7 +156,8 @@ enum ProvisioningProfileManager {
       bundleIdentifier: String,
       teamId: String,
       deviceId: String,
-      deviceOS: NonMacAppleOS
+      deviceOS: NonMacAppleOS,
+      platformVersion: String
     ) async throws(Error) -> URL {
       log.info("Generating provisioning profile")
 
@@ -167,7 +170,8 @@ enum ProvisioningProfileManager {
         bundleIdentifier: bundleIdentifier,
         teamId: teamId,
         deviceId: deviceId,
-        deviceOS: deviceOS
+        deviceOS: deviceOS,
+        platformVersion: platformVersion
       )
 
       let output: String
@@ -242,7 +246,8 @@ enum ProvisioningProfileManager {
       bundleIdentifier: String,
       teamId: String,
       deviceId: String,
-      deviceOS: NonMacAppleOS
+      deviceOS: NonMacAppleOS,
+      platformVersion: String
     ) throws(Error) -> (xcodeprojFile: URL, scheme: String) {
       let sourcesDirectory = projectDirectory / "Sources"
       let infoPlistFile = sourcesDirectory / "Info.plist"
@@ -263,6 +268,7 @@ enum ProvisioningProfileManager {
         bundleIdentifier: bundleIdentifier,
         teamId: teamId,
         deviceOS: deviceOS,
+        platformVersion: platformVersion,
         projectDirectory: projectDirectory,
         sourcesDirectory: sourcesDirectory,
         infoPlistFile: infoPlistFile
@@ -320,6 +326,7 @@ enum ProvisioningProfileManager {
       bundleIdentifier: String,
       teamId: String,
       deviceOS: NonMacAppleOS,
+      platformVersion: String,
       projectDirectory: URL,
       sourcesDirectory: URL,
       infoPlistFile: URL
@@ -335,11 +342,36 @@ enum ProvisioningProfileManager {
         throw Error(.failedToParseBundleIdentifier(bundleIdentifier))
       }
 
+      // Recent Xcode versions no longer infer PRODUCT_NAME or SWIFT_VERSION
+      // for generated projects. Missing PRODUCT_NAME makes the product an
+      // empty `.app`, and missing SWIFT_VERSION fails the Swift compile step.
+      let platformSDKName = deviceOS.physicalPlatform.platform.sdkName
+      var targetSettings: [String: Any] = [
+        "DEVELOPMENT_TEAM": teamId,
+        "PRODUCT_NAME": productName,
+        "PRODUCT_BUNDLE_IDENTIFIER": bundleIdentifier,
+        "CODE_SIGN_STYLE": "Automatic",
+        "SWIFT_VERSION": "5.0",
+        "SDKROOT": platformSDKName,
+        "SUPPORTED_PLATFORMS": platformSDKName,
+      ]
+
+      switch deviceOS {
+        case .iOS:
+          targetSettings["IPHONEOS_DEPLOYMENT_TARGET"] = platformVersion
+          // 1 is iphone, 2 is ipad
+          targetSettings["TARGETED_DEVICE_FAMILY"] = "1,2"
+        case .tvOS:
+          targetSettings["TVOS_DEPLOYMENT_TARGET"] = platformVersion
+        case .visionOS:
+          targetSettings["XROS_DEPLOYMENT_TARGET"] = platformVersion
+      }
+
       let target = Target(
         name: productName,
         type: .application,
         platform: deviceOS.xcodePlatform,
-        settings: Settings(dictionary: ["DEVELOPMENT_TEAM": teamId]),
+        settings: Settings(dictionary: targetSettings),
         sources: [TargetSource(path: sourcesDirectory.path)],
         info: Plist(path: infoPlistFile.path)
       )

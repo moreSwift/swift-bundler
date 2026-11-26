@@ -48,7 +48,7 @@ enum APKBundler: Bundler {
     _ additionalContext: Context
   ) async throws(Error) {
     // Ensure that a valid entry point has been configured
-    _ =  try inferEntrypoint(
+    _ = try inferEntrypoint(
       packageGraph: context.packageGraph,
       targetPlatform: context.platform,
       product: context.appConfiguration.product,

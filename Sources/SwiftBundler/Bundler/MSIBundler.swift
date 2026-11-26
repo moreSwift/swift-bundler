@@ -141,7 +141,7 @@ enum MSIBundler: Bundler {
     let excludedPaths = [genericBundle.mainExecutable.path]
     let installFolder = try enumerate(
       genericBundle.root,
-      inclusionPredicate:  { item in
+      inclusionPredicate: { item in
         // For some reason URL comparison seems to be a little broken on Windows.
         // URLs with identical paths get evaluated as distinct URLs, so we have to
         // convert to paths before comparison.
