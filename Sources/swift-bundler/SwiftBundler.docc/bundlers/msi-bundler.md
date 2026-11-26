@@ -8,7 +8,7 @@ The MSI bundler is the recommended bundler to use when distributing Windows
 applications.
 
 The output of the MSI bundler is not directly runnable, so it is incompatible
-with the `swift-bundler run` command.
+with the `sbun run` command.
 
 > Warning: On Windows, Swift Bundler must be run from the Native Tools Command
 > Prompt, which can be located in the Windows start menu.
@@ -18,13 +18,13 @@ with the `swift-bundler run` command.
 ### Create an MSI installer
 
 ```sh
-swift-bundler bundle --bundler windowsMSI
+sbun bundle --bundler windowsMSI
 ```
 
 ### Create an optimized MSI installer
 
 ```sh
-swift-bundler bundle --bundler windowsMSI -c release --strip
+sbun bundle --bundler windowsMSI -c release --strip
 ```
 
 ## WiX

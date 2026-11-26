@@ -32,10 +32,12 @@ cd swift-bundler
 # SBUN_NO_SCHEMA_GEN speeds up release builds by working around a Swift Syntax
 # prebuilts issue (which may get resolved in future Swift versions)
 SBUN_NO_SCHEMA_GEN=1 swift build -c release
-cp .build/release/swift-bundler /path/to/bin/
+cp .build/release/swift-bundler /path/to/bin/swift-bundler
+cp .build/release/swift-bundler /path/to/bin/sbun
 
 # Verify installation
 swift-bundler --version
+sbun --version
 ```
 
 > Note: Continue to <doc:installation#Runtime-dependencies> to install required runtime dependencies.

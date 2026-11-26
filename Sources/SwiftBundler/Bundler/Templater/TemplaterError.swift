@@ -49,7 +49,7 @@ extension Templater {
             ""
             Section("Troubleshooting") {
               "Have you updated your templates recently?"
-              ExampleCommand("swift-bundler template update")
+              ExampleCommand("\(SwiftBundler.name) template update")
             }
           }.description
         case .failedToReadTemplateManifest(let template, _):
@@ -90,7 +90,7 @@ extension Templater {
             ""
             Section("Troubleshooting") {
               "Your templates may be outdated"
-              ExampleCommand("swift-bundler template update")
+              ExampleCommand("\(SwiftBundler.name) template update")
             }
           }.description
       }

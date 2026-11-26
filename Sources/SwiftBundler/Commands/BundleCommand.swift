@@ -344,7 +344,7 @@ struct BundleCommand: ErrorHandledCommand {
         log.warning(
           """
           Found multiple code signing identities, using \(match); list all available \
-          identities using 'swift-bundler identities list' and provide the '--identity' \
+          identities using '\(SwiftBundler.name) identities list' and provide the '--identity' \
           option to select a particular identity
           """
         )
@@ -501,7 +501,7 @@ struct BundleCommand: ErrorHandledCommand {
         let platformCondition = platform.map { " with platform '\($0)'" } ?? ""
         let reason = """
           No simulator found matching '\(simulatorSpecifier)'\(platformCondition). Use \
-          'swift-bundler simulator ls' to list available simulators.
+          '\(SwiftBundler.name) simulator ls' to list available simulators.
           """
         throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
       }
@@ -543,11 +543,11 @@ struct BundleCommand: ErrorHandledCommand {
                 """
 
                 Section("List available simulators") {
-                  ExampleCommand("swift-bundler simulator ls")
+                  ExampleCommand("\(SwiftBundler.name) simulator ls")
                 }
 
                 Section("Boot a simulator", trailingNewline: false) {
-                  ExampleCommand("swift-bundler simulator boot <id-or-name>")
+                  ExampleCommand("\(SwiftBundler.name) simulator boot <id-or-name>")
                 }
               }.description
             throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))
@@ -570,7 +570,7 @@ struct BundleCommand: ErrorHandledCommand {
               """
 
               Section("List available devices", trailingNewline: false) {
-                ExampleCommand("swift-bundler device ls")
+                ExampleCommand("\(SwiftBundler.name) device ls")
               }
             }.description
           throw RichError(SwiftBundlerError.failedToResolveTargetDevice(reason: reason))

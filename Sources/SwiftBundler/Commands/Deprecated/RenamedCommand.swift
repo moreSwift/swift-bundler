@@ -30,7 +30,7 @@ extension RenamedCommand {
     CommandConfiguration(
       commandName: name,
       abstract: """
-        Deprecated version of 'swift-bundler \(new)' provided for backwards \
+        Deprecated version of '\(SwiftBundler.name) \(new)' provided for backwards \
         compatibility.
         """,
       shouldDisplay: false,
@@ -42,8 +42,8 @@ extension RenamedCommand {
   mutating func validate() throws {
     log.warning(
       """
-      'swift-bundler \(Self.original)' has been deprecated; use \
-      'swift-bundler \(Self.new)' instead
+      '\(SwiftBundler.name) \(Self.original)' has been deprecated; use \
+      '\(SwiftBundler.name) \(Self.new)' instead
       """
     )
     try wrappedCommand.validate()

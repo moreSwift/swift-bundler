@@ -17,11 +17,11 @@ In all of the following examples you can omit `--bundler genericWindows` because
 ### Create an app bundle
 
 ```sh
-swift-bundler bundle --bundler genericWindows
+sbun bundle --bundler genericWindows
 ```
 
 ### Run on your host machine
 
 ```sh
-swift-bundler run --bundler genericWindows
+sbun run --bundler genericWindows
 ```

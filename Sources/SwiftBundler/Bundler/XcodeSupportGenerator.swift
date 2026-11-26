@@ -96,7 +96,7 @@ enum XcodeSupportGenerator {
     // Commands to put in the scheme
     let fixPath =
       "export PATH=`zsh --login -c '[ -f /etc/zshrc ] && . /etc/zshrc; [ -f ~/.zshrc ] && . ~/.zshrc; echo $PATH'`"
-    let command = "swift-bundler bundle"
+    let command = "\(SwiftBundler.name) bundle"
     let arguments =
       "\(app) -d \(packagePath) --products-directory ${BUILT_PRODUCTS_DIR} -o '\(escapedOutputPath)' --skip-build --built-with-xcode --platform ${TARGET_DEVICE_PLATFORM_NAME:-$PLATFORM_NAME}"
     let createBundle = "\(fixPath); \(command) \(arguments)"

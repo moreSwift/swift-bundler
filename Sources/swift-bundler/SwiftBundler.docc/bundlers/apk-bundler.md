@@ -14,23 +14,23 @@ You can omit `--bundler androidAPK` when Swift Bundler can infer that the target
 ### Create an APK
 
 ```sh
-swift-bundler bundle --bundler androidAPK
+sbun bundle --bundler androidAPK
 ```
 
 ### Create an optimized APK
 
 ```sh
-swift-bundler bundle --bundler androidAPK -c release --strip
+sbun bundle --bundler androidAPK -c release --strip
 ```
 
 ### Run on an Android device
 
 ```sh
-swift-bundler run --device "Your Pixel 8a"
+sbun run --device "Your Pixel 8a"
 ```
 
 ### Run on an Android emulator
 
 ```sh
-swift-bundler run --simulator "Pixel 8a"
+sbun run --simulator "Pixel 8a"
 ```

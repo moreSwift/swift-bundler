@@ -26,7 +26,7 @@ The <doc:configuration> article explains all of the available configuration opti
 Swift Bundler has an experimental `convert` command that can be used to convert xcodeprojs and xcworkspaces to Swift Bundler projects.
 
 ```sh
-swift-bundler convert ./MyProject.xcodeproj --out ./MySwiftBundlerProject
+sbun convert ./MyProject.xcodeproj --out ./MySwiftBundlerProject
 cd MySwiftBundlerProject
 ```
 
@@ -37,7 +37,7 @@ To test out whether your migration has succeeded, try running your app, and loop
 ```sh
 # Run your app (make sure to execute this inside the output directory you gave
 # to the convert command)
-swift-bundler run
+sbun run
 ```
 
 ## Migrating from arbitrary build systems to Swift Bundler
@@ -46,4 +46,4 @@ If you're not using Xcode and you're not using SwiftPM then you'll be a bit more
 
 Our recommended approach is to first convert your project into a SwiftPM package, and then follow the SwiftPM instructions in the section above.
 
-Alternatively, you can create a new Swift Bundler project with `swift-bundler create MyProject --template SwiftCrossUI` and then copy your code across to the new project, but that is perhaps more disruptive if you're only wanting to try out hot reloading.
+Alternatively, you can create a new Swift Bundler project with `sbun create MyProject --template SwiftCrossUI` and then copy your code across to the new project, but that is perhaps more disruptive if you're only wanting to try out hot reloading.

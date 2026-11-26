@@ -17,11 +17,11 @@ In all of the following examples you can omit `--bundler genericLinux` because i
 ### Create an app bundle
 
 ```sh
-swift-bundler bundle --bundler genericLinux
+sbun bundle --bundler genericLinux
 ```
 
 ### Run on your host machine
 
 ```sh
-swift-bundler run --bundler genericLinux
+sbun run --bundler genericLinux
 ```
