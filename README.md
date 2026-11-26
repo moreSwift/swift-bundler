@@ -26,15 +26,21 @@ Join [the moreSwift Discord server](https://moreswift.dev/discord) if you have a
 
 ## Installation 📦
 
-Install the latest version of Swift Bundler with [mint](https://github.com/yonaskolb/Mint):
-
-```sh
-mint install stackotter/swift-bundler@main
-```
-
 See [Runtime dependencies](https://swiftbundler.dev/documentation/swift-bundler/installation#Runtime-dependencies) for a list of runtime dependencies and associated installation instructions.
 
-If you have previously installed Swift Bundler via the installation script you must delete the `/opt/swift-bundler` directory (requires sudo).
+### macOS / Linux
+
+```sh
+curl -fsSL https://sbun.dev/install.sh | sh
+```
+
+### Windows
+
+```sh
+powershell -c "irm sbun.dev/install.ps1|iex"
+```
+
+### Manual installation or from source
 
 For more installation methods, see [the documentation](https://swiftbundler.dev/documentation/swift-bundler/installation).
 
@@ -46,7 +52,7 @@ After installing Swift Bundler, package templates make it quick to get started. 
 
 ```sh
 # Create a new app from the SwiftUI template.
-swift bundler create HelloWorld --template SwiftUI
+sbun create HelloWorld --template SwiftUI
 cd HelloWorld
 ```
 
@@ -54,7 +60,7 @@ cd HelloWorld
 
 ```sh
 # Build and run the app.
-swift bundler run
+sbun run
 ```
 
 ### Using Xcode as your IDE
@@ -62,7 +68,7 @@ swift bundler run
 ```sh
 # Creates the files necessary to get xcode to run the package as an app.
 # Only needs to be run once unless you delete the `.swiftpm` directory.
-swift bundler generate-xcode-support
+sbun generate-xcode-support
 
 # Open the package in Xcode
 open Package.swift

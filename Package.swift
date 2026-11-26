@@ -12,7 +12,7 @@ import PackageDescription
 
 let env = ProcessInfo.processInfo.environment
 let schemaGenTargets: [Target]
-if env["SBUN_NO_SCHEMA_GEN"] == "1" {
+if env["SBUN_NO_SCHEMA_GEN"] != "1" {
   schemaGenTargets = [
     .executableTarget(
       name: "schema-gen",

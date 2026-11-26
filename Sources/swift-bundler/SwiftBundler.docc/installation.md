@@ -2,24 +2,39 @@
 
 Installing Swift Bundler on your system.
 
-## Recommended (macOS and Linux)
+## Recommended method
 
-If you're on macOS or Linux, install the latest version of Swift Bundler using
-[Mint](https://github.com/yonaskolb/Mint).
+Swift Bundler releases now include pre-built installers/redistributables. The following one-liners use those to install Swift Bundler in a matter of seconds (with a good enough internet connection).
 
-If you have previously installed Swift Bundler via the installation script you must delete the `/opt/swift-bundler` directory (requires sudo).
-
-Swift Bundler hasn't had an official release in a while due to some outstanding
-breaking changes to be made before 3.0, so we recommend installing directly from
-the main branch.
+### macOS / Linux
 
 ```sh
-mint install stackotter/swift-bundler@main
+curl -fsSL https://sbun.dev/install.sh | sh
+```
+
+### Windows
+
+```sh
+powershell -c "irm sbun.dev/install.ps1|iex"
+```
+
+> Warning: Make sure to always run Swift Bundler from Native Tools Command Prompt for VS 2022 so that Swift Bundler can locate required tools such as `dumpbin`.
+
+> Note: Continue to <doc:installation#Runtime-dependencies> to install required runtime dependencies.
+
+## Manual installation
+
+Recent Swift Bundler releases include installers for macOS, Windows, and Linux (RPM-based, loose .tar.gz, or standalone). Download an installer of your choice and run it, or a loose binary/directory and place it on your path. Remember to create an `sbun` symlink on your path if you want to follow along with our tutorials.
+
+```sh
+# Verify installation
+swift-bundler --version
+sbun --version
 ```
 
 > Note: Continue to <doc:installation#Runtime-dependencies> to install required runtime dependencies.
 
-## Manual installation (all platforms)
+## From source
 
 You can install Swift Bundler manually for maximum control. Clone the repo,
 build Swift Bundler using the Swift Package Manager, and then copy the
@@ -33,7 +48,7 @@ cd swift-bundler
 # prebuilts issue (which may get resolved in future Swift versions)
 SBUN_NO_SCHEMA_GEN=1 swift build -c release
 cp .build/release/swift-bundler /path/to/bin/swift-bundler
-cp .build/release/swift-bundler /path/to/bin/sbun
+ln -s /path/to/bin/swift-bundler /path/to/bin/sbun
 
 # Verify installation
 swift-bundler --version
@@ -41,21 +56,6 @@ sbun --version
 ```
 
 > Note: Continue to <doc:installation#Runtime-dependencies> to install required runtime dependencies.
-
-## Pre-built (macOS)
-
-If you're on macOS, you can use the universal build of `swift-bundler` attached
-to recent releases.
-
-```sh
-# Replace X.X.X with desired version
-curl -O https://github.com/moreSwift/swift-bundler/releases/download/vX.X.X/swift-bundler
-chmod +x ./swift-bundler
-sudo mv ./swift-bundler /usr/local/bin/
-
-# Verify installation
-swift-bundler --version
-```
 
 ## Runtime dependencies
 

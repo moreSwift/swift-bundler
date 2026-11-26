@@ -57,7 +57,7 @@ extension PackageConfiguration {
         case .failedToSerializeConfiguration:
           return "Failed to serialize configuration"
         case .failedToWriteToConfigurationFile(let file):
-          return "Failed to write to configuration file at '\(file.relativePath)"
+          return "Failed to write to configuration file at '\(file.relativePath)'"
         case .failedToDeserializeOldConfiguration:
           return "Failed to deserialize old configuration"
         case .failedToReadContentsOfOldConfigurationFile(let file):
