@@ -5,7 +5,7 @@ import Version
 /// The root command of Swift Bundler.
 public struct SwiftBundler: AsyncParsableCommand {
   /// The actual version of Swift Bundler.
-  private static let _version = Version(3, 0, 0)
+  private static let _version = Version(3, 1, 0)
 
   /// The effective version of Swift Bundler. Under normal use this will match
   /// ``_version``, but the `_SBUN_EFFECTIVE_VERSION` environment variable can
