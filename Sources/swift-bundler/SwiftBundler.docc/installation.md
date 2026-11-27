@@ -18,6 +18,8 @@ curl -fsSL https://sbun.dev/install.sh | sh
 powershell -c "irm sbun.dev/install.ps1|iex"
 ```
 
+> Note: The Windows installer installs for all users and requires administrator privileges (UAC). To install without elevation, set `SWIFT_BUNDLER_PREFIX` to a custom installation directory, or [download](https://github.com/moreSwift/swift-bundler/releases/latest) the loose `.zip`, extract it, and add the resulting directory to your `Path`.
+
 > Warning: Make sure to always run Swift Bundler from Native Tools Command Prompt for VS 2022 so that Swift Bundler can locate required tools such as `dumpbin`.
 
 > Note: Continue to <doc:installation#Runtime-dependencies> to install required runtime dependencies.
