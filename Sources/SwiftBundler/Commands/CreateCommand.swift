@@ -46,6 +46,7 @@ struct CreateCommand: ErrorHandledCommand {
   @Option(
     name: [.customLong("icon")],
     help: "The app's icon file (1024x1024 png or icns file).",
+    completion: .file(extensions: ["png", "icns"]),
     transform: URL.init(fileURLWithPath:)
   )
   var iconFile: URL?
@@ -54,6 +55,7 @@ struct CreateCommand: ErrorHandledCommand {
   @Option(
     name: [.customLong("info-plist")],
     help: "An Info.plist file containing entries to add to the app's configuration.",
+    completion: .file(extensions: ["plist"]),
     transform: URL.init(fileURLWithPath:)
   )
   var infoPlistFile: URL?
@@ -62,6 +64,7 @@ struct CreateCommand: ErrorHandledCommand {
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "Directory to create the app in. Default: create a new directory at './[app-name]'.",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var packageDirectory: URL?
@@ -77,6 +80,7 @@ struct CreateCommand: ErrorHandledCommand {
   @Option(
     name: .long,
     help: "A directory to search for the template in.",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var templateRepository: URL?
@@ -84,6 +88,7 @@ struct CreateCommand: ErrorHandledCommand {
   /// An alternative Swift toolchain to use.
   @Option(
     help: "An alternative Swift toolchain to use",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var toolchain: URL?

@@ -11,6 +11,7 @@ struct ConvertCommand: ErrorHandledCommand {
 
   @Argument(
     help: "Xcodeproj to convert.",
+    completion: .file(extensions: ["xcodeproj", "xcworkspace"]),
     transform: URL.init(fileURLWithPath:)
   )
   var xcodeFile: URL
@@ -18,6 +19,7 @@ struct ConvertCommand: ErrorHandledCommand {
   @Option(
     name: [.customShort("o"), .customLong("out")],
     help: "The output directory.",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var outputDirectory: URL

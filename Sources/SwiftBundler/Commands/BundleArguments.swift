@@ -23,6 +23,7 @@ struct BundleArguments: ParsableArguments {
   /// An alternative Swift toolchain to use.
   @Option(
     help: "An alternative Swift toolchain to use",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var toolchain: URL?
@@ -35,6 +36,7 @@ struct BundleArguments: ParsableArguments {
       The directory containing the package to build. This changes the working \
       directory before any other operation
       """,
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var packageDirectory: URL?
@@ -43,6 +45,7 @@ struct BundleArguments: ParsableArguments {
   @Option(
     name: [.customLong("config-file")],
     help: "Overrides the default configuration file location",
+    completion: .file(extensions: ["toml", "json"]),
     transform: URL.init(fileURLWithPath:)
   )
   var configurationFileOverride: URL?
@@ -54,6 +57,7 @@ struct BundleArguments: ParsableArguments {
       "The directory to copy the built app bundle to on success.",
       visibility: .hidden
     ),
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var copyOutDirectory: URL?
@@ -67,6 +71,7 @@ struct BundleArguments: ParsableArguments {
       The directory containing the built products. Can only be set when \
       `--skip-build` is supplied.
       """,
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var productsDirectory: URL?
@@ -106,6 +111,7 @@ struct BundleArguments: ParsableArguments {
   @Option(
     name: .customLong("scratch-path"),
     help: "A custom scratch directory path (default: .build)",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var scratchDirectory: URL?
@@ -188,6 +194,7 @@ struct BundleArguments: ParsableArguments {
         The path to an Azure Artifact Signing metadata file. Refer to \
         https://learn.microsoft.com/en-us/azure/artifact-signing/how-to-signing-integrations#create-a-json-file
         """,
+      completion: .file(extensions: ["json"]),
       transform: URL.init(fileURLWithPath:)
     )
   #endif
@@ -201,6 +208,7 @@ struct BundleArguments: ParsableArguments {
         The provisioning profile to embed in the app (only applicable when \
         targeting non-macOS physical Apple devices).
         """,
+      completion: .file(extensions: ["mobileprovision", "provisionprofile"]),
       transform: URL.init(fileURLWithPath:)
     )
   #endif
@@ -224,6 +232,7 @@ struct BundleArguments: ParsableArguments {
     @Option(
       name: .customLong("entitlements"),
       help: "Provide an entitlements file to use when codesigning.",
+      completion: .file(extensions: ["entitlements", "plist"]),
       transform: URL.init(fileURLWithPath:)
     )
   #endif

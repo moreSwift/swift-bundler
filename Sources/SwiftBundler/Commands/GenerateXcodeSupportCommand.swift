@@ -13,6 +13,7 @@ struct GenerateXcodeSupportCommand: ErrorHandledCommand {
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "The root directory of the package to generate Xcode support files for.",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var packageDirectory: URL?
@@ -21,6 +22,7 @@ struct GenerateXcodeSupportCommand: ErrorHandledCommand {
   @Option(
     name: [.customLong("config-file")],
     help: "Overrides the default configuration file location",
+    completion: .file(extensions: ["toml", "json"]),
     transform: URL.init(fileURLWithPath:)
   )
   var configurationFileOverride: URL?
