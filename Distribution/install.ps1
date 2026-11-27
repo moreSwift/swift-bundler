@@ -4,8 +4,9 @@
 Installs Swift Bundler from the artifacts attached to a GitHub release.
 
 .DESCRIPTION
-By default this installs the .msi and therefore requires an elevated
-PowerShell session. Use -Prefix to extract the loose .zip into a directory
+By default this installs the .msi, which installs for all users and needs
+administrator privileges. When the script isn't already elevated it asks for
+them with a UAC prompt. Use -Prefix to extract the loose .zip into a directory
 instead, which does not require elevation.
 
 .PARAMETER Version
@@ -73,7 +74,7 @@ if ($Prefix) {
 } else {
   $Mode = 'msi'
   $Asset = "swift-bundler-$VersionNumber-windows-$Architecture.msi"
-  $Description = '.msi installer (requires an elevated session)'
+  $Description = '.msi installer (requests administrator privileges)'
 }
 $Url = "$DownloadUrl/$Tag/$Asset"
 
@@ -120,20 +121,24 @@ try {
   }
 
   if ($Mode -eq 'msi') {
-    $IsAdmin = (
-      [Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
-    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if (-not $IsAdmin) {
+    # Windows Installer installs the .msi for all users (Program Files), so the
+    # install itself has to be elevated. Start msiexec with the `runas` verb so
+    # that an unprivileged session gets a UAC prompt.
+    Write-Host 'Requesting administrator privileges for the .msi installer'
+    try {
+      $Process = Start-Process -FilePath 'msiexec.exe' -Verb RunAs `
+        -ArgumentList @('/i', "`"$File`"", '/qn', '/norestart') `
+        -Wait -PassThru -ErrorAction Stop
+    } catch {
       throw (
-        'The .msi installer requires an elevated PowerShell session. ' +
-        'Re-run from an administrator terminal, or use -Prefix <dir> to ' +
-        'install without elevation.'
+        'The .msi installer installs for all users and needs administrator ' +
+        "privileges, but elevation failed: $($_.Exception.Message)`n" +
+        'Re-run from an administrator terminal, or install without elevation ' +
+        'by passing -Prefix <dir> (or setting SWIFT_BUNDLER_PREFIX) to use ' +
+        'the loose .zip instead.'
       )
     }
 
-    $Process = Start-Process -FilePath 'msiexec.exe' -Wait -PassThru -ArgumentList @(
-      '/i', "`"$File`"", '/qn', '/norestart'
-    )
     # 3010 means a reboot is required but the install succeeded.
     if ($Process.ExitCode -ne 0 -and $Process.ExitCode -ne 3010) {
       throw "msiexec failed with exit code $($Process.ExitCode)"

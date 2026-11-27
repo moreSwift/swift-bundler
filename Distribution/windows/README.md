@@ -15,8 +15,9 @@ Distribution\out\windows\swift-bundler-<version>-windows-x86_64.msi
 ```
 
 The MSI installs to `C:\Program Files\Swift Bundler` and appends that directory
-to the machine `PATH`. It requires elevation. The flat `.zip` is fully
-self-contained.
+to the machine `PATH`. It installs for all users, so it needs elevation;
+`Distribution/install.ps1` requests administrator privileges if it doesn't already
+have them. The loose `.zip` is fully self-contained and needs no elevation.
 
 Both packages include `sbun.cmd`, a small launcher that forwards to
 `swift-bundler.exe` so that `sbun` works as an alias for `swift-bundler`.
