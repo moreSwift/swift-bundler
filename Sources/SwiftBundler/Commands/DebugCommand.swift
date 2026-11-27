@@ -28,6 +28,7 @@ struct DebugCommand: AsyncParsableCommand {
     /// An alternative Swift toolchain to use.
     @Option(
       help: "An alternative Swift toolchain to use",
+      completion: .directory,
       transform: URL.init(fileURLWithPath:)
     )
     var toolchain: URL?
@@ -155,6 +156,7 @@ struct DebugCommand: AsyncParsableCommand {
 
     @Argument(
       help: "The exe or dll file to enumerate dependencies of",
+      completion: .file(extensions: ["exe", "dll"]),
       transform: URL.init(fileURLWithPath:)
     )
     var module: URL

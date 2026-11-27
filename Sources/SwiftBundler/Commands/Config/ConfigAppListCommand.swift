@@ -12,6 +12,7 @@ struct ConfigAppListCommand: ErrorHandledCommand {
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "The directory containing the package to inspect.",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var packageDirectory: URL?

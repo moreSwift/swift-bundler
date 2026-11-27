@@ -12,6 +12,7 @@ struct ConfigMigrateCommand: ErrorHandledCommand {
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "The directory containing the package to migrate.",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var packageDirectory: URL?
@@ -20,6 +21,7 @@ struct ConfigMigrateCommand: ErrorHandledCommand {
   @Option(
     name: [.customLong("config-file")],
     help: "Overrides the default configuration file location",
+    completion: .file(extensions: ["toml", "json"]),
     transform: URL.init(fileURLWithPath:)
   )
   var configurationFile: URL?

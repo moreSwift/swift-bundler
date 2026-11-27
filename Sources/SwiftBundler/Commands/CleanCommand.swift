@@ -12,6 +12,7 @@ struct CleanCommand: ErrorHandledCommand {
   @Option(
     name: [.customShort("d"), .customLong("directory")],
     help: "The directory containing the package to build.",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var packageDirectory: URL?
@@ -20,6 +21,7 @@ struct CleanCommand: ErrorHandledCommand {
   @Option(
     name: .customLong("scratch-path"),
     help: "A custom scratch directory path (default: .build)",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var scratchDirectory: URL?
@@ -27,6 +29,7 @@ struct CleanCommand: ErrorHandledCommand {
   /// An alternative Swift toolchain to use.
   @Option(
     help: "An alternative Swift toolchain to use",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var toolchain: URL?

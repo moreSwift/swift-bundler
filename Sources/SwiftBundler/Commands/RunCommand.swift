@@ -23,6 +23,7 @@ struct RunCommand: ErrorHandledCommand {
   @Option(
     name: [.customLong("env")],
     help: "A file containing environment variables to pass to the app.",
+    completion: .file(),
     transform: URL.init(fileURLWithPath:)
   )
   var environmentFile: URL?

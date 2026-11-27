@@ -19,6 +19,7 @@ struct TemplateInfoCommand: ErrorHandledCommand {
   @Option(
     name: .long,
     help: "An alternate directory to search for the template in.",
+    completion: .directory,
     transform: URL.init(fileURLWithPath:)
   )
   var templateRepository: URL?
