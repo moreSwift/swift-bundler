@@ -74,7 +74,11 @@ struct PackageConfiguration: Codable, Hashable, Sendable {
     targets: [String: TargetConfiguration]? = nil,
     products: [String: ProductConfiguration]? = nil
   ) {
-    formatVersion = Self.currentFormatVersion
+    if SwiftBundler.version >= Version(3, 1, 0) {
+      configVersion = SwiftBundler.version
+    } else {
+      formatVersion = Self.currentFormatVersion
+    }
     self.apps = apps
     self.projects = projects
     self.builders = builders

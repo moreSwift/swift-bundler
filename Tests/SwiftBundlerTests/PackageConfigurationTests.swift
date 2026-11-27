@@ -328,24 +328,29 @@ struct PackageConfigurationTests {
   @Test func testSwiftBundlerV3ConfigurationLoading() async throws {
     try await withFixture("Configuration/V3") { fixture in
       let configuration = try await PackageConfiguration.load(fromDirectory: fixture)
-      #expect(
-        configuration == PackageConfiguration(
-          apps: [
-            "DeltaClient": AppConfiguration(
-              identifier: "dev.stackotter.delta-client",
-              product: "DeltaClient",
-              version: Version(0, 1, 0, pre: ["alpha", "1"]),
-              category: "public.app-category.games",
-              icon: "AppIcon.icns",
-              plist: [
-                "CFBundleShortVersionString": .string("0.1.0-alpha.1-release"),
-                "GCSupportsControllerUserInteraction": .string("True"),
-                "MetalCaptureEnabled": .boolean(true)
-              ]
-            )
-          ]
-        )
+
+      var expected = PackageConfiguration(
+        apps: [
+          "DeltaClient": AppConfiguration(
+            identifier: "dev.stackotter.delta-client",
+            product: "DeltaClient",
+            version: Version(0, 1, 0, pre: ["alpha", "1"]),
+            category: "public.app-category.games",
+            icon: "AppIcon.icns",
+            plist: [
+              "CFBundleShortVersionString": .string("0.1.0-alpha.1-release"),
+              "GCSupportsControllerUserInteraction": .string("True"),
+              "MetalCaptureEnabled": .boolean(true)
+            ]
+          )
+        ]
       )
+      // The PackageConfiguration initializer sets configVersion, but the fixture
+      // uses the old format_version-based config format.
+      expected.formatVersion = PackageConfiguration.currentFormatVersion
+      expected.configVersion = nil
+
+      #expect(configuration == expected)
     }
   }
 
@@ -404,23 +409,29 @@ struct PackageConfigurationTests {
       with: context
     )
 
-    let expected = try ConfigurationFlattener.flatten(
-      PackageConfiguration(
-        apps: [
-          "HelloWorld": AppConfiguration(
-            identifier: "com.example.HelloWorld",
-            product: "HelloWorld",
-            version: Version(0, 1, 0),
-            android: AndroidConfiguration(
-              minSDK: nil,
-              targetSDK: nil,
-              compileSDK: 37,
-              versionCode: 1,
-              permissions: nil
-            )
+    var expectedConfiguration = PackageConfiguration(
+      apps: [
+        "HelloWorld": AppConfiguration(
+          identifier: "com.example.HelloWorld",
+          product: "HelloWorld",
+          version: Version(0, 1, 0),
+          android: AndroidConfiguration(
+            minSDK: nil,
+            targetSDK: nil,
+            compileSDK: 37,
+            versionCode: 1,
+            permissions: nil
           )
-        ]
-      ),
+        )
+      ]
+    )
+    // The PackageConfiguration initializer sets configVersion, but the fixture
+    // uses the old format_version-based config format.
+    expectedConfiguration.formatVersion = PackageConfiguration.currentFormatVersion
+    expectedConfiguration.configVersion = nil
+
+    let expected = try ConfigurationFlattener.flatten(
+      expectedConfiguration,
       with: context
     )
 
