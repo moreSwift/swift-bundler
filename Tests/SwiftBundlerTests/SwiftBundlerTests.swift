@@ -246,7 +246,7 @@ struct SwiftBundlerTests {
     #expect(release.task == "assembleRelease")
     #expect(
       release.apk.path
-        == "/tmp/Android Project-Dir/build/outputs/apk/release/Hello World-App-release-unsigned.apk"
+        == "/tmp/Android Project-Dir/build/outputs/apk/release/Hello World-App-release.apk"
     )
   }
 

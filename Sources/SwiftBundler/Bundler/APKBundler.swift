@@ -72,11 +72,11 @@ enum APKBundler: Bundler {
   /// The Gradle assemble task for `configuration` and the APK that task writes
   /// under `projectRoot`.
   ///
-  /// Release builds produced by the generated project are unsigned.
-  /// `build.gradle.kts` does not configure signing, so Android Gradle Plugin
-  /// writes `<appName>-release-unsigned.apk`. Debug builds are signed with the
-  /// debug keystore and written as `<appName>-debug.apk`. `appName` is copied
-  /// into the file name verbatim; it is not inspected for a build variant.
+  /// Both build types are signed with the Android debug keystore, so a release
+  /// APK installs on a device with no extra configuration. Android Gradle
+  /// Plugin writes `<appName>-debug.apk` and `<appName>-release.apk`.
+  /// `appName` is copied into the file name verbatim; it is not inspected for
+  /// a build variant.
   static func gradleTaskAndAPK(
     for configuration: BuildConfiguration,
     appName: String,
@@ -91,7 +91,7 @@ enum APKBundler: Bundler {
       case .release:
         return (
           task: "assembleRelease",
-          apk: projectRoot / "build/outputs/apk/release/\(appName)-release-unsigned.apk"
+          apk: projectRoot / "build/outputs/apk/release/\(appName)-release.apk"
         )
     }
   }
@@ -1040,6 +1040,7 @@ enum APKBundler: Bundler {
           buildTypes {
               release {
                   isMinifyEnabled = false
+                  signingConfig = signingConfigs.getByName("debug")
               }
           }
 
