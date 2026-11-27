@@ -1,4 +1,5 @@
 import ArgumentParser
+import ErrorKit
 import Foundation
 import Parsing
 import Version
@@ -384,10 +385,6 @@ enum SwiftPackageManager {
         platformArguments = [
           "--swift-sdks-path", silo.path,
           "--swift-sdk", sdk.triple,
-          // Some essential Android/Java interop dependencies are broken with
-          // the Swift Build build system, so we default to the native build
-          // system for now.
-          "--build-system", "native",
         ] + debugArguments
       case .macOS, .linux:
         platformArguments = buildContext.genericContext.configuration == .debug
@@ -396,6 +393,27 @@ enum SwiftPackageManager {
         if platform == .macOS {
           platformArguments += headerPaddingArguments
         }
+    }
+
+    // Some essential Android/Java interop dependencies are broken with
+    // the Swift Build build system, so we default to the native build
+    // system for now. Hot reloading faces similar issues because it
+    // causes upstream dependencies to be built as dylibs, and the new
+    // Swift Build build system is very strict about duplicate code
+    // (without actually providing a way to work around the issues)
+    //
+    // The native build system has been deprecated in Swift 6.4, so we
+    // need to be careful not to use it for future versions of Swift
+    // that may have removed the build system.
+    let swiftPMSupportsNativeBuildSystem = try await getSupportedBuildSystems(
+      toolchain: buildContext.toolchain
+    )?.contains("native") == true
+    if (buildContext.hotReloadingEnabled || platform == .android)
+        && swiftPMSupportsNativeBuildSystem
+    {
+      platformArguments += [
+        "--build-system", "native"
+      ]
     }
 
     let architectureArguments: [String]
@@ -444,6 +462,112 @@ enum SwiftPackageManager {
       return output.trimmingCharacters(in: .whitespacesAndNewlines)
     } catch {
       throw Error(.failedToGetLatestSDKPath(platform), cause: error)
+    }
+  }
+
+  /// Gets build systems supported by SwiftPM in the given toolchain (or
+  /// the default toolchain if `nil`).
+  ///
+  /// Returns `nil` is the supported build systems could not be determined,
+  /// which may happen if SwiftPM ever stops supporting the
+  /// `--experimental-dump-help` flag, or the format of that flag's output
+  /// changes. We fall back on parsing the help page if that approach fails,
+  /// and then we return `nil` if that fails.
+  static func getSupportedBuildSystems(toolchain: URL?) async throws(Error) -> [String]? {
+    do {
+      let process = Process.create(
+        swiftPath(toolchain: toolchain),
+        arguments: [
+          "build", "--experimental-dump-help"
+        ],
+        runSilentlyWhenNotVerbose: false
+      )
+
+      let dumpOutput = try await Error.catch {
+        try await process.getOutputData()
+      }
+
+      struct DTO: Decodable {
+        struct Command: Decodable {
+          struct Argument: Decodable {
+            struct Name: Decodable {
+              let kind: String
+              let name: String
+            }
+
+            let allValues: [String]?
+            let names: [Name]?
+          }
+
+          let arguments: [Argument]
+        }
+
+        let command: Command
+      }
+
+      let dto = try JSONDecoder().decode(DTO.self, from: dumpOutput)
+      if
+        let argument = dto.command.arguments.first(where: { argument in
+          argument.names?.contains { name in
+            name.name == "build-system"
+          } == true
+        }),
+        let values = argument.allValues
+      {
+        return values
+      }
+
+      // We failed to find the build-system argument in the experimental help
+      // dump. In case the format changed or the flag is no longer supported,
+      // we fall back to parsing the regular help page.
+    } catch {
+      log.warning(
+        """
+        Failed to determine SwiftPM's supported build systems via \
+        --experimental-dump-help: \(ErrorKit.userFriendlyMessage(for: error))
+        """
+      )
+    }
+
+    // Fall back to parsing regular help page.
+    let process = Process.create(
+      swiftPath(toolchain: toolchain),
+      arguments: [
+        "build", "--help"
+      ],
+      runSilentlyWhenNotVerbose: false
+    )
+
+    let helpOutput = try await Error.catch {
+      try await process.getOutput()
+    }
+
+    let helpLines = helpOutput.split(separator: "\n")
+    guard let buildSystemIndex = helpLines.firstIndex(where: { line in
+      line.trimmingCharacters(in: .whitespaces).hasPrefix("--")
+    }) else {
+      return nil
+    }
+
+    var buildSystems: [String] = []
+    var begun = false
+    for index in (buildSystemIndex + 1)..<helpLines.count {
+      let line = helpLines[index]
+      let parts = line.split(separator: " ", omittingEmptySubsequences: true)
+      if line.hasPrefix("-") {
+        break
+      } else if parts.count >= 3 && parts[1] == "-" {
+        begun = true
+        buildSystems.append(String(parts[0]))
+      } else if begun {
+        break
+      }
+    }
+
+    if buildSystems.isEmpty {
+      return nil
+    } else {
+      return buildSystems
     }
   }
 
