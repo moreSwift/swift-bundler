@@ -4,11 +4,11 @@ Creating a hello world app.
 
 ## Overview
 
-Use the following command to create a new app from the SwiftUI template.
+Use the following command to create a new app from the [SwiftCrossUI](https://swiftcrossui.dev) template.
 
 ```sh
-# Create a new app from the SwiftUI template
-sbun create HelloWorld --template SwiftUI
+# Create a new app from the SwiftCrossUI template
+sbun create HelloWorld --template SwiftCrossUI
 cd HelloWorld
 ```
 
@@ -16,19 +16,24 @@ To learn more about package templates, see <doc:package-templates>.
 
 ## Running the app
 
-Use the `run` command to build and run the app.
+Use the `run` command to build and run the app;
 
 ```sh
 sbun run
 ```
 
-Use `--platform`/`-p` to specify a target platform. On macOS this includes
-all Apple platforms (other than watchOS), but on Linux you're limited to Linux.
+On a simulator;
 
 ```sh
-# Run the app on an iOS simulator. If you don't specify a simulator then Swift
-# Bundler will attempt to use the first compatible booted simulator it finds.
-sbun run --platform iOSSimulator --simulator "iPhone 16"
+# Run the app on an iOS simulator.
+sbun run --simulator "iPhone 16"
+```
+
+Or on a physical device;
+
+```sh
+# Run the app on an Android device.
+sbun run --device "Pixel 7"
 ```
 
 ## Distributing the app
@@ -51,6 +56,8 @@ sbun bundle -c release
 
 Add `--universal` when targeting macOS if you desire a universal build (i.e. a
 build that runs on both arm64 and x86_64).
+
+See <doc:bundlers> for information about available bundlers for each platform.
 
 ## Running the app from Xcode
 
