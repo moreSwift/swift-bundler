@@ -383,7 +383,11 @@ enum SwiftPackageManager {
 
         platformArguments = [
           "--swift-sdks-path", silo.path,
-          "--swift-sdk", sdk.triple
+          "--swift-sdk", sdk.triple,
+          // Some essential Android/Java interop dependencies are broken with
+          // the Swift Build build system, so we default to the native build
+          // system for now.
+          "--build-system", "native",
         ] + debugArguments
       case .macOS, .linux:
         platformArguments = buildContext.genericContext.configuration == .debug
