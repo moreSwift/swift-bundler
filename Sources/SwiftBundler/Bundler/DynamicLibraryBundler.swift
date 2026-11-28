@@ -333,6 +333,11 @@ enum DynamicLibraryBundler {
       )
     }
 
+    // Frameworks from xcframework binary targets are copied out of SwiftPM's
+    // read-only dependency checkouts, so we need to make the copy writable
+    // before we can update its install names or sign it.
+    try makeWritable(outputDependency)
+
     // Recursively copy the dependencies of this library's dependencies.
     try await copyDynamicDependencies(
       dependedOnBy: outputDylib,
@@ -341,5 +346,36 @@ enum DynamicLibraryBundler {
       productsDirectory: productsDirectory,
       includeSystemWideDependencies: includeSystemWideDependencies
     )
+  }
+
+  /// Makes a file or a directory and all of its contents writable by its owner.
+  /// - Parameter location: The file or directory to make writable.
+  private static func makeWritable(_ location: URL) throws(Error) {
+    var items = [location]
+    if let enumerator = FileManager.default.enumerator(
+      at: location,
+      includingPropertiesForKeys: [.isSymbolicLinkKey]
+    ) {
+      for case let item as URL in Array(enumerator) {
+        items.append(item)
+      }
+    }
+
+    try Error.catch(withMessage: .failedToMakeLibraryWritable(library: location)) {
+      for item in items {
+        // skip symlinks
+        let values = try item.resourceValues(forKeys: [.isSymbolicLinkKey])
+        guard values.isSymbolicLink != true else {
+          continue
+        }
+
+        let attributes = try FileManager.default.attributesOfItem(atPath: item.path)
+        let permissions = (attributes[.posixPermissions] as? NSNumber)?.intValue ?? 0o644
+        try FileManager.default.setAttributes(
+          [.posixPermissions: NSNumber(value: permissions | 0o200)],
+          ofItemAtPath: item.path
+        )
+      }
+    }
   }
 }

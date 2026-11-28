@@ -13,6 +13,7 @@ extension DynamicLibraryBundler {
     case failedToEnumerateDynamicDependencies(binary: URL)
     case failedToSignMovedLibrary
     case failedToLocateDynamicDependency(installName: String)
+    case failedToMakeLibraryWritable(library: URL)
 
     var userFriendlyMessage: String {
       switch self {
@@ -39,6 +40,9 @@ extension DynamicLibraryBundler {
           return "Failed to sign relocated dynamic library using the ad-hoc signing method"
         case .failedToLocateDynamicDependency(let installName):
           return "Failed to locate dynamic dependency with install name '\(installName)'"
+        case .failedToMakeLibraryWritable(let library):
+          let libraryPath = library.path(relativeTo: .currentDirectory)
+          return "Failed to make '\(libraryPath)' writable"
       }
     }
   }
